@@ -1,0 +1,623 @@
+<template>
+  <div>
+    <!-- Header -->
+    <div class="flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+      <h1 class="text-3xl font-bold page-title m-0">Ingresos & Egresos</h1>
+      <Button label="Nuevo Movimiento" icon="pi pi-plus" @click="openNew" />
+    </div>
+
+    <!-- Tarjetas resumen -->
+    <div class="grid mb-4">
+      <div class="col-12 md:col-4">
+        <div class="resumen-card ingreso">
+          <div class="flex align-items-center gap-3">
+            <div class="resumen-icon ingreso-icon"><i class="pi pi-arrow-down text-2xl"></i></div>
+            <div>
+              <span class="block text-gray-400 text-sm mb-1">Total Ingresos</span>
+              <span class="text-2xl font-bold text-green-400">${{ resumen.totalIngresos?.toLocaleString('es-AR') ?? '0' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 md:col-4">
+        <div class="resumen-card egreso">
+          <div class="flex align-items-center gap-3">
+            <div class="resumen-icon egreso-icon"><i class="pi pi-arrow-up text-2xl"></i></div>
+            <div>
+              <span class="block text-gray-400 text-sm mb-1">Total Egresos</span>
+              <span class="text-2xl font-bold text-red-400">${{ resumen.totalEgresos?.toLocaleString('es-AR') ?? '0' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 md:col-4">
+        <div class="resumen-card" :class="saldo >= 0 ? 'saldo-positivo' : 'saldo-negativo'">
+          <div class="flex align-items-center gap-3">
+            <div class="resumen-icon" :class="saldo >= 0 ? 'saldo-icon-pos' : 'saldo-icon-neg'">
+              <i class="pi pi-wallet text-2xl"></i>
+            </div>
+            <div>
+              <span class="block text-gray-400 text-sm mb-1">Saldo del período</span>
+              <span class="text-2xl font-bold" :class="saldo >= 0 ? 'text-green-400' : 'text-red-400'">
+                {{ saldo >= 0 ? '+' : '' }}${{ saldo.toLocaleString('es-AR') }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+      <div class="flex flex-wrap gap-3 align-items-end">
+        <div class="flex flex-column gap-1">
+          <label class="text-gray-400 text-sm">Búsqueda</label>
+          <span class="p-input-icon-left">
+            <i class="pi pi-search" />
+            <InputText v-model="filtros.busqueda" placeholder="Concepto, descripción..." style="width:220px" />
+          </span>
+        </div>
+        <div class="flex flex-column gap-1">
+          <label class="text-gray-400 text-sm">Tipo</label>
+          <Dropdown
+            v-model="filtros.tipo"
+            :options="tipoOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Todos"
+            showClear
+            style="width:150px"
+          />
+        </div>
+        <div class="flex flex-column gap-1">
+          <label class="text-gray-400 text-sm">Categoría</label>
+          <Dropdown
+            v-model="filtros.categoria"
+            :options="categoriaOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Todas"
+            showClear
+            style="width:180px"
+          />
+        </div>
+        <div class="flex flex-column gap-1">
+          <label class="text-gray-400 text-sm">Desde</label>
+          <Calendar v-model="filtros.fechaDesde" dateFormat="dd/mm/yy" showIcon placeholder="Desde" style="width:160px" />
+        </div>
+        <div class="flex flex-column gap-1">
+          <label class="text-gray-400 text-sm">Hasta</label>
+          <Calendar v-model="filtros.fechaHasta" dateFormat="dd/mm/yy" showIcon placeholder="Hasta" style="width:160px" />
+        </div>
+        <Button icon="pi pi-filter-slash" label="Limpiar" outlined severity="secondary" @click="limpiarFiltros" />
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="card">
+      <DataTable
+        :value="movimientosFiltrados"
+        :loading="loading"
+        paginator
+        :rows="15"
+        :rowsPerPageOptions="[10, 15, 25, 50]"
+        sortField="fecha"
+        :sortOrder="-1"
+        responsiveLayout="scroll"
+        class="p-datatable-sm"
+      >
+        <template #empty>
+          <div class="text-center py-5">
+            <i class="pi pi-inbox text-4xl text-gray-500 mb-3 block"></i>
+            <p class="text-gray-400">No hay movimientos registrados</p>
+          </div>
+        </template>
+
+        <Column field="fecha" header="Fecha" sortable style="min-width:110px">
+          <template #body="{ data }">
+            <span class="text-gray-300">{{ formatDate(data.fecha) }}</span>
+          </template>
+        </Column>
+
+        <Column field="tipo" header="Tipo" sortable style="min-width:110px">
+          <template #body="{ data }">
+            <Tag
+              :value="data.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'"
+              :severity="data.tipo === 'ingreso' ? 'success' : 'danger'"
+            />
+          </template>
+        </Column>
+
+        <Column field="categoria" header="Categoría" sortable style="min-width:140px">
+          <template #body="{ data }">
+            <div class="flex align-items-center gap-2">
+              <i :class="iconCategoria(data.categoria)" class="text-red-400"></i>
+              <span class="text-gray-300">{{ labelCategoria(data.categoria) }}</span>
+            </div>
+          </template>
+        </Column>
+
+        <Column field="concepto" header="Concepto" style="min-width:200px">
+          <template #body="{ data }">
+            <div>
+              <div class="text-white font-medium">{{ data.concepto }}</div>
+              <div v-if="data.descripcion" class="text-gray-500 text-sm">{{ data.descripcion }}</div>
+            </div>
+          </template>
+        </Column>
+
+        <Column field="comprobante" header="Comprobante" style="min-width:130px">
+          <template #body="{ data }">
+            <span v-if="data.comprobante" class="text-gray-300 text-sm font-mono">{{ data.comprobante }}</span>
+            <span v-else class="text-gray-600 text-sm">—</span>
+          </template>
+        </Column>
+
+        <Column field="monto" header="Monto" sortable style="min-width:120px">
+          <template #body="{ data }">
+            <span
+              class="font-bold text-lg"
+              :class="data.tipo === 'ingreso' ? 'text-green-400' : 'text-red-400'"
+            >
+              {{ data.tipo === 'ingreso' ? '+' : '-' }}${{ data.monto?.toLocaleString('es-AR') }}
+            </span>
+          </template>
+        </Column>
+
+        <Column header="Acciones" style="min-width:100px">
+          <template #body="{ data }">
+            <div class="flex gap-2">
+              <Button icon="pi pi-pencil" text rounded size="small" class="text-gray-400" @click="openEdit(data)" v-tooltip="'Editar'" />
+              <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmDelete(data)" v-tooltip="'Eliminar'" />
+            </div>
+          </template>
+        </Column>
+      </DataTable>
+    </div>
+
+    <!-- ===== DIALOG FORMULARIO ===== -->
+    <Dialog
+      v-model:visible="dialogVisible"
+      :header="editando ? 'Editar Movimiento' : 'Nuevo Movimiento'"
+      :modal="true"
+      :style="{ width: '520px' }"
+      :breakpoints="{ '640px': '95vw' }"
+      class="dialog-dark"
+      @hide="resetForm"
+    >
+      <form @submit.prevent="guardar" class="flex flex-column gap-4 pt-2">
+
+        <!-- Tipo -->
+        <div>
+          <label class="block text-gray-300 font-medium mb-2">Tipo *</label>
+          <div class="flex gap-3">
+            <div
+              class="tipo-btn flex-1 flex align-items-center justify-content-center gap-2 p-3 border-round cursor-pointer"
+              :class="{ 'tipo-selected-ingreso': form.tipo === 'ingreso', 'tipo-unselected': form.tipo !== 'ingreso' }"
+              @click="form.tipo = 'ingreso'; form.categoria = null"
+            >
+              <i class="pi pi-arrow-down"></i>
+              <span class="font-bold">Ingreso</span>
+            </div>
+            <div
+              class="tipo-btn flex-1 flex align-items-center justify-content-center gap-2 p-3 border-round cursor-pointer"
+              :class="{ 'tipo-selected-egreso': form.tipo === 'egreso', 'tipo-unselected': form.tipo !== 'egreso' }"
+              @click="form.tipo = 'egreso'; form.categoria = null"
+            >
+              <i class="pi pi-arrow-up"></i>
+              <span class="font-bold">Egreso</span>
+            </div>
+          </div>
+          <small v-if="formErrors.tipo" class="p-error">{{ formErrors.tipo }}</small>
+        </div>
+
+        <!-- Categoría según tipo -->
+        <div>
+          <label class="block text-gray-300 font-medium mb-2">Categoría *</label>
+          <Dropdown
+            v-model="form.categoria"
+            :options="categoriasSegunTipo"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Seleccioná una categoría"
+            class="w-full"
+            :class="{ 'p-invalid': formErrors.categoria }"
+          />
+          <small v-if="formErrors.categoria" class="p-error">{{ formErrors.categoria }}</small>
+        </div>
+
+        <!-- Concepto -->
+        <div>
+          <label class="block text-gray-300 font-medium mb-2">Concepto *</label>
+          <InputText
+            v-model="form.concepto"
+            class="w-full"
+            placeholder="Ej: Cuota mensual socios, Factura luz..."
+            :class="{ 'p-invalid': formErrors.concepto }"
+          />
+          <small v-if="formErrors.concepto" class="p-error">{{ formErrors.concepto }}</small>
+        </div>
+
+        <!-- Descripción -->
+        <div>
+          <label class="block text-gray-300 font-medium mb-2">Descripción</label>
+          <Textarea
+            v-model="form.descripcion"
+            class="w-full"
+            rows="2"
+            placeholder="Detalle adicional (opcional)"
+            autoResize
+          />
+        </div>
+
+        <!-- Monto y Fecha en fila -->
+        <div class="flex gap-3">
+          <div class="flex-1">
+            <label class="block text-gray-300 font-medium mb-2">Monto *</label>
+            <InputNumber
+              v-model="form.monto"
+              class="w-full"
+              :class="{ 'p-invalid': formErrors.monto }"
+              mode="currency"
+              currency="ARS"
+              locale="es-AR"
+              :minFractionDigits="0"
+              placeholder="$0"
+            />
+            <small v-if="formErrors.monto" class="p-error">{{ formErrors.monto }}</small>
+          </div>
+          <div class="flex-1">
+            <label class="block text-gray-300 font-medium mb-2">Fecha *</label>
+            <Calendar
+              v-model="form.fecha"
+              dateFormat="dd/mm/yy"
+              showIcon
+              class="w-full"
+              :class="{ 'p-invalid': formErrors.fecha }"
+            />
+            <small v-if="formErrors.fecha" class="p-error">{{ formErrors.fecha }}</small>
+          </div>
+        </div>
+
+        <!-- Comprobante -->
+        <div>
+          <label class="block text-gray-300 font-medium mb-2">
+            Número de comprobante
+            <span class="text-gray-500 font-normal text-sm ml-1">(factura, recibo, etc.)</span>
+          </label>
+          <InputText
+            v-model="form.comprobante"
+            class="w-full"
+            placeholder="Ej: FAC-0001-00001234"
+          />
+        </div>
+
+        <Message v-if="saveError" severity="error" :closable="false">{{ saveError }}</Message>
+      </form>
+
+      <template #footer>
+        <Button label="Cancelar" icon="pi pi-times" text class="text-gray-400" @click="dialogVisible = false" />
+        <Button
+          :label="editando ? 'Guardar cambios' : 'Registrar'"
+          icon="pi pi-check"
+          :loading="saving"
+          @click="guardar"
+        />
+      </template>
+    </Dialog>
+
+    <!-- ===== CONFIRM DELETE ===== -->
+    <ConfirmDialog />
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
+import { movimientosService } from '@/services'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
+import Textarea from 'primevue/textarea'
+import Dropdown from 'primevue/dropdown'
+import Calendar from 'primevue/calendar'
+import Dialog from 'primevue/dialog'
+import Tag from 'primevue/tag'
+import Message from 'primevue/message'
+import ConfirmDialog from 'primevue/confirmdialog'
+
+const confirm = useConfirm()
+const toast = useToast()
+
+// ── ESTADO ─────────────────────────────────────────────────────
+const loading = ref(false)
+const saving = ref(false)
+const saveError = ref('')
+const dialogVisible = ref(false)
+const editando = ref(false)
+const movimientos = ref([])
+
+const resumen = ref({ totalIngresos: 0, totalEgresos: 0 })
+const saldo = computed(() => (resumen.value.totalIngresos ?? 0) - (resumen.value.totalEgresos ?? 0))
+
+// ── OPCIONES ────────────────────────────────────────────────────
+const tipoOptions = [
+  { label: 'Ingreso', value: 'ingreso' },
+  { label: 'Egreso', value: 'egreso' }
+]
+
+const categoriaOptions = [
+  // Ingresos
+  { label: 'Cuota de socios', value: 'cuota_socios', tipo: 'ingreso' },
+  { label: 'Factura / Cobro', value: 'factura_cobro', tipo: 'ingreso' },
+  { label: 'Donación', value: 'donacion', tipo: 'ingreso' },
+  { label: 'Evento / Torneo', value: 'evento', tipo: 'ingreso' },
+  { label: 'Venta de productos', value: 'venta_productos', tipo: 'ingreso' },
+  { label: 'Alquiler de espacios', value: 'alquiler_espacios', tipo: 'ingreso' },
+  { label: 'Subsidio / Ayuda', value: 'subsidio', tipo: 'ingreso' },
+  { label: 'Otro ingreso', value: 'otro_ingreso', tipo: 'ingreso' },
+  // Egresos
+  { label: 'Factura de servicios', value: 'factura_servicio', tipo: 'egreso' },
+  { label: 'Sueldos / Honorarios', value: 'sueldos', tipo: 'egreso' },
+  { label: 'Compra de productos', value: 'compra_productos', tipo: 'egreso' },
+  { label: 'Mantenimiento', value: 'mantenimiento', tipo: 'egreso' },
+  { label: 'Evento / Torneo', value: 'evento_egreso', tipo: 'egreso' },
+  { label: 'Impuestos / Tasas', value: 'impuestos', tipo: 'egreso' },
+  { label: 'Otro egreso', value: 'otro_egreso', tipo: 'egreso' }
+]
+
+const categoriasSegunTipo = computed(() =>
+  categoriaOptions.filter(c => c.tipo === form.value.tipo)
+)
+
+// ── FILTROS ─────────────────────────────────────────────────────
+const filtros = ref({
+  busqueda: '',
+  tipo: null,
+  categoria: null,
+  fechaDesde: null,
+  fechaHasta: null
+})
+
+const movimientosFiltrados = computed(() => {
+  return movimientos.value.filter(m => {
+    if (filtros.value.tipo && m.tipo !== filtros.value.tipo) return false
+    if (filtros.value.categoria && m.categoria !== filtros.value.categoria) return false
+    if (filtros.value.busqueda) {
+      const q = filtros.value.busqueda.toLowerCase()
+      if (!m.concepto?.toLowerCase().includes(q) && !m.descripcion?.toLowerCase().includes(q)) return false
+    }
+    if (filtros.value.fechaDesde) {
+      const desde = new Date(filtros.value.fechaDesde); desde.setHours(0,0,0,0)
+      const fecha = new Date(m.fecha)
+      if (fecha < desde) return false
+    }
+    if (filtros.value.fechaHasta) {
+      const hasta = new Date(filtros.value.fechaHasta); hasta.setHours(23,59,59,999)
+      const fecha = new Date(m.fecha)
+      if (fecha > hasta) return false
+    }
+    return true
+  })
+})
+
+function limpiarFiltros() {
+  filtros.value = { busqueda: '', tipo: null, categoria: null, fechaDesde: null, fechaHasta: null }
+}
+
+// ── FORM ────────────────────────────────────────────────────────
+const defaultForm = () => ({
+  id: null,
+  tipo: 'ingreso',
+  categoria: null,
+  concepto: '',
+  descripcion: '',
+  monto: null,
+  fecha: new Date(),
+  comprobante: ''
+})
+
+const form = ref(defaultForm())
+const formErrors = ref({})
+
+function resetForm() {
+  form.value = defaultForm()
+  formErrors.value = {}
+  saveError.value = ''
+  editando.value = false
+}
+
+function openNew() {
+  resetForm()
+  dialogVisible.value = true
+}
+
+function openEdit(mov) {
+  editando.value = true
+  form.value = {
+    id: mov.id,
+    tipo: mov.tipo,
+    categoria: mov.categoria,
+    concepto: mov.concepto,
+    descripcion: mov.descripcion || '',
+    monto: mov.monto,
+    fecha: new Date(mov.fecha),
+    comprobante: mov.comprobante || ''
+  }
+  formErrors.value = {}
+  saveError.value = ''
+  dialogVisible.value = true
+}
+
+function validateForm() {
+  formErrors.value = {}
+  if (!form.value.tipo) formErrors.value.tipo = 'Seleccioná un tipo'
+  if (!form.value.categoria) formErrors.value.categoria = 'Seleccioná una categoría'
+  if (!form.value.concepto?.trim()) formErrors.value.concepto = 'El concepto es requerido'
+  if (!form.value.monto || form.value.monto <= 0) formErrors.value.monto = 'Ingresá un monto válido'
+  if (!form.value.fecha) formErrors.value.fecha = 'La fecha es requerida'
+  return Object.keys(formErrors.value).length === 0
+}
+
+async function guardar() {
+  if (!validateForm()) return
+  saving.value = true
+  saveError.value = ''
+  try {
+    const payload = {
+      tipo: form.value.tipo,
+      categoria: form.value.categoria,
+      concepto: form.value.concepto.trim(),
+      descripcion: form.value.descripcion?.trim() || undefined,
+      monto: form.value.monto,
+      fecha: form.value.fecha instanceof Date ? form.value.fecha.toISOString() : form.value.fecha,
+      comprobante: form.value.comprobante?.trim() || undefined
+    }
+    if (editando.value) {
+      await movimientosService.update(form.value.id, payload)
+      toast.add({ severity: 'success', summary: 'Actualizado', detail: 'Movimiento actualizado correctamente', life: 3000 })
+    } else {
+      await movimientosService.create(payload)
+      toast.add({ severity: 'success', summary: 'Registrado', detail: 'Movimiento registrado correctamente', life: 3000 })
+    }
+    dialogVisible.value = false
+    await cargarDatos()
+  } catch (e) {
+    saveError.value = e.response?.data?.message || 'Error al guardar el movimiento'
+  } finally {
+    saving.value = false
+  }
+}
+
+// ── ELIMINAR ─────────────────────────────────────────────────────
+function confirmDelete(mov) {
+  confirm.require({
+    message: `¿Eliminás el movimiento "${mov.concepto}"?`,
+    header: 'Confirmar eliminación',
+    icon: 'pi pi-exclamation-triangle',
+    acceptClass: 'p-button-danger',
+    acceptLabel: 'Sí, eliminar',
+    rejectLabel: 'Cancelar',
+    accept: async () => {
+      try {
+        await movimientosService.delete(mov.id)
+        toast.add({ severity: 'success', summary: 'Eliminado', detail: 'Movimiento eliminado', life: 3000 })
+        await cargarDatos()
+      } catch {
+        toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar', life: 3000 })
+      }
+    }
+  })
+}
+
+// ── CARGA DE DATOS ────────────────────────────────────────────────
+async function cargarDatos() {
+  loading.value = true
+  try {
+    const [lista, res] = await Promise.all([
+      movimientosService.getAll(),
+      movimientosService.getResumen()
+    ])
+    movimientos.value = lista
+    resumen.value = res
+  } catch {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los movimientos', life: 3000 })
+  } finally {
+    loading.value = false
+  }
+}
+
+// ── HELPERS ──────────────────────────────────────────────────────
+function formatDate(fecha) {
+  if (!fecha) return '—'
+  return new Date(fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+function labelCategoria(value) {
+  return categoriaOptions.find(c => c.value === value)?.label ?? value ?? '—'
+}
+
+function iconCategoria(value) {
+  const iconos = {
+    cuota_socios: 'pi pi-users',
+    factura_cobro: 'pi pi-file',
+    donacion: 'pi pi-heart',
+    evento: 'pi pi-star',
+    venta_productos: 'pi pi-shopping-bag',
+    alquiler_espacios: 'pi pi-building',
+    subsidio: 'pi pi-gift',
+    otro_ingreso: 'pi pi-plus-circle',
+    factura_servicio: 'pi pi-file-o',
+    sueldos: 'pi pi-id-card',
+    compra_productos: 'pi pi-shopping-cart',
+    mantenimiento: 'pi pi-wrench',
+    evento_egreso: 'pi pi-calendar',
+    impuestos: 'pi pi-percentage',
+    otro_egreso: 'pi pi-minus-circle'
+  }
+  return iconos[value] ?? 'pi pi-tag'
+}
+
+onMounted(cargarDatos)
+</script>
+
+<style scoped>
+.resumen-card {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+}
+.resumen-card.ingreso { border-left: 4px solid #22c55e; }
+.resumen-card.egreso { border-left: 4px solid #ef4444; }
+.resumen-card.saldo-positivo { border-left: 4px solid #22c55e; }
+.resumen-card.saldo-negativo { border-left: 4px solid #ef4444; }
+
+.resumen-icon {
+  width: 48px; height: 48px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.ingreso-icon { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.egreso-icon  { background: rgba(239, 68, 68, 0.15);  color: #ef4444; }
+.saldo-icon-pos { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.saldo-icon-neg { background: rgba(239, 68, 68, 0.15);  color: #ef4444; }
+
+/* Tipo selector */
+.tipo-btn { border: 2px solid transparent; transition: all 0.2s; }
+.tipo-unselected {
+  background: var(--surface-hover);
+  color: var(--text-color-secondary);
+  border-color: var(--surface-border);
+}
+.tipo-unselected:hover { border-color: var(--surface-400); color: var(--text-color); }
+.tipo-selected-ingreso { background: rgba(34,197,94,0.15); color: #22c55e; border-color: #22c55e; }
+.tipo-selected-egreso  { background: rgba(239,68,68,0.15);  color: #ef4444; border-color: #ef4444; }
+
+/* Dialog adaptable al tema */
+:deep(.dialog-dark .p-dialog) {
+  background: var(--surface-overlay);
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+}
+:deep(.dialog-dark .p-dialog-header) {
+  background: var(--surface-overlay);
+  color: var(--text-color);
+  border-bottom: 1px solid var(--surface-border);
+  border-radius: 12px 12px 0 0;
+}
+:deep(.dialog-dark .p-dialog-content) {
+  background: var(--surface-overlay);
+  color: var(--text-color);
+  padding: 1.5rem;
+}
+:deep(.dialog-dark .p-dialog-footer) {
+  background: var(--surface-overlay);
+  border-top: 1px solid var(--surface-border);
+  border-radius: 0 0 12px 12px;
+}
+:deep(.dialog-dark .p-dialog-header-close) { color: var(--text-color-secondary) !important; }
+</style>

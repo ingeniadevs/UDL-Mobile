@@ -1,0 +1,326 @@
+﻿/* ============================================================
+   UDL  main.css
+   Variables custom + overrides PrimeVue para lara-light/dark-teal
+   ============================================================ */
+
+/* Variables base (siempre) */
+:root {
+  --udl-red:        #dc2626;
+  --udl-red-dark:   #991b1b;
+  --udl-red-hover:  rgba(220, 38, 38, 0.1);
+  --udl-red-active: rgba(220, 38, 38, 0.15);
+}
+
+/* Fix: icono dentro de inputs (p-input-icon-left) */
+.p-input-icon-left {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.p-input-icon-left > i {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-color-secondary);
+  z-index: 1;
+  pointer-events: none;
+}
+.p-input-icon-left > .p-inputtext {
+  padding-left: 2.5rem;
+  width: 100%;
+}
+
+/* ── MODO CLARO ── */
+html.theme-light {
+  --surface-ground:  #f3f4f6;
+  --surface-section: #f3f4f6;
+  --surface-card:    #ffffff;
+  --surface-overlay: #ffffff;
+  --surface-hover:   rgba(220, 38, 38, 0.05);
+  --surface-border:  #e5e7eb;
+  --primary-color:   #dc2626;
+  --primary-color-text: #ffffff;
+  --highlight-bg:    rgba(220, 38, 38, 0.08);
+  --text-color:           #111827;
+  --text-color-secondary: #6b7280;
+}
+
+/* En modo claro, las clases text-gray-* de PrimeFlex deben verse oscuras */
+html.theme-light .text-gray-300 { color: #374151 !important; }
+html.theme-light .text-gray-400 { color: #4b5563 !important; }
+html.theme-light .text-gray-500 { color: #6b7280 !important; }
+html.theme-light .text-gray-600 { color: #4b5563 !important; }
+html.theme-light .text-white    { color: #111827 !important; }
+
+/* Excepción: dentro del carnet digital (fondo oscuro intencional) mantener blanco */
+html.theme-light .carnet-card .text-white { color: #ffffff !important; }
+
+/* Cards y boxes en modo claro */
+html.theme-light .card {
+  background: #ffffff;
+  border-color: #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* DataTable en modo claro */
+html.theme-light .p-datatable .p-datatable-thead > tr > th {
+  background: #f9fafb !important;
+  color: #374151 !important;
+}
+html.theme-light .p-datatable .p-datatable-tbody > tr {
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+html.theme-light .p-datatable .p-datatable-tbody > tr:hover {
+  background: rgba(220, 38, 38, 0.04) !important;
+}
+
+/* Inputs en modo claro */
+html.theme-light .p-inputtext,
+html.theme-light .p-dropdown,
+html.theme-light .p-multiselect,
+html.theme-light .p-textarea,
+html.theme-light .p-inputnumber-input {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border-color: #d1d5db !important;
+}
+
+/* Dialog en modo claro */
+html.theme-light .p-dialog,
+html.theme-light .p-dialog .p-dialog-header,
+html.theme-light .p-dialog .p-dialog-content,
+html.theme-light .p-dialog .p-dialog-footer {
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+/* Sidebar / Menu en modo claro */
+html.theme-light .p-sidebar,
+html.theme-light .p-menu {
+  background: #ffffff !important;
+}
+html.theme-light .p-menu .p-menuitem-link {
+  color: #374151 !important;
+}
+
+/* Topbar/layout en modo claro */
+html.theme-light .topbar { background: #ffffff !important; }
+html.theme-light .sidebar-desktop { background: #ffffff !important; }
+
+/* ── MODO OSCURO: sobreescribir el azul-grisáceo de lara-dark-teal con negro puro ── */
+html.theme-dark {
+  --surface-ground:  #0d0d0d;
+  --surface-section: #0d0d0d;
+  --surface-card:    #161616;
+  --surface-overlay: #161616;
+  --surface-a:       #161616;
+  --surface-b:       #0d0d0d;
+  --surface-e:       #161616;
+  --surface-f:       #161616;
+  --surface-border:  rgba(255, 255, 255, 0.08);
+  --surface-hover:   rgba(220, 38, 38, 0.06);
+  --primary-color:   #dc2626;
+  --primary-color-text: #ffffff;
+  --highlight-bg:    rgba(220, 38, 38, 0.14);
+  --focus-ring:      0 0 0 0.2rem rgba(220, 38, 38, 0.25);
+  --text-color:           #f9fafb;
+  --text-color-secondary: #9ca3af;
+}
+
+/* En modo oscuro forzar los fondos de PrimeVue que usan surface-a/b hardcoded */
+/* NOTA: NO incluir .p-component aquí — cubre botones y los vuelve invisibles */
+html.theme-dark .p-menu,
+html.theme-dark .p-sidebar,
+html.theme-dark .p-dialog,
+html.theme-dark .p-dialog .p-dialog-header,
+html.theme-dark .p-dialog .p-dialog-content,
+html.theme-dark .p-dialog .p-dialog-footer,
+html.theme-dark .p-datatable .p-datatable-header,
+html.theme-dark .p-datatable .p-datatable-thead > tr > th,
+html.theme-dark .p-datatable .p-datatable-tfoot > tr > td,
+html.theme-dark .p-panel .p-panel-header,
+html.theme-dark .p-card,
+html.theme-dark .p-card .p-card-body,
+html.theme-dark .p-dropdown-panel,
+html.theme-dark .p-multiselect-panel,
+html.theme-dark .p-overlaypanel {
+  background: var(--surface-card) !important;
+  border-color: var(--surface-border) !important;
+}
+
+html.theme-dark .p-datatable .p-datatable-thead > tr > th {
+  background: #0d0d0d !important;
+}
+
+html.theme-dark .p-datatable .p-datatable-tbody > tr {
+  background: var(--surface-card) !important;
+  color: var(--text-color);
+}
+
+html.theme-dark .p-datatable .p-datatable-tbody > tr:hover {
+  background: rgba(220, 38, 38, 0.06) !important;
+}
+
+html.theme-dark body,
+html.theme-dark #app {
+  background: #0d0d0d;
+}
+
+/* Reset / Base */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family);
+  font-size: 14px;
+  background: var(--surface-ground);
+  color: var(--text-color);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--udl-red); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Card generica */
+.card {
+  background: var(--surface-card);
+  border-radius: 12px;
+  border: 1px solid var(--surface-border);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Botones primarios  rojo UDL */
+.p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(.p-button-secondary):not(.p-button-success):not(.p-button-info):not(.p-button-warning):not(.p-button-danger) {
+  background: var(--udl-red) !important;
+  border-color: var(--udl-red) !important;
+  color: #fff !important;
+}
+.p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(.p-button-secondary):not(.p-button-success):not(.p-button-info):not(.p-button-warning):not(.p-button-danger):hover {
+  background: var(--udl-red-dark) !important;
+  border-color: var(--udl-red-dark) !important;
+}
+.p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(.p-button-secondary):not(.p-button-success):not(.p-button-info):not(.p-button-warning):not(.p-button-danger):focus {
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25) !important;
+}
+
+/* Checkbox checked */
+.p-checkbox .p-checkbox-box.p-highlight {
+  background: var(--udl-red) !important;
+  border-color: var(--udl-red) !important;
+}
+.p-checkbox:not(.p-checkbox-disabled) .p-checkbox-box.p-highlight:hover {
+  background: var(--udl-red-dark) !important;
+  border-color: var(--udl-red-dark) !important;
+}
+
+/* InputSwitch */
+.p-inputswitch.p-inputswitch-checked .p-inputswitch-slider {
+  background: var(--udl-red) !important;
+}
+.p-inputswitch.p-inputswitch-checked:not(.p-disabled):hover .p-inputswitch-slider {
+  background: var(--udl-red-dark) !important;
+}
+
+/* Focus ring inputs */
+.p-inputtext:enabled:focus,
+.p-dropdown:not(.p-disabled).p-focus,
+.p-multiselect:not(.p-disabled).p-focus {
+  border-color: var(--udl-red) !important;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15) !important;
+}
+
+/* Paginator */
+.p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
+  background: var(--udl-red) !important;
+  border-color: var(--udl-red) !important;
+  color: #fff !important;
+}
+
+/* Tabs */
+.p-tabview .p-tabview-nav li.p-highlight .p-tabview-nav-link {
+  border-color: var(--udl-red) !important;
+  color: var(--udl-red) !important;
+}
+
+/* Dialog */
+.p-dialog .p-dialog-header {
+  border-bottom: 1px solid var(--surface-border);
+  padding: 1.25rem 1.5rem;
+}
+.p-dialog .p-dialog-content {
+  padding: 1.25rem 1.5rem;
+}
+.p-dialog .p-dialog-footer {
+  border-top: 1px solid var(--surface-border);
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* DataTable */
+.p-datatable .p-datatable-thead > tr > th {
+  background: var(--surface-section);
+  color: var(--text-color-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--surface-border);
+}
+.p-datatable .p-datatable-tbody > tr:hover {
+  background: var(--surface-hover) !important;
+}
+.p-datatable .p-datatable-tbody > tr > td {
+  border-bottom: 1px solid var(--surface-border);
+  padding: 0.65rem 1rem;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-color-secondary); }
+
+/* ── OVERRIDE COLOR PRIMARIO: reemplazar teal por rojo UDL en AMBOS temas ── */
+
+/* Ripple / highlight */
+.p-ink { background: rgba(220, 38, 38, 0.3) !important; }
+
+/* Focus ring global */
+.p-focus-ring,
+:focus-visible { outline-color: var(--udl-red) !important; }
+
+/* Dropdown / Select panel — item seleccionado */
+.p-dropdown-panel .p-dropdown-items .p-dropdown-item.p-highlight,
+.p-dropdown-panel .p-dropdown-items .p-dropdown-item:not(.p-disabled):hover,
+.p-multiselect-panel .p-multiselect-items .p-multiselect-item.p-highlight {
+  background: var(--udl-red-hover) !important;
+  color: var(--udl-red) !important;
+}
+
+/* Menú — item activo */
+.p-menu .p-menuitem-link:not(.p-disabled):hover,
+.p-menu .p-menuitem.p-highlight > .p-menuitem-link {
+  background: var(--udl-red-hover) !important;
+  color: var(--udl-red) !important;
+}
+
+/* Sidebar PrimeVue overlay */
+.p-sidebar { background: var(--surface-card) !important; }
+
+/* Badge / Tag primary → rojo */
+.p-tag.p-tag-primary { background: var(--udl-red) !important; }
+
+/* ProgressBar */
+.p-progressbar .p-progressbar-value { background: var(--udl-red) !important; }
+
+/* SelectButton active */
+.p-selectbutton .p-button.p-highlight {
+  background: var(--udl-red) !important;
+  border-color: var(--udl-red) !important;
+  color: #fff !important;
+}

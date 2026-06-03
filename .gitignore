@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+.env
+.env.production
+.idea/
+.vscode/
+android/.gradle/
+android/app/build/
+android/build/
+ios/App/Pods/
+ios/DerivedData/
+*.jks
+*.keystore
+google-services.json
+GoogleService-Info.plist
