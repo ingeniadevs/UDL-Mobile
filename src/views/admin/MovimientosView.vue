@@ -1,14 +1,16 @@
 <template>
   <div class="movimientos-view">
     <!-- Header -->
-    <div class="flex justify-content-between align-items-center mb-4">
-      <h1 class="text-3xl font-bold page-title m-0">Ingresos & Egresos</h1>
-      <Button 
-        label="Nuevo Movimiento" 
-        icon="pi pi-plus" 
-        @click="abrirFormulario" 
-      />
-    </div>
+    <PageHeader title="Ingresos & Egresos">
+      <template #actions>
+        <Button
+          label="Nuevo Movimiento"
+          icon="pi pi-plus"
+          size="small"
+          @click="abrirFormulario"
+        />
+      </template>
+    </PageHeader>
 
     <!-- Tabs principales -->
     <TabView v-model:activeIndex="activeTabIndex" class="custom-tabview">
@@ -129,107 +131,68 @@
             </div>
           </div>
 
-          <!-- Tabla de movimientos -->
+          <!-- Lista de movimientos -->
           <div class="card">
-            <DataTable 
-              :value="movimientosFiltrados" 
-              :loading="loading"
-              :paginator="true"
-              :rows="15"
-              :rowsPerPageOptions="[10, 15, 25]"
-              dataKey="id"
-              responsiveLayout="scroll"
-              :sortField="'fecha'"
-              :sortOrder="-1"
-              class="p-datatable-striped"
-            >
-              <template #header>
-                <div class="flex justify-content-between align-items-center">
-                  <span class="p-input-icon-left">
-                    <i class="pi pi-search" />
-                    <InputText v-model="busqueda" placeholder="Buscar..." @input="aplicarFiltros" />
-                  </span>
-                  <Button 
-                    icon="pi pi-refresh" 
-                    @click="cargarMovimientos" 
-                    :loading="loading"
-                    outlined
-                    v-tooltip="'Actualizar datos'"
-                  />
-                </div>
-              </template>
+            <div class="flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+              <span class="p-input-icon-left">
+                <i class="pi pi-search" />
+                <InputText v-model="busqueda" placeholder="Buscar..." @input="aplicarFiltros" />
+              </span>
+              <Button
+                icon="pi pi-refresh"
+                size="small"
+                @click="cargarMovimientos"
+                :loading="loading"
+                outlined
+                v-tooltip="'Actualizar datos'"
+              />
+            </div>
 
-              <Column field="fecha" header="Fecha" sortable>
-                <template #body="slotProps">
-                  {{ formatFecha(slotProps.data.fecha) }}
-                </template>
-              </Column>
-              
-              <Column field="tipo" header="Tipo" sortable>
-                <template #body="slotProps">
-                  <Tag 
-                    :severity="slotProps.data.tipo === 'ingreso' ? 'success' : 'danger'"
-                    :value="slotProps.data.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'"
-                    :icon="slotProps.data.tipo === 'ingreso' ? 'pi pi-arrow-down' : 'pi pi-arrow-up'"
+            <div v-if="loading" class="flex justify-content-center py-4">
+              <i class="pi pi-spin pi-spinner text-2xl"></i>
+            </div>
+            <div v-else-if="movimientosFiltrados.length === 0" class="text-center text-gray-400 py-4">
+              No hay movimientos para mostrar
+            </div>
+            <div v-else class="mobile-card-list">
+              <MobileRecordCard
+                v-for="item in paginatedMovimientos"
+                :key="item.id"
+                :title="item.concepto"
+                :subtitle="formatFecha(item.fecha)"
+              >
+                <template #tags>
+                  <Tag
+                    :severity="item.tipo === 'ingreso' ? 'success' : 'danger'"
+                    :value="item.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'"
                   />
                 </template>
-              </Column>
-              
-              <Column field="categoria" header="Categoría" sortable />
-              <Column field="concepto" header="Concepto" sortable />
-              
-              <Column field="empleadoNombre" header="Empleado" sortable>
-                <template #body="slotProps">
-                  <span v-if="slotProps.data.empleadoNombre" class="flex align-items-center gap-2">
-                    <i class="pi pi-user text-sm text-gray-400"></i>
-                    {{ slotProps.data.empleadoNombre }}
-                  </span>
-                  <span v-else class="text-gray-400">-</span>
-                </template>
-              </Column>
-
-              <Column field="usuarioRegistro" header="Registrado por" sortable>
-                <template #body="slotProps">
-                  <span v-if="slotProps.data.usuarioRegistro" class="flex align-items-center gap-2">
-                    <i class="pi pi-id-card text-sm text-gray-400"></i>
-                    {{ slotProps.data.usuarioRegistro }}
-                  </span>
-                  <span v-else class="text-gray-400">-</span>
-                </template>
-              </Column>
-              
-              <Column field="monto" header="Monto" sortable>
-                <template #body="slotProps">
-                  <span class="font-bold" :class="slotProps.data.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'">
-                    {{ slotProps.data.tipo === 'ingreso' ? '+' : '-' }}${{ slotProps.data.monto.toLocaleString('es-AR') }}
-                  </span>
-                </template>
-              </Column>
-              
-              <Column header="Acciones">
-                <template #body="slotProps">
-                  <div class="flex gap-2">
-                    <Button 
-                      icon="pi pi-pencil" 
-                      size="small"
-                      text
-                      rounded
-                      @click="editarMovimiento(slotProps.data)"
-                      v-tooltip="'Editar'"
-                    />
-                    <Button 
-                      icon="pi pi-trash" 
-                      size="small"
-                      text
-                      rounded
-                      severity="danger"
-                      @click="confirmarEliminar(slotProps.data)"
-                      v-tooltip="'Eliminar'"
-                    />
+                <template #body>
+                  <div class="record-card__row">
+                    <span class="record-card__label">Categoría</span>
+                    <span class="record-card__value">{{ item.categoria }}</span>
+                  </div>
+                  <div v-if="item.empleadoNombre" class="record-card__row">
+                    <span class="record-card__label">Empleado</span>
+                    <span class="record-card__value">{{ item.empleadoNombre }}</span>
+                  </div>
+                  <div class="record-card__row">
+                    <span class="record-card__label">Monto</span>
+                    <span
+                      class="record-card__value font-bold"
+                      :class="item.tipo === 'ingreso' ? 'text-green-400' : 'text-red-400'"
+                    >
+                      {{ item.tipo === 'ingreso' ? '+' : '-' }}${{ item.monto.toLocaleString('es-AR') }}
+                    </span>
                   </div>
                 </template>
-              </Column>
-            </DataTable>
+                <template #actions>
+                  <Button icon="pi pi-pencil" text rounded size="small" @click="editarMovimiento(item)" />
+                  <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmarEliminar(item)" />
+                </template>
+              </MobileRecordCard>
+            </div>
+            <MobilePaginator v-model:page="currentPage" :rows="10" :total="movimientosFiltrados.length" />
           </div>
         </div>
       </TabPanel>
@@ -296,9 +259,10 @@ import { movimientosService } from '@/services'
 import { useToast } from 'primevue/usetoast'
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import Button from 'primevue/button'
+import PageHeader from '@/components/mobile/PageHeader.vue'
+import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
+import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 import InputText from 'primevue/inputtext'
 import Calendar from 'primevue/calendar'
 import Dropdown from 'primevue/dropdown'
@@ -397,6 +361,12 @@ const movimientosFiltrados = computed(() => {
   }
 
   return resultado
+})
+
+const currentPage = ref(1)
+const paginatedMovimientos = computed(() => {
+  const start = (currentPage.value - 1) * 10
+  return movimientosFiltrados.value.slice(start, start + 10)
 })
 
 const resumen = computed(() => {

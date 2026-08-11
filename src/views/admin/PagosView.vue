@@ -1,11 +1,10 @@
 <template>  <div>
-    <div class="flex align-items-center justify-content-between mb-4">
-      <h1 class="text-3xl font-bold m-0" style="color: var(--text-color)">Pago de Cuotas</h1>
-      <div class="flex gap-2">
-        <Button label="Nuevo Pago en Efectivo" icon="pi pi-money-bill" severity="success" @click="openNewPagoEfectivo" />
-        <Button label="Nuevo Pago" icon="pi pi-plus" @click="openNew" />
-      </div>
-    </div>
+    <PageHeader title="Pago de Cuotas">
+      <template #actions>
+        <Button label="Nuevo Pago en Efectivo" icon="pi pi-money-bill" severity="success" size="small" @click="openNewPagoEfectivo" />
+        <Button label="Nuevo Pago" icon="pi pi-plus" size="small" @click="openNew" />
+      </template>
+    </PageHeader>
 
     <!-- Pagos esperando confirmación de efectivo -->
     <div v-if="pagosPendientesConfirmacion.length > 0" class="mb-4">
@@ -25,46 +24,36 @@
             :loading="confirmandoMultiple"
           />
         </div>
-        <DataTable 
-          :value="pagosPendientesConfirmacion" 
-          v-model:selection="selectedPendingPagos"
-          dataKey="id"
-          responsiveLayout="scroll"
-        >
-          <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
-          <Column field="socioNombre" header="Socio" sortable></Column>
-          <Column field="concepto" header="Concepto"></Column>
-          <Column header="Monto">
-            <template #body="slotProps">
-              <span class="font-bold text-green-400">${{ slotProps.data.monto?.toLocaleString() }}</span>
+        <div class="mobile-card-list">
+          <MobileRecordCard
+            v-for="item in pagosPendientesConfirmacion"
+            :key="item.id"
+            :title="item.socioNombre"
+            :subtitle="item.concepto"
+          >
+            <template #tags>
+              <Tag :severity="item.estado === 'vencido' ? 'danger' : 'warning'" :value="item.estado === 'vencido' ? 'Vencido' : 'Pendiente'" />
             </template>
-          </Column>
-          <Column header="Vencimiento">
-            <template #body="slotProps">
-              {{ formatDate(slotProps.data.fechaVencimiento) }}
+            <template #body>
+              <div class="record-card__row">
+                <span class="record-card__label">Monto</span>
+                <span class="record-card__value text-green-400 font-bold">${{ item.monto?.toLocaleString() }}</span>
+              </div>
+              <div class="record-card__row">
+                <span class="record-card__label">Vencimiento</span>
+                <span class="record-card__value">{{ formatDate(item.fechaVencimiento) }}</span>
+              </div>
             </template>
-          </Column>
-          <Column header="Estado">
-            <template #body="slotProps">
-              <Tag 
-                :severity="slotProps.data.estado === 'vencido' ? 'danger' : 'warning'" 
-                :value="slotProps.data.estado === 'vencido' ? 'Vencido' : 'Pendiente'" 
+            <template #actions>
+              <Checkbox
+                :modelValue="selectedPendingPagos.some(p => p.id === item.id)"
+                :binary="true"
+                @update:modelValue="val => togglePendingPago(item, val)"
               />
+              <Button icon="pi pi-check" label="Confirmar" size="small" severity="success" @click="confirmarPagoEfectivoSingle(item)" :loading="procesandoPago === item.id" />
             </template>
-          </Column>
-          <Column header="Acciones">
-            <template #body="slotProps">
-              <Button 
-                icon="pi pi-check" 
-                label="Confirmar"
-                size="small"
-                severity="success"
-                @click="confirmarPagoEfectivoSingle(slotProps.data)"
-                :loading="procesandoPago === slotProps.data.id"
-              />
-            </template>
-          </Column>
-        </DataTable>
+          </MobileRecordCard>
+        </div>
         <div v-if="selectedPendingPagos.length > 0" class="mt-3 p-3 border-round" style="background: rgba(245, 158, 11, 0.1)">
           <div class="flex justify-content-between align-items-center">
             <span class="text-gray-300">{{ selectedPendingPagos.length }} pago(s) seleccionado(s)</span>
@@ -128,131 +117,65 @@
       </div>
     </div>
 
-    <div class="card">
-      <DataTable 
-        :value="pagos" 
-        :loading="loading"
-        :paginator="true"
-        :rows="10"
-        :rowsPerPageOptions="[5, 10, 25]"
-        dataKey="id"
-        :globalFilterFields="['socioNombre', 'concepto']"
-        v-model:filters="filters"
-        responsiveLayout="scroll"
-      >
-        <template #header>
-          <div class="flex flex-wrap justify-content-between gap-2">
-            <span class="p-input-icon-left">
-              <i class="pi pi-search" />
-              <InputText v-model="filters['global'].value" placeholder="Buscar..." />
-            </span>
-            <div class="flex gap-2">
-              <Dropdown 
-                v-model="socioFilter" 
-                :options="socios" 
-                optionLabel="nombre" 
-                optionValue="id"
-                placeholder="Filtrar por socio"
-                class="w-15rem"
-                showClear
-                filter
-              />
-              <Dropdown 
-                v-model="estadoFilter" 
-                :options="estadoOptions" 
-                optionLabel="label" 
-                optionValue="value"
-                placeholder="Filtrar por estado"
-                class="w-12rem"
-                showClear
-              />
+    <div class="card mb-3">
+      <div class="flex flex-column gap-3">
+        <span class="p-input-icon-left w-full">
+          <i class="pi pi-search" />
+          <InputText v-model="searchTerm" placeholder="Buscar..." class="w-full" />
+        </span>
+        <div class="flex flex-wrap gap-2">
+          <Dropdown v-model="socioFilter" :options="socios" optionLabel="nombre" optionValue="id" placeholder="Filtrar por socio" class="w-full" showClear filter />
+          <Dropdown v-model="estadoFilter" :options="estadoOptions" optionLabel="label" optionValue="value" placeholder="Filtrar por estado" class="w-full" showClear />
+        </div>
+      </div>
+    </div>
+
+    <div v-if="loading" class="flex justify-content-center py-5">
+      <ProgressSpinner />
+    </div>
+    <template v-else>
+      <div v-if="pagosFiltrados.length === 0" class="card text-center py-5 text-color-secondary">
+        No hay pagos para mostrar
+      </div>
+      <div v-else class="mobile-card-list">
+        <MobileRecordCard
+          v-for="item in paginatedPagos"
+          :key="item.id"
+          :title="item.socioNombre"
+          :subtitle="item.concepto"
+        >
+          <template #tags>
+            <Tag :severity="getEstadoSeverity(item.estado)" :value="item.estado" />
+          </template>
+          <template #body>
+            <div class="record-card__row">
+              <span class="record-card__label">Monto</span>
+              <span class="record-card__value">${{ item.monto?.toLocaleString() }}</span>
             </div>
-          </div>
-        </template>
-        
-        <Column field="socioNombre" header="Socio" sortable style="min-width: 150px"></Column>
-        <Column field="concepto" header="Concepto" sortable style="min-width: 150px"></Column>
-        <Column header="Monto" sortable style="min-width: 100px">
-          <template #body="slotProps">
-            ${{ slotProps.data.monto?.toLocaleString() }}
+            <div class="record-card__row">
+              <span class="record-card__label">Vencimiento</span>
+              <span class="record-card__value">{{ formatDate(item.fechaVencimiento) }}</span>
+            </div>
+            <div class="record-card__row">
+              <span class="record-card__label">Fecha pago</span>
+              <span class="record-card__value">{{ item.fechaPago ? formatDate(item.fechaPago) : '—' }}</span>
+            </div>
+            <div v-if="item.metodoPago" class="mt-1">
+              <Tag v-if="item.metodoPago === 'efectivo'" severity="info" value="Efectivo" />
+              <Tag v-else-if="item.metodoPago === 'mercadopago'" severity="warning" value="MercadoPago" />
+              <Tag v-else-if="item.metodoPago === 'mutual'" severity="success" icon="pi pi-building" value="Mutual" />
+            </div>
           </template>
-        </Column>
-        <Column header="Vencimiento" sortable style="min-width: 120px">
-          <template #body="slotProps">
-            {{ formatDate(slotProps.data.fechaVencimiento) }}
+          <template #actions>
+            <Button v-if="item.metodoPago === 'mutual'" icon="pi pi-file-pdf" label="Cupón" text rounded size="small" severity="help" @click="generarCupon(item)" v-tooltip.top="'Generar cupón de mutual'" />
+            <Button v-if="item.estado === 'pendiente' || item.estado === 'vencido'" icon="pi pi-money-bill" text rounded size="small" severity="success" @click="confirmarPagoEfectivo(item)" v-tooltip.top="'Cobrar en efectivo'" :loading="procesandoPago === item.id" />
+            <Button icon="pi pi-pencil" text rounded size="small" severity="info" @click="editPago(item)" v-tooltip.top="'Editar'" />
+            <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmDelete(item)" v-tooltip.top="'Eliminar'" />
           </template>
-        </Column>
-        <Column header="Fecha Pago" style="min-width: 120px">
-          <template #body="slotProps">
-            {{ slotProps.data.fechaPago ? formatDate(slotProps.data.fechaPago) : '-' }}
-          </template>
-        </Column>
-        <Column header="Estado" style="min-width: 100px">
-          <template #body="slotProps">
-            <Tag :severity="getEstadoSeverity(slotProps.data.estado)" 
-                 :value="slotProps.data.estado" />
-          </template>
-        </Column>        <Column header="Método" style="min-width: 120px">
-          <template #body="slotProps">
-            <Tag v-if="slotProps.data.metodoPago === 'efectivo'" 
-                 severity="info" 
-                 value="Efectivo" />
-            <Tag v-else-if="slotProps.data.metodoPago === 'mercadopago'" 
-                 severity="warning" 
-                 value="MercadoPago" />
-            <Tag v-else-if="slotProps.data.metodoPago === 'mutual'" 
-                 severity="success" 
-                 icon="pi pi-building"
-                 value="Mutual" />
-            <span v-else class="text-gray-500">-</span>
-          </template>
-        </Column>
-        <Column header="Acciones" style="min-width: 280px">
-          <template #body="slotProps">
-            <!-- Botón Generar Cupón (solo para mutual) -->
-            <Button 
-              v-if="slotProps.data.metodoPago === 'mutual'"
-              icon="pi pi-file-pdf" 
-              label="Cupón"
-              text 
-              rounded 
-              class="mr-1"
-              severity="help"
-              @click="generarCupon(slotProps.data)"
-              v-tooltip.top="'Generar cupón de mutual'"
-            />
-            <Button 
-              v-if="slotProps.data.estado === 'pendiente' || slotProps.data.estado === 'vencido'"
-              icon="pi pi-money-bill" 
-              text 
-              rounded 
-              class="mr-1"
-              severity="success"
-              @click="confirmarPagoEfectivo(slotProps.data)"
-              v-tooltip.top="'Cobrar en efectivo'"
-              :loading="procesandoPago === slotProps.data.id"
-            />
-            <Button 
-              icon="pi pi-pencil" 
-              text 
-              rounded 
-              class="mr-1"
-              severity="info"
-              @click="editPago(slotProps.data)"
-              v-tooltip.top="'Editar'"
-            />
-            <Button 
-              icon="pi pi-trash" 
-              text 
-              rounded 
-              severity="danger"
-              @click="confirmDelete(slotProps.data)"
-              v-tooltip.top="'Eliminar'"
-            />
-          </template>
-        </Column>
-      </DataTable>
-    </div>    <!-- Create/Edit Dialog -->
+        </MobileRecordCard>
+      </div>
+      <MobilePaginator v-model:page="currentPage" :rows="10" :total="pagosFiltrados.length" />
+    </template>    <!-- Create/Edit Dialog -->
     <Dialog 
       v-model:visible="pagoDialog" 
       :header="isEditing ? 'Editar Pago' : 'Nuevo Pago'" 
@@ -274,41 +197,31 @@
               <Button icon="pi pi-times" text rounded size="small" severity="secondary" @click="pago.socioId = null; socioSearch = ''" v-tooltip="'Cambiar socio'" />
             </div>
           </div>
-          <!-- Grilla de selección -->
+          <!-- Selección de socio -->
           <div v-else>
             <span class="p-input-icon-left w-full mb-2">
               <i class="pi pi-search" />
               <InputText v-model="socioSearch" placeholder="Buscar socio por nombre o email..." class="w-full" />
             </span>
-            <DataTable
-              :value="sociosFiltrados"
-              selectionMode="single"
-              @row-select="onSocioSelect"
-              :rows="5"
-              :paginator="sociosFiltrados.length > 5"
-              scrollable
-              scrollHeight="220px"
-              class="socio-selector-table"
+            <div
+              class="mobile-card-list socio-selector-list"
               :class="{ 'p-invalid': submitted && !pago.socioId }"
-              dataKey="id"
-              size="small"
             >
-              <Column field="nombre" header="Nombre" style="min-width:140px">
-                <template #body="s">
-                  <div class="font-medium" style="color: var(--text-color)">{{ s.data.nombre }}</div>
+              <MobileRecordCard
+                v-for="s in sociosFiltrados.slice(0, 8)"
+                :key="s.id"
+                :title="s.nombre"
+                :subtitle="s.email"
+                @click="onSocioSelect({ data: s })"
+              >
+                <template #tags>
+                  <Tag :value="s.numeroSocio?.toString() || '-'" severity="info" />
                 </template>
-              </Column>
-              <Column field="email" header="Email" style="min-width:160px">
-                <template #body="s">
-                  <span class="text-sm text-gray-400">{{ s.data.email }}</span>
-                </template>
-              </Column>
-              <Column field="numeroSocio" header="N°" style="min-width:60px">
-                <template #body="s">
-                  <Tag :value="s.data.numeroSocio?.toString() || '-'" severity="info" />
-                </template>
-              </Column>
-            </DataTable>
+              </MobileRecordCard>
+            </div>
+            <p v-if="sociosFiltrados.length > 8" class="text-xs text-gray-400 mt-2 mb-0">
+              Mostrando 8 de {{ sociosFiltrados.length }}. Refiná la búsqueda para ver más.
+            </p>
           </div>
           <small v-if="submitted && !pago.socioId" class="p-error">Debe seleccionar un socio</small>
         </div>
@@ -441,13 +354,15 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { pagosService, sociosService } from '@/services'
-import { FilterMatchMode } from 'primevue/api'
 import html2canvas from 'html2canvas'
 import { Capacitor } from '@capacitor/core'
 import { shareDataUrl } from '@/platform/files'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import Button from 'primevue/button'
+import Checkbox from 'primevue/checkbox'
+import ProgressSpinner from 'primevue/progressspinner'
+import PageHeader from '@/components/mobile/PageHeader.vue'
+import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
+import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
@@ -470,11 +385,37 @@ const isEditing = ref(false)
 const estadoFilter = ref(null)
 const socioFilter = ref(null)
 
-const pago = ref({})
+const searchTerm = ref('')
+const currentPage = ref(1)
 
-const filters = ref({
-  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+const pagosFiltrados = computed(() => {
+  let list = pagos.value
+  if (searchTerm.value.trim()) {
+    const q = searchTerm.value.toLowerCase()
+    list = list.filter(p =>
+      p.socioNombre?.toLowerCase().includes(q) ||
+      p.concepto?.toLowerCase().includes(q)
+    )
+  }
+  return list
 })
+
+const paginatedPagos = computed(() => {
+  const start = (currentPage.value - 1) * 10
+  return pagosFiltrados.value.slice(start, start + 10)
+})
+
+watch([searchTerm, estadoFilter, socioFilter], () => { currentPage.value = 1 })
+
+function togglePendingPago(item, selected) {
+  if (selected) {
+    if (!selectedPendingPagos.value.some(p => p.id === item.id)) {
+      selectedPendingPagos.value = [...selectedPendingPagos.value, item]
+    }
+  } else {
+    selectedPendingPagos.value = selectedPendingPagos.value.filter(p => p.id !== item.id)
+  }
+}
 
 // Pago en efectivo
 const procesandoPago = ref(null)

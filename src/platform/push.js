@@ -12,6 +12,13 @@ let listenersRegistered = false
 export async function initPushNotifications() {
   if (!Capacitor.isNativePlatform()) return null
 
+  // Requiere google-services.json (Android) / GoogleService-Info.plist (iOS).
+  // Sin Firebase, PushNotifications.register() crashea el proceso nativo.
+  if (import.meta.env.VITE_ENABLE_PUSH !== 'true') {
+    console.info('[Push] Deshabilitado (VITE_ENABLE_PUSH != true). Ver docs/06_PUSH_CAMERA_PERMISOS.md')
+    return null
+  }
+
   const granted = await ensurePushPermission()
   if (!granted) return null
 

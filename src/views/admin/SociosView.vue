@@ -1,158 +1,76 @@
-<template>  <div>
-    <div class="flex align-items-center justify-content-between mb-4">
-      <div class="flex align-items-center gap-3">
-        <h1 class="text-3xl font-bold m-0" style="color: var(--text-color)">Socios</h1>
+<template>
+  <div>
+    <PageHeader title="Socios">
+      <template #actions>
         <Tag v-if="sociosPendientes > 0" :value="`${sociosPendientes} pendiente${sociosPendientes > 1 ? 's' : ''}`" severity="warning" icon="pi pi-clock" />
+        <Button label="Nuevo Socio" icon="pi pi-plus" size="small" @click="openNew" />
+      </template>
+    </PageHeader>
+
+    <div class="card mb-3">
+      <div class="flex flex-column gap-3">
+        <span class="p-input-icon-left w-full">
+          <i class="pi pi-search" />
+          <InputText v-model="searchTerm" placeholder="Buscar..." class="w-full" />
+        </span>
+        <div class="flex flex-wrap gap-2">
+          <Button :label="`Todos (${socios.length})`" :outlined="filtroEstado !== 'todos'" size="small" @click="filtroEstado = 'todos'" />
+          <Button :label="`Pendientes (${sociosPendientes})`" :outlined="filtroEstado !== 'pendientes'" :severity="sociosPendientes > 0 ? 'warning' : undefined" size="small" @click="filtroEstado = 'pendientes'" />
+          <Button :label="`Activos (${sociosActivos})`" :outlined="filtroEstado !== 'activos'" severity="success" size="small" @click="filtroEstado = 'activos'" />
+        </div>
       </div>
-      <Button label="Nuevo Socio" icon="pi pi-plus" @click="openNew" />
     </div>
 
-    <div class="card">
-      <DataTable 
-        :value="sociosFiltrados" 
-        :loading="loading"
-        :paginator="true"
-        :rows="10"
-        :rowsPerPageOptions="[5, 10, 25]"
-        dataKey="id"
-        :globalFilterFields="['nombre', 'email', 'numeroSocio']"
-        v-model:filters="filters"
-        filterDisplay="menu"
-        responsiveLayout="scroll"
-      >
-        <template #header>
-          <div class="flex justify-content-between align-items-center flex-wrap gap-3">
-            <span class="p-input-icon-left">
-              <i class="pi pi-search" />
-              <InputText v-model="filters['global'].value" placeholder="Buscar..." />
-            </span>
-            <div class="flex gap-2">
-              <Button 
-                :label="`Todos (${socios.length})`" 
-                :outlined="filtroEstado !== 'todos'"
-                size="small"
-                @click="filtroEstado = 'todos'" 
-              />
-              <Button 
-                :label="`Pendientes (${sociosPendientes})`" 
-                :outlined="filtroEstado !== 'pendientes'"
-                :severity="sociosPendientes > 0 ? 'warning' : undefined"
-                size="small"
-                @click="filtroEstado = 'pendientes'" 
-              />
-              <Button 
-                :label="`Activos (${sociosActivos})`" 
-                :outlined="filtroEstado !== 'activos'"
-                severity="success"
-                size="small"
-                @click="filtroEstado = 'activos'" 
-              />
-            </div>
-          </div>
-        </template>
-          <Column field="numeroSocio" header="# Socio" sortable style="min-width: 100px"></Column>
-        <Column field="nombre" header="Nombre" sortable style="min-width: 150px"></Column>
-        <Column field="email" header="Email" sortable style="min-width: 200px"></Column>
-        <Column field="telefono" header="Teléfono" style="min-width: 120px"></Column>        <Column header="Grupo Fam." style="min-width: 130px" sortable>
-          <template #body="slotProps">
-            <div class="flex flex-column gap-1">
-              <Tag v-if="slotProps.data.tipoSocio === 'Adherente'" 
-                   value="ADH" 
-                   severity="info" 
-                   icon="pi pi-user"
-                   v-tooltip.top="slotProps.data.titularNombreCompleto ? `Titular: ${slotProps.data.titularNombreCompleto}` : 'Adherente'" />
-              <Tag v-else-if="slotProps.data.cantidadAdherentes > 0" 
-                   :value="`T (${slotProps.data.cantidadAdherentes})`" 
-                   severity="success" 
-                   icon="pi pi-users"
-                   v-tooltip.top="`Titular con ${slotProps.data.cantidadAdherentes} adherente(s)`" />
-              <span v-else class="text-gray-500">-</span>
-            </div>
-          </template>
-        </Column>
-        <Column header="Disciplinas" style="min-width: 160px">
-          <template #body="slotProps">
-            <div v-if="slotProps.data.disciplinasActivas && slotProps.data.disciplinasActivas.length > 0" class="flex flex-wrap gap-1">
-              <Tag 
-                v-for="d in slotProps.data.disciplinasActivas" 
-                :key="d"
-                :value="d"
-                severity="secondary"
-                style="font-size: 0.7rem"
-              />
-            </div>
-            <span v-else class="text-gray-500 text-sm">Sin disciplinas</span>
-          </template>
-        </Column>
-        <Column header="Cuota" sortable style="min-width: 100px">
-          <template #body="slotProps">
-            ${{ slotProps.data.cuotaSocio?.toLocaleString() }}
-          </template>
-        </Column><Column header="Estado" style="min-width: 120px">
-          <template #body="slotProps">
-            <Tag 
-              :severity="slotProps.data.activo ? 'success' : 'warning'" 
-              :value="slotProps.data.activo ? 'Activo' : 'Pendiente'" 
-              :icon="slotProps.data.activo ? 'pi pi-check' : 'pi pi-clock'"
-            />
-          </template>
-        </Column>
-        <Column header="Acciones" style="min-width: 200px">
-          <template #body="slotProps">
-            <Button 
-              v-if="!slotProps.data.activo"
-              icon="pi pi-check-circle" 
-              text 
-              rounded 
-              class="mr-2" 
-              severity="success"
-              @click="aprobarSocio(slotProps.data)"
-              v-tooltip.top="'Aprobar socio'"
-            />
-            <Button 
-              icon="pi pi-eye" 
-              text 
-              rounded 
-              class="mr-2" 
-              @click="viewSocio(slotProps.data)"
-              v-tooltip.top="'Ver detalle'"
-            />
-            <Button 
-              icon="pi pi-pencil" 
-              text 
-              rounded 
-              class="mr-2" 
-              severity="info"
-              @click="editSocio(slotProps.data)"
-              v-tooltip.top="'Editar'"
-            />            <Button 
-              icon="pi pi-trash" 
-              text 
-              rounded 
-              severity="danger"
-              @click="confirmDelete(slotProps.data)"
-              v-tooltip.top="'Eliminar'"
-            />
-            <Button
-              icon="pi pi-key"
-              text
-              rounded
-              severity="warning"
-              @click="openResetPassword(slotProps.data)"
-              v-tooltip.top="'Resetear Contraseña'"
-            />
-            <Button
-              icon="pi pi-whatsapp"
-              text
-              rounded
-              severity="success"
-              @click="openWaDialog(slotProps.data)"
-              v-tooltip.top="'Enviar WhatsApp'"
-            />
-          </template>
-        </Column>
-      </DataTable>
+    <div v-if="loading" class="flex justify-content-center py-5">
+      <ProgressSpinner />
     </div>
+    <template v-else>
+      <div v-if="sociosFiltrados.length === 0" class="card text-center py-5 text-color-secondary">
+        No se encontraron socios
+      </div>
+      <div v-else class="mobile-card-list">
+        <MobileRecordCard
+          v-for="item in paginatedSocios"
+          :key="item.id"
+          :title="item.nombre"
+          :subtitle="`#${item.numeroSocio} · ${item.email}`"
+          @click="viewSocio(item)"
+        >
+          <template #leading>
+            <Avatar :label="(item.nombre?.charAt(0) + (item.apellido?.charAt(0) || '')).toUpperCase()" shape="circle" class="avatar-red" />
+          </template>
+          <template #tags>
+            <Tag :severity="item.activo ? 'success' : 'warning'" :value="item.activo ? 'Activo' : 'Pendiente'" :icon="item.activo ? 'pi pi-check' : 'pi pi-clock'" />
+          </template>
+          <template #body>
+            <div class="record-card__row">
+              <span class="record-card__label">Teléfono</span>
+              <span class="record-card__value">{{ item.telefono || '—' }}</span>
+            </div>
+            <div class="record-card__row">
+              <span class="record-card__label">Cuota</span>
+              <span class="record-card__value">${{ item.cuotaSocio?.toLocaleString() }}</span>
+            </div>
+            <div v-if="item.disciplinasActivas?.length" class="flex flex-wrap gap-1 mt-1">
+              <Tag v-for="d in item.disciplinasActivas" :key="d" :value="d" severity="secondary" style="font-size: 0.7rem" />
+            </div>
+            <div v-if="item.tipoSocio === 'Adherente' || item.cantidadAdherentes > 0" class="mt-1">
+              <Tag v-if="item.tipoSocio === 'Adherente'" value="ADH" severity="info" icon="pi pi-user" />
+              <Tag v-else-if="item.cantidadAdherentes > 0" :value="`T (${item.cantidadAdherentes})`" severity="success" icon="pi pi-users" />
+            </div>
+          </template>
+          <template #actions>
+            <Button v-if="!item.activo" icon="pi pi-check-circle" text rounded size="small" severity="success" @click="aprobarSocio(item)" v-tooltip.top="'Aprobar socio'" />
+            <Button icon="pi pi-eye" text rounded size="small" @click="viewSocio(item)" v-tooltip.top="'Ver detalle'" />
+            <Button icon="pi pi-pencil" text rounded size="small" severity="info" @click="editSocio(item)" v-tooltip.top="'Editar'" />
+            <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmDelete(item)" v-tooltip.top="'Eliminar'" />
+            <Button icon="pi pi-key" text rounded size="small" severity="warning" @click="openResetPassword(item)" v-tooltip.top="'Resetear Contraseña'" />
+            <Button icon="pi pi-whatsapp" text rounded size="small" severity="success" @click="openWaDialog(item)" v-tooltip.top="'Enviar WhatsApp'" />
+          </template>
+        </MobileRecordCard>
+      </div>
+      <MobilePaginator v-model:page="currentPage" :rows="10" :total="sociosFiltrados.length" />
+    </template>
 
     <!-- Create/Edit Dialog -->
     <Dialog 
@@ -456,10 +374,12 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { sociosService, disciplinasService, authService } from '@/services'
 import { planesService } from '@/services/planesService'
-import { FilterMatchMode } from 'primevue/api'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import Button from 'primevue/button'
+import Avatar from 'primevue/avatar'
+import ProgressSpinner from 'primevue/progressspinner'
+import PageHeader from '@/components/mobile/PageHeader.vue'
+import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
+import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
@@ -586,9 +506,8 @@ const socio = ref({
 
 const hasAdherentes = ref(false)
 
-const filters = ref({
-  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
-})
+const searchTerm = ref('')
+const currentPage = ref(1)
 
 // Computed: Contadores de socios
 const sociosPendientes = computed(() => socios.value.filter(s => !s.activo).length)
@@ -596,13 +515,29 @@ const sociosActivos = computed(() => socios.value.filter(s => s.activo).length)
 
 // Computed: Socios filtrados según el estado seleccionado
 const sociosFiltrados = computed(() => {
+  let list = socios.value
   if (filtroEstado.value === 'pendientes') {
-    return socios.value.filter(s => !s.activo)
+    list = list.filter(s => !s.activo)
   } else if (filtroEstado.value === 'activos') {
-    return socios.value.filter(s => s.activo)
+    list = list.filter(s => s.activo)
   }
-  return socios.value
+  if (searchTerm.value.trim()) {
+    const q = searchTerm.value.toLowerCase()
+    list = list.filter(s =>
+      s.nombre?.toLowerCase().includes(q) ||
+      s.email?.toLowerCase().includes(q) ||
+      s.numeroSocio?.toString().includes(q)
+    )
+  }
+  return list
 })
+
+const paginatedSocios = computed(() => {
+  const start = (currentPage.value - 1) * 10
+  return sociosFiltrados.value.slice(start, start + 10)
+})
+
+watch([filtroEstado, searchTerm], () => { currentPage.value = 1 })
 
 // Computed: Plan seleccionado
 const selectedPlan = computed(() => {
@@ -893,3 +828,10 @@ onMounted(() => {
   loadDisciplinas() // FASE 2: Cargar disciplinas disponibles
 })
 </script>
+
+<style scoped>
+.avatar-red {
+  background-color: #dc2626 !important;
+  color: white !important;
+}
+</style>

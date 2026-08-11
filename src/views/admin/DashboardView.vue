@@ -194,42 +194,51 @@
       <div class="col-12 lg:col-6">
         <div class="card">
           <h3 class="text-xl font-semibold mb-4 card-title">Últimos Pagos</h3>
-          <DataTable :value="stats.ultimosPagos" :rows="5" class="p-datatable-sm">
-            <Column field="socioNombre" header="Socio" style="min-width: 150px"></Column>
-            <Column field="concepto" header="Concepto" style="min-width: 150px"></Column>
-            <Column header="Monto" style="min-width: 100px">
-              <template #body="slotProps">
-                ${{ slotProps.data.monto?.toLocaleString() }}
-              </template>
-            </Column>
-            <Column header="Estado">
-              <template #body="slotProps">
+          <div class="mobile-card-list">
+            <MobileRecordCard
+              v-for="pago in stats.ultimosPagos"
+              :key="pago.id || `${pago.socioNombre}-${pago.concepto}`"
+              :title="pago.socioNombre"
+              :subtitle="pago.concepto"
+            >
+              <template #tags>
                 <Tag severity="success" value="Pagado" icon="pi pi-check" />
               </template>
-            </Column>
-          </DataTable>
+              <template #body>
+                <div class="record-card__row">
+                  <span class="record-card__label">Monto</span>
+                  <span class="record-card__value">${{ pago.monto?.toLocaleString() }}</span>
+                </div>
+              </template>
+            </MobileRecordCard>
+            <div v-if="!stats.ultimosPagos?.length" class="text-center text-color-secondary py-3">Sin pagos recientes</div>
+          </div>
         </div>
       </div>
 
       <div class="col-12 lg:col-6">
         <div class="card">
           <h3 class="text-xl font-semibold mb-4 card-title">Pagos Pendientes</h3>
-          <DataTable :value="stats.pagosPendientesDetalle" :rows="5" class="p-datatable-sm">
-            <Column field="socioNombre" header="Socio" style="min-width: 150px"></Column>
-            <Column field="concepto" header="Concepto" style="min-width: 150px"></Column>
-            <Column header="Monto">
-              <template #body="slotProps">
-                ${{ slotProps.data.monto?.toLocaleString() }}
+          <div class="mobile-card-list">
+            <MobileRecordCard
+              v-for="pago in stats.pagosPendientesDetalle"
+              :key="pago.id || `${pago.socioNombre}-${pago.concepto}`"
+              :title="pago.socioNombre"
+              :subtitle="pago.concepto"
+            >
+              <template #body>
+                <div class="record-card__row">
+                  <span class="record-card__label">Monto</span>
+                  <span class="record-card__value">${{ pago.monto?.toLocaleString() }}</span>
+                </div>
+                <div class="record-card__row">
+                  <span class="record-card__label">Vencimiento</span>
+                  <span class="record-card__value" :class="isVencido(pago.fecha) ? 'text-red-400' : ''">{{ formatFecha(pago.fecha) }}</span>
+                </div>
               </template>
-            </Column>
-            <Column header="Vencimiento">
-              <template #body="slotProps">
-                <span :class="isVencido(slotProps.data.fecha) ? 'text-red-400' : 'text-gray-400'">
-                  {{ formatFecha(slotProps.data.fecha) }}
-                </span>
-              </template>
-            </Column>
-          </DataTable>
+            </MobileRecordCard>
+            <div v-if="!stats.pagosPendientesDetalle?.length" class="text-center text-color-secondary py-3">Sin pagos pendientes</div>
+          </div>
         </div>
       </div>
     </div>
@@ -241,9 +250,8 @@ import { ref, onMounted } from 'vue'
 import { estadisticasService } from '@/services'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'primevue/usetoast'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import Tag from 'primevue/tag'
+import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
 import ProgressBar from 'primevue/progressbar'
 import Divider from 'primevue/divider'
 

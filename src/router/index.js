@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { Capacitor } from '@capacitor/core'
 import { useAuthStore } from '@/stores/auth'
+import { isBiometricEnabled } from '@/platform/biometric'
 
 const enableAdmin = import.meta.env.VITE_ENABLE_ADMIN === 'true'
 
@@ -197,6 +199,14 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (to.name === 'Login' && authStore.isAuthenticated) {
+    const needsBiometric =
+      Capacitor.isNativePlatform() &&
+      !authStore.sessionUnlocked &&
+      (await isBiometricEnabled())
+    if (needsBiometric) {
+      next()
+      return
+    }
     if (authStore.user?.rol === 'admin' || authStore.user?.rol === 'master') {
       next(enableAdmin ? '/admin/inicio' : '/socio/inicio')
     } else {
@@ -215,6 +225,14 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    next('/login')
+  } else if (
+    to.meta.requiresAuth &&
+    authStore.isAuthenticated &&
+    Capacitor.isNativePlatform() &&
+    !authStore.sessionUnlocked &&
+    (await isBiometricEnabled())
+  ) {
     next('/login')
   } else if (to.meta.role) {
     const userRole = authStore.user?.rol

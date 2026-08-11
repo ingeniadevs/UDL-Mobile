@@ -1,6 +1,7 @@
 import { ref, watch } from 'vue'
 import { Capacitor } from '@capacitor/core'
 import { Preferences } from '@capacitor/preferences'
+import { syncStatusBar } from '@/platform'
 
 const THEME_KEY = 'udl-theme'
 
@@ -50,6 +51,7 @@ function applyTheme(dark) {
     root.classList.add('theme-light')
   }
   swapPrimeVueTheme(dark)
+  syncStatusBar(dark)
 }
 
 export async function hydrateTheme() {

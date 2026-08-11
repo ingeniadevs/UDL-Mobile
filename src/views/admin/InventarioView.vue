@@ -1,16 +1,11 @@
 <template>
   <div class="inventario-view">
-    <!-- Header -->
-    <div class="flex align-items-center justify-content-between mb-4">
-      <div>
-        <h1 class="text-2xl font-bold m-0">Inventario</h1>
-        <p class="text-color-secondary mt-1 mb-0">Gestión de materiales, equipamiento y mobiliario</p>
-      </div>
-      <div class="flex gap-2">
-        <Button label="Alertas" icon="pi pi-bell" severity="warning" outlined @click="activeTab = 4" :badge="alertaCount > 0 ? String(alertaCount) : undefined" badgeSeverity="danger" />
-        <Button label="Nuevo Artículo" icon="pi pi-plus" @click="abrirNuevoArticulo" />
-      </div>
-    </div>
+    <PageHeader title="Inventario" subtitle="Gestión de materiales, equipamiento y mobiliario">
+      <template #actions>
+        <Button label="Alertas" icon="pi pi-bell" severity="warning" outlined size="small" @click="activeTab = 4" :badge="alertaCount > 0 ? String(alertaCount) : undefined" badgeSeverity="danger" />
+        <Button label="Nuevo Artículo" icon="pi pi-plus" size="small" @click="abrirNuevoArticulo" />
+      </template>
+    </PageHeader>
 
     <!-- KPI Cards -->
     <div class="grid mb-4">
@@ -64,52 +59,33 @@
           <ToggleButton v-model="filtros.soloBajoStock" onLabel="Solo bajo stock" offLabel="Bajo stock" onIcon="pi pi-filter" offIcon="pi pi-filter-slash" @change="buscarArticulos" />
         </div>
 
-        <DataTable :value="articulos" :loading="loadingArticulos" paginator :rows="20"
-          dataKey="id" stripedRows responsiveLayout="scroll"
-          :globalFilterFields="['nombre','codigo']" class="p-datatable-sm">
-          <Column field="codigo" header="Código" sortable style="width:120px" />
-          <Column field="nombre" header="Nombre" sortable />
-          <Column field="categoria" header="Categoría" style="width:130px">
-            <template #body="{ data }">
-              <Tag :value="categoriaLabel(data.categoria)" :severity="categoriaSeverity(data.categoria)" />
-            </template>
-          </Column>
-          <Column field="ubicacionNombre" header="Ubicación" style="width:140px" />
-          <Column header="Stock" style="width:130px">
-            <template #body="{ data }">
-              <div class="flex align-items-center gap-2">
-                <span :class="data.stockActual <= data.stockMinimo ? 'text-red-500 font-bold' : ''">
-                  {{ data.stockActual }}
-                </span>
-                <span class="text-color-secondary text-sm">/ min {{ data.stockMinimo }}</span>
-                <Tag v-if="data.stockActual <= data.stockMinimo" value="Bajo" severity="danger" class="text-xs" />
-              </div>
-            </template>
-          </Column>
-          <Column field="estado" header="Estado" style="width:110px">
-            <template #body="{ data }">
-              <Tag :value="estadoLabel(data.estado)" :severity="estadoSeverity(data.estado)" />
-            </template>
-          </Column>
-          <Column field="condicion" header="Condición" style="width:110px">
-            <template #body="{ data }">
-              <Tag :value="condicionLabel(data.condicion)" :severity="condicionSeverity(data.condicion)" />
-            </template>
-          </Column>
-          <Column header="Acciones" style="width:160px" frozen alignFrozen="right">
-            <template #body="{ data }">
-              <div class="flex gap-1">
-                <Button icon="pi pi-eye" text rounded size="small" @click="verArticulo(data)" v-tooltip="'Ver detalle'" />
-                <Button icon="pi pi-pencil" text rounded size="small" severity="info" @click="editarArticulo(data)" v-tooltip="'Editar'" />
-                <Button icon="pi pi-arrows-v" text rounded size="small" severity="success" @click="abrirMovimiento(data)" v-tooltip="'Registrar movimiento'" />
-                <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmarEliminar(data)" v-tooltip="'Eliminar'" />
-              </div>
-            </template>
-          </Column>
-          <template #empty>
-            <div class="text-center py-4 text-color-secondary">No se encontraron artículos</div>
-          </template>
-        </DataTable>
+        <div v-if="loadingArticulos" class="flex justify-content-center py-5"><ProgressSpinner /></div>
+        <template v-else>
+          <div v-if="articulos.length === 0" class="text-center py-4 text-color-secondary">No se encontraron artículos</div>
+          <div v-else class="mobile-card-list">
+            <MobileRecordCard v-for="item in paginatedArticulos" :key="item.id" :title="item.nombre" :subtitle="item.codigo" @click="verArticulo(item)">
+              <template #tags>
+                <Tag :value="categoriaLabel(item.categoria)" :severity="categoriaSeverity(item.categoria)" />
+                <Tag :value="estadoLabel(item.estado)" :severity="estadoSeverity(item.estado)" />
+              </template>
+              <template #body>
+                <div class="record-card__row"><span class="record-card__label">Ubicación</span><span class="record-card__value">{{ item.ubicacionNombre }}</span></div>
+                <div class="record-card__row">
+                  <span class="record-card__label">Stock</span>
+                  <span class="record-card__value" :class="item.stockActual <= item.stockMinimo ? 'text-red-500 font-bold' : ''">{{ item.stockActual }} / min {{ item.stockMinimo }}</span>
+                </div>
+                <Tag v-if="item.stockActual <= item.stockMinimo" value="Bajo" severity="danger" class="text-xs mt-1" />
+              </template>
+              <template #actions>
+                <Button icon="pi pi-eye" text rounded size="small" @click="verArticulo(item)" />
+                <Button icon="pi pi-pencil" text rounded size="small" severity="info" @click="editarArticulo(item)" />
+                <Button icon="pi pi-arrows-v" text rounded size="small" severity="success" @click="abrirMovimiento(item)" />
+                <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmarEliminar(item)" />
+              </template>
+            </MobileRecordCard>
+          </div>
+          <MobilePaginator v-model:page="articulosPage" :rows="10" :total="articulos.length" />
+        </template>
       </TabPanel>
 
       <!-- ═══ TAB MOVIMIENTOS ═══ -->
@@ -121,30 +97,21 @@
           <Button icon="pi pi-refresh" text rounded @click="cargarMovimientos" v-tooltip="'Actualizar'" />
         </div>
 
-        <DataTable :value="movimientos" :loading="loadingMovs" paginator :rows="20" dataKey="id" stripedRows responsiveLayout="scroll" class="p-datatable-sm">
-          <Column field="fechaMovimiento" header="Fecha" sortable style="width:160px">
-            <template #body="{ data }">{{ formatDate(data.fechaMovimiento) }}</template>
-          </Column>
-          <Column field="tipo" header="Tipo" style="width:130px">
-            <template #body="{ data }">
-              <Tag :value="tipoMovLabel(data.tipo)" :severity="tipoMovSeverity(data.tipo)" />
-            </template>
-          </Column>
-          <Column field="articuloNombre" header="Artículo" sortable />
-          <Column field="cantidad" header="Cantidad" style="width:90px" />
-          <Column header="Stock" style="width:140px">
-            <template #body="{ data }">
-              <span class="text-color-secondary">{{ data.stockAnterior }}</span>
-              <i class="pi pi-arrow-right text-xs mx-1" />
-              <span class="font-bold">{{ data.stockResultante }}</span>
-            </template>
-          </Column>
-          <Column field="motivo" header="Motivo" />
-          <Column field="empleadoId" header="Empleado" style="width:120px" />
-          <template #empty>
-            <div class="text-center py-4 text-color-secondary">No hay movimientos registrados</div>
-          </template>
-        </DataTable>
+        <div v-if="loadingMovs" class="flex justify-content-center py-5"><ProgressSpinner /></div>
+        <template v-else>
+          <div v-if="movimientos.length === 0" class="text-center py-4 text-color-secondary">No hay movimientos registrados</div>
+          <div v-else class="mobile-card-list">
+            <MobileRecordCard v-for="item in paginatedMovimientos" :key="item.id" :title="item.articuloNombre" :subtitle="formatDate(item.fechaMovimiento)">
+              <template #tags><Tag :value="tipoMovLabel(item.tipo)" :severity="tipoMovSeverity(item.tipo)" /></template>
+              <template #body>
+                <div class="record-card__row"><span class="record-card__label">Cantidad</span><span class="record-card__value">{{ item.cantidad }}</span></div>
+                <div class="record-card__row"><span class="record-card__label">Stock</span><span class="record-card__value">{{ item.stockAnterior }} → {{ item.stockResultante }}</span></div>
+                <div class="record-card__row"><span class="record-card__label">Motivo</span><span class="record-card__value">{{ item.motivo }}</span></div>
+              </template>
+            </MobileRecordCard>
+          </div>
+          <MobilePaginator v-model:page="movsPage" :rows="10" :total="movimientos.length" />
+        </template>
       </TabPanel>
 
       <!-- ═══ TAB UBICACIONES ═══ -->
@@ -152,32 +119,23 @@
         <div class="flex justify-content-end mb-3">
           <Button label="Nueva Ubicación" icon="pi pi-plus" size="small" @click="abrirNuevaUbicacion" />
         </div>
-        <DataTable :value="ubicaciones" dataKey="id" stripedRows responsiveLayout="scroll" class="p-datatable-sm">
-          <Column field="nombre" header="Nombre" sortable />
-          <Column field="tipo" header="Tipo" style="width:130px">
-            <template #body="{ data }">
-              <Tag :value="tipoUbicacionLabel(data.tipo)" severity="info" />
+        <div v-if="ubicaciones.length === 0" class="text-center py-4 text-color-secondary">No hay ubicaciones registradas</div>
+        <div v-else class="mobile-card-list">
+          <MobileRecordCard v-for="item in paginatedUbicaciones" :key="item.id" :title="item.nombre" :subtitle="item.direccionFisica || 'Sin dirección'">
+            <template #tags>
+              <Tag :value="tipoUbicacionLabel(item.tipo)" severity="info" />
+              <Tag :value="item.activa ? 'Activa' : 'Inactiva'" :severity="item.activa ? 'success' : 'secondary'" />
             </template>
-          </Column>
-          <Column field="direccionFisica" header="Dirección" />
-          <Column field="cantidadArticulos" header="Artículos" style="width:90px" />
-          <Column field="activa" header="Estado" style="width:90px">
-            <template #body="{ data }">
-              <Tag :value="data.activa ? 'Activa' : 'Inactiva'" :severity="data.activa ? 'success' : 'secondary'" />
+            <template #body>
+              <div class="record-card__row"><span class="record-card__label">Artículos</span><span class="record-card__value">{{ item.cantidadArticulos }}</span></div>
             </template>
-          </Column>
-          <Column header="Acciones" style="width:110px">
-            <template #body="{ data }">
-              <div class="flex gap-1">
-                <Button icon="pi pi-pencil" text rounded size="small" severity="info" @click="editarUbicacion(data)" />
-                <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmarEliminarUbicacion(data)" />
-              </div>
+            <template #actions>
+              <Button icon="pi pi-pencil" text rounded size="small" severity="info" @click="editarUbicacion(item)" />
+              <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmarEliminarUbicacion(item)" />
             </template>
-          </Column>
-          <template #empty>
-            <div class="text-center py-4 text-color-secondary">No hay ubicaciones registradas</div>
-          </template>
-        </DataTable>
+          </MobileRecordCard>
+        </div>
+        <MobilePaginator v-model:page="ubicacionesPage" :rows="10" :total="ubicaciones.length" />
       </TabPanel>
 
       <!-- ═══ TAB MANTENIMIENTOS ═══ -->
@@ -187,34 +145,26 @@
           <Dropdown v-model="filtrosMant.tipo" :options="tiposMantenimiento" optionLabel="label" optionValue="value" placeholder="Tipo" class="w-12rem" @change="cargarMantenimientos" showClear />
           <Button label="Registrar Mantenimiento" icon="pi pi-plus" size="small" @click="abrirNuevoMantenimiento" />
         </div>
-        <DataTable :value="mantenimientos" :loading="loadingMant" paginator :rows="20" dataKey="id" stripedRows responsiveLayout="scroll" class="p-datatable-sm">
-          <Column field="fechaMantenimiento" header="Fecha" sortable style="width:160px">
-            <template #body="{ data }">{{ formatDate(data.fechaMantenimiento) }}</template>
-          </Column>
-          <Column field="articuloNombre" header="Artículo" sortable />
-          <Column field="tipo" header="Tipo" style="width:130px">
-            <template #body="{ data }">
-              <Tag :value="tipoMantLabel(data.tipo)" severity="info" />
-            </template>
-          </Column>
-          <Column field="descripcion" header="Descripción" />
-          <Column field="costo" header="Costo" style="width:110px">
-            <template #body="{ data }">{{ data.costo ? formatCurrency(data.costo) : '—' }}</template>
-          </Column>
-          <Column field="estado" header="Estado" style="width:120px">
-            <template #body="{ data }">
-              <Tag :value="estadoMantLabel(data.estado)" :severity="estadoMantSeverity(data.estado)" />
-            </template>
-          </Column>
-          <Column header="Acciones" style="width:110px">
-            <template #body="{ data }">
-              <Button v-if="data.estado === 0" icon="pi pi-check" text rounded size="small" severity="success" @click="completarMant(data)" v-tooltip="'Completar'" />
-            </template>
-          </Column>
-          <template #empty>
-            <div class="text-center py-4 text-color-secondary">No hay mantenimientos registrados</div>
-          </template>
-        </DataTable>
+        <div v-if="loadingMant" class="flex justify-content-center py-5"><ProgressSpinner /></div>
+        <template v-else>
+          <div v-if="mantenimientos.length === 0" class="text-center py-4 text-color-secondary">No hay mantenimientos registrados</div>
+          <div v-else class="mobile-card-list">
+            <MobileRecordCard v-for="item in paginatedMantenimientos" :key="item.id" :title="item.articuloNombre" :subtitle="formatDate(item.fechaMantenimiento)">
+              <template #tags>
+                <Tag :value="tipoMantLabel(item.tipo)" severity="info" />
+                <Tag :value="estadoMantLabel(item.estado)" :severity="estadoMantSeverity(item.estado)" />
+              </template>
+              <template #body>
+                <div class="record-card__row"><span class="record-card__label">Descripción</span><span class="record-card__value">{{ item.descripcion }}</span></div>
+                <div class="record-card__row"><span class="record-card__label">Costo</span><span class="record-card__value">{{ item.costo ? formatCurrency(item.costo) : '—' }}</span></div>
+              </template>
+              <template #actions>
+                <Button v-if="item.estado === 0" icon="pi pi-check" text rounded size="small" severity="success" @click="completarMant(item)" v-tooltip="'Completar'" />
+              </template>
+            </MobileRecordCard>
+          </div>
+          <MobilePaginator v-model:page="mantPage" :rows="10" :total="mantenimientos.length" />
+        </template>
       </TabPanel>
 
       <!-- ═══ TAB ALERTAS ═══ -->
@@ -497,9 +447,10 @@ import * as inventarioService from '@/services/inventarioService'
 // PrimeVue components (auto-imported via PrimeVue plugin)
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import Button from 'primevue/button'
+import PageHeader from '@/components/mobile/PageHeader.vue'
+import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
+import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
@@ -519,6 +470,10 @@ const toast = useToast()
 
 // ── State ──
 const activeTab = ref(0)
+const articulosPage = ref(1)
+const movsPage = ref(1)
+const ubicacionesPage = ref(1)
+const mantPage = ref(1)
 const loadingArticulos = ref(false)
 const loadingMovs = ref(false)
 const loadingMant = ref(false)
@@ -555,6 +510,23 @@ const alertaCount = computed(() =>
   (alertas.value?.porVencer?.length ?? 0) +
   (alertas.value?.mantenimientosPendientes?.length ?? 0)
 )
+
+const paginatedArticulos = computed(() => {
+  const start = (articulosPage.value - 1) * 10
+  return articulos.value.slice(start, start + 10)
+})
+const paginatedMovimientos = computed(() => {
+  const start = (movsPage.value - 1) * 10
+  return movimientos.value.slice(start, start + 10)
+})
+const paginatedUbicaciones = computed(() => {
+  const start = (ubicacionesPage.value - 1) * 10
+  return ubicaciones.value.slice(start, start + 10)
+})
+const paginatedMantenimientos = computed(() => {
+  const start = (mantPage.value - 1) * 10
+  return mantenimientos.value.slice(start, start + 10)
+})
 
 // ── Catalogs ──
 const categorias = [

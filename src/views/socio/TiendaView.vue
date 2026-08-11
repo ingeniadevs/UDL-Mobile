@@ -1,19 +1,18 @@
 <template>
   <div>
-    <div class="flex align-items-center justify-content-between mb-4">
-      <h1 class="text-3xl font-bold page-title m-0">Tienda UDL</h1>
-      <div class="flex align-items-center gap-3">
-        <span class="text-gray-400 hidden md:inline">Productos oficiales del club</span>
-        <Button 
-          icon="pi pi-shopping-cart" 
+    <PageHeader title="Tienda" subtitle="Productos oficiales del club">
+      <template #actions>
+        <Button
+          icon="pi pi-shopping-cart"
           :badge="cartItemsCount > 0 ? cartItemsCount.toString() : null"
           badgeClass="p-badge-danger"
           class="p-button-rounded cart-btn"
+          size="small"
           @click="showCart = true"
           v-tooltip.left="'Ver carrito'"
         />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- Filters -->
     <div class="card mb-4">
@@ -388,6 +387,7 @@ import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
 import Checkbox from 'primevue/checkbox'
 import Button from 'primevue/button'
+import PageHeader from '@/components/mobile/PageHeader.vue'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import Sidebar from 'primevue/sidebar'

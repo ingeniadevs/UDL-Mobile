@@ -8,7 +8,9 @@ import Tooltip from 'primevue/tooltip'
 import App from './App.vue'
 import router from './router'
 import { initPlatform } from '@/platform'
+import { initNavigationGuards } from '@/platform/navigation'
 import { hydrateTheme } from '@/composables/useTheme'
+import { hydrateClubBranding } from '@/composables/useClubBranding'
 import { useAuthStore } from '@/stores/auth'
 
 import 'primevue/resources/primevue.min.css'
@@ -29,11 +31,13 @@ async function bootstrap() {
   app.directive('tooltip', Tooltip)
 
   await hydrateTheme()
+  await hydrateClubBranding()
 
   const authStore = useAuthStore()
   await authStore.hydrate()
 
   await initPlatform()
+  initNavigationGuards(router)
   await router.isReady()
   app.mount('#app')
 }

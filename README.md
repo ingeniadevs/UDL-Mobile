@@ -28,22 +28,30 @@ npm run dev
 
 API en desarrollo: proxy Vite → `http://localhost:5055`.
 
-### Solo Railway (sin backend local)
+## Build nativo (Android / iOS → Railway)
+
+No requiere backend ni PostgreSQL local. La API apunta a Railway (`.env.railway`).
 
 ```powershell
-cd C:\Users\juanc\OneDrive\Escritorio\UDL-Mobile
-npm run dev:railway
+cd C:\dev\Personal\Clubes\Mobile\UDL-Mobile
+
+# Opción A: script todo-en-uno
+.\scripts\start-android.ps1 -OpenStudio
+
+# Opción B: manual
+npm run cap:android
 ```
 
-Usa `.env.railway` → `https://udl-backend-production.up.railway.app/api`
+| Servicio | URL |
+|----------|-----|
+| **API (Railway)** | https://udl-backend-production.up.railway.app/api |
+| **Health** | https://udl-backend-production.up.railway.app/health |
+| **Mobile web (dev)** | http://localhost:5003 (`npm run dev:railway`) |
 
-## Build nativo
+### Solo Railway en el navegador (sin Android)
 
 ```powershell
-npm run build
-npm run cap:sync
-npm run cap:android   # Android Studio
-npm run cap:ios       # Xcode (macOS)
+npm run dev:railway
 ```
 
 ## Documentación

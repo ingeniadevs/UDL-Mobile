@@ -1,9 +1,6 @@
 <template>
   <div>
-    <div class="flex align-items-center gap-3 mb-4">
-      <Button icon="pi pi-arrow-left" text rounded @click="goBack" class="btn-back" />
-      <h1 class="text-3xl font-bold page-title m-0">Detalle del Socio</h1>
-    </div>
+    <PageHeader title="Detalle del Socio" show-back @back="goBack" />
 
     <div v-if="loading" class="flex justify-content-center p-5">
       <ProgressSpinner />
@@ -80,48 +77,59 @@
         <TabView>
           <!-- Pagos -->
           <TabPanel header="Pagos">
-            <DataTable :value="socio.pagos" class="p-datatable-sm">
-              <template #empty>No hay pagos registrados</template>
-              <Column field="concepto" header="Concepto"></Column>
-              <Column header="Monto">
-                <template #body="slotProps">
-                  ${{ slotProps.data.monto?.toLocaleString() }}
+            <div v-if="!socio.pagos?.length" class="text-center text-gray-400 py-4">
+              No hay pagos registrados
+            </div>
+            <div v-else class="mobile-card-list">
+              <MobileRecordCard
+                v-for="pago in socio.pagos"
+                :key="pago.id"
+                :title="pago.concepto"
+                :subtitle="`Vence: ${formatDate(pago.fechaVencimiento)}`"
+              >
+                <template #tags>
+                  <Tag :severity="getEstadoSeverity(pago.estado)" :value="pago.estado" />
                 </template>
-              </Column>
-              <Column header="Vencimiento">
-                <template #body="slotProps">
-                  {{ formatDate(slotProps.data.fechaVencimiento) }}
+                <template #body>
+                  <div class="record-card__row">
+                    <span class="record-card__label">Monto</span>
+                    <span class="record-card__value font-bold text-primary">${{ pago.monto?.toLocaleString() }}</span>
+                  </div>
                 </template>
-              </Column>
-              <Column header="Estado">
-                <template #body="slotProps">
-                  <Tag :severity="getEstadoSeverity(slotProps.data.estado)" 
-                       :value="slotProps.data.estado" />
-                </template>
-              </Column>
-            </DataTable>
-          </TabPanel>          <!-- Inscripciones -->
+              </MobileRecordCard>
+            </div>
+          </TabPanel>
+
+          <!-- Inscripciones -->
           <TabPanel header="Inscripciones">
-            <DataTable :value="socio.inscripciones" class="p-datatable-sm">
-              <template #empty>No hay inscripciones registradas</template>
-              <Column field="disciplinaNombre" header="Disciplina"></Column>
-              <Column header="Fecha Inicio">
-                <template #body="slotProps">
-                  {{ formatDate(slotProps.data.fechaInicio) }}
+            <div v-if="!socio.inscripciones?.length" class="text-center text-gray-400 py-4">
+              No hay inscripciones registradas
+            </div>
+            <div v-else class="mobile-card-list">
+              <MobileRecordCard
+                v-for="inscripcion in socio.inscripciones"
+                :key="inscripcion.id"
+                :title="inscripcion.disciplinaNombre"
+                :subtitle="`Desde ${formatDate(inscripcion.fechaInicio)}`"
+              >
+                <template #tags>
+                  <Tag
+                    :severity="inscripcion.activa ? 'success' : 'danger'"
+                    :value="inscripcion.activa ? 'Activa' : 'Inactiva'"
+                  />
                 </template>
-              </Column>
-              <Column header="Fecha Fin">
-                <template #body="slotProps">
-                  {{ slotProps.data.fechaFin ? formatDate(slotProps.data.fechaFin) : '-' }}
+                <template #body>
+                  <div class="record-card__row">
+                    <span class="record-card__label">Cuota mensual</span>
+                    <span class="record-card__value">${{ inscripcion.cuotaMensual?.toLocaleString() || '0' }}</span>
+                  </div>
+                  <div v-if="inscripcion.fechaFin" class="record-card__row">
+                    <span class="record-card__label">Fecha fin</span>
+                    <span class="record-card__value">{{ formatDate(inscripcion.fechaFin) }}</span>
+                  </div>
                 </template>
-              </Column>
-              <Column header="Estado">
-                <template #body="slotProps">
-                  <Tag :severity="slotProps.data.activa ? 'success' : 'danger'" 
-                       :value="slotProps.data.activa ? 'Activa' : 'Inactiva'" />
-                </template>
-              </Column>
-            </DataTable>
+              </MobileRecordCard>
+            </div>
           </TabPanel>
 
           <!-- FASE 6: Grupo Familiar -->
@@ -133,31 +141,48 @@
                 </h4>
               </div>
               
-              <DataTable v-if="socio.adherentes && socio.adherentes.length > 0" :value="socio.adherentes" class="p-datatable-sm">
-                <Column field="nombreCompleto" header="Nombre" />
-                <Column field="telefono" header="Teléfono" />
-                <Column header="Cuota">
-                  <template #body="slotProps">
-                    <div class="flex align-items-center gap-2">
-                      <span>${{ slotProps.data.cuotaSocio?.toLocaleString() }}</span>
-                      <Tag v-if="slotProps.data.pagaCuotaElAdherente" 
-                           value="Paga propia" 
-                           severity="success" 
-                           size="small" />
-                      <Tag v-else 
-                           value="Paga titular" 
-                           severity="info" 
-                           size="small" />
+              <div v-if="socio.adherentes && socio.adherentes.length > 0" class="mobile-card-list">
+                <MobileRecordCard
+                  v-for="adherente in socio.adherentes"
+                  :key="adherente.id"
+                  :title="adherente.nombreCompleto"
+                  :subtitle="adherente.telefono || 'Sin teléfono'"
+                >
+                  <template #tags>
+                    <Tag
+                      :severity="adherente.activo ? 'success' : 'danger'"
+                      :value="adherente.activo ? 'Activo' : 'Inactivo'"
+                    />
+                  </template>
+                  <template #body>
+                    <div class="record-card__row">
+                      <span class="record-card__label">Cuota</span>
+                      <span class="record-card__value">${{ adherente.cuotaSocio?.toLocaleString() }}</span>
+                    </div>
+                    <div class="record-card__row">
+                      <span class="record-card__label">Pago</span>
+                      <span class="record-card__value">
+                        <Tag
+                          v-if="adherente.pagaCuotaElAdherente"
+                          value="Paga propia"
+                          severity="success"
+                          class="text-xs"
+                        />
+                        <Tag v-else value="Paga titular" severity="info" class="text-xs" />
+                      </span>
                     </div>
                   </template>
-                </Column>
-                <Column header="Estado">
-                  <template #body="slotProps">
-                    <Tag :severity="slotProps.data.activo ? 'success' : 'danger'" 
-                         :value="slotProps.data.activo ? 'Activo' : 'Inactivo'" />
+                  <template #actions>
+                    <Button
+                      icon="pi pi-eye"
+                      label="Ver"
+                      text
+                      size="small"
+                      @click="router.push(`/admin/socios/${adherente.id}`)"
+                    />
                   </template>
-                </Column>
-              </DataTable>
+                </MobileRecordCard>
+              </div>
               
               <div v-else class="text-center py-4" style="color: var(--text-color-secondary)">
                 <i class="pi pi-users text-4xl mb-2"></i>
@@ -187,7 +212,7 @@
                 <Button 
                   label="Ver Titular" 
                   icon="pi pi-user"
-                  class="mt-3 w-full"
+                  class="mt-3 w-full p-button-sm"
                   @click="viewTitular" 
                   v-if="socio.titularId"
                 />
@@ -219,9 +244,9 @@ import Tag from 'primevue/tag'
 import Divider from 'primevue/divider'
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import ProgressSpinner from 'primevue/progressspinner'
+import PageHeader from '@/components/mobile/PageHeader.vue'
+import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
 
 const route = useRoute()
 const router = useRouter()

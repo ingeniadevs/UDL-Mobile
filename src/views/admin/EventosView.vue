@@ -1,10 +1,10 @@
 <template>
   <div>
-    <!-- Header -->
-    <div class="flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
-      <h1 class="text-3xl font-bold page-title m-0">Eventos</h1>
-      <Button label="Nuevo Evento" icon="pi pi-plus" @click="openNuevoEvento" />
-    </div>    <!-- Tabs: Activos / Cerrados -->
+    <PageHeader title="Eventos">
+      <template #actions>
+        <Button label="Nuevo Evento" icon="pi pi-plus" size="small" @click="openNuevoEvento" />
+      </template>
+    </PageHeader>    <!-- Tabs: Activos / Cerrados -->
     <TabView v-model:activeIndex="tabActivo" class="tabview-dark mb-4">
       <TabPanel header="Eventos Activos">
         <div v-if="loadingEventos" class="flex justify-content-center py-6">
@@ -519,6 +519,7 @@ import Tag from 'primevue/tag'
 import Badge from 'primevue/badge'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
+import PageHeader from '@/components/mobile/PageHeader.vue'
 
 const toast = useToast()
 

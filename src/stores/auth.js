@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { Capacitor } from '@capacitor/core'
 import { authService } from '@/services'
 import {
   getToken,
@@ -8,6 +9,7 @@ import {
   setUserJson,
   clearAuthStorage
 } from '@/platform/storage'
+import { isBiometricEnabled, authenticateWithBiometric } from '@/platform/biometric'
 
 function parseUser(raw) {
   if (!raw) return null
@@ -34,6 +36,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   const token = ref(null)
   const hydrated = ref(false)
+  const sessionUnlocked = ref(true)
 
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(
@@ -60,6 +63,9 @@ export const useAuthStore = defineStore('auth', () => {
     } else {
       token.value = storedToken
       user.value = storedUser
+      if (Capacitor.isNativePlatform() && (await isBiometricEnabled())) {
+        sessionUnlocked.value = false
+      }
     }
     hydrated.value = true
   }
@@ -101,6 +107,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
     await setToken(data.token)
     await setUserJson(JSON.stringify(user.value))
+    sessionUnlocked.value = true
   }
 
   async function logout() {
@@ -111,6 +118,21 @@ export const useAuthStore = defineStore('auth', () => {
   function clearSession() {
     token.value = null
     user.value = null
+    sessionUnlocked.value = true
+  }
+
+  async function unlockWithBiometric() {
+    const result = await authenticateWithBiometric()
+    if (result.success) {
+      sessionUnlocked.value = true
+    }
+    return result.success
+  }
+
+  function lockSession() {
+    if (Capacitor.isNativePlatform()) {
+      sessionUnlocked.value = false
+    }
   }
 
   async function updateFoto(foto) {
@@ -124,6 +146,7 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     token,
     hydrated,
+    sessionUnlocked,
     isAuthenticated,
     isAdmin,
     isMaster,
@@ -135,6 +158,8 @@ export const useAuthStore = defineStore('auth', () => {
     loginSocio,
     updateFoto,
     logout,
-    clearSession
+    clearSession,
+    unlockWithBiometric,
+    lockSession
   }
 })

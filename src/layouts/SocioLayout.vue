@@ -17,11 +17,10 @@
           @click="desktopSidebarVisible = !desktopSidebarVisible"
           class="hidden lg:flex btn-menu"
         />
-        <img src="/images/logo-udl.png" alt="UDL" class="topbar-logo hidden lg:block" />        <span class="text-xl font-semibold topbar-title">UDL - Mi Portal</span>
+        <IngeniaClubIcon size="sm" class="topbar-app-icon" />
+        <span class="text-xl font-semibold topbar-title">{{ app.name }}</span>
       </div>
-        <div class="flex align-items-center gap-3">
-        <span class="topbar-username hidden md:block">{{ authStore.user?.nombre }}</span>
-        <Avatar :image="authStore.user?.foto || undefined" :label="authStore.user?.foto ? undefined : avatarLabel" shape="circle" class="avatar-red" />
+        <div class="flex align-items-center gap-2">
         <Button 
           :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'" 
           text 
@@ -44,10 +43,23 @@
     <Sidebar v-model:visible="mobileSidebarVisible" class="sidebar-dark w-18rem">
       <template #header>
         <div class="flex align-items-center gap-2">
-          <img src="/images/logo-udl.png" alt="UDL" class="sidebar-logo" />
-          <span class="font-bold text-xl sidebar-title">UDL</span>
+          <img :src="branding.logo" :alt="branding.logoAlt" class="sidebar-logo" />
+          <span class="font-bold text-xl sidebar-title">{{ branding.shortName }}</span>
         </div>
       </template>
+      <div class="sidebar-user">
+        <Avatar
+          :image="authStore.user?.foto || undefined"
+          :label="authStore.user?.foto ? undefined : avatarLabel"
+          shape="circle"
+          class="avatar-red"
+          size="large"
+        />
+        <div class="sidebar-user__info">
+          <div class="sidebar-user__name">{{ authStore.user?.nombre }}</div>
+          <div class="sidebar-user__email">{{ authStore.user?.email }}</div>
+        </div>
+      </div>
       <Menu :model="menuItems" class="w-full border-none menu-dark" />
     </Sidebar>
 
@@ -60,6 +72,18 @@
         @mouseenter="hoverExpanded = true"
         @mouseleave="hoverExpanded = false"
       >
+        <div v-if="desktopSidebarVisible || hoverExpanded" class="sidebar-user px-3">
+          <Avatar
+            :image="authStore.user?.foto || undefined"
+            :label="authStore.user?.foto ? undefined : avatarLabel"
+            shape="circle"
+            class="avatar-red"
+          />
+          <div class="sidebar-user__info">
+            <div class="sidebar-user__name">{{ authStore.user?.nombre }}</div>
+            <div class="sidebar-user__email">{{ authStore.user?.email }}</div>
+          </div>
+        </div>
         <template v-for="group in menuItems" :key="group.label">
           <div v-if="group.label && (desktopSidebarVisible || hoverExpanded)" class="nav-group-label">{{ group.label }}</div>
           <button
@@ -101,6 +125,10 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
+import { useClubBranding } from '@/composables/useClubBranding'
+import { useAppBranding } from '@/composables/useAppBranding'
+import IngeniaClubIcon from '@/components/brand/IngeniaClubIcon.vue'
+import { setSidebarCloseHandler } from '@/platform/navigation'
 import Sidebar from 'primevue/sidebar'
 import Menu from 'primevue/menu'
 import Button from 'primevue/button'
@@ -111,6 +139,8 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const { isDark, toggleTheme } = useTheme()
+const { branding } = useClubBranding()
+const { app } = useAppBranding()
 
 const mobileSidebarVisible = ref(false)
 const desktopSidebarVisible = ref(true)
@@ -121,6 +151,13 @@ function handleResize() {
 }
 
 onMounted(() => {
+  setSidebarCloseHandler(() => {
+    if (mobileSidebarVisible.value) {
+      mobileSidebarVisible.value = false
+      return true
+    }
+    return false
+  })
   if (Capacitor.isNativePlatform()) {
     desktopSidebarVisible.value = false
   } else {
@@ -130,6 +167,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  setSidebarCloseHandler(null)
   if (!Capacitor.isNativePlatform()) {
     window.removeEventListener('resize', handleResize)
   }
@@ -344,6 +382,14 @@ function handleLogout() {
   width: 40px;
   height: 40px;
   object-fit: contain;
+}
+
+.topbar-app-icon {
+  height: 28px;
+  width: auto;
+  max-width: 84px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .topbar-logo {

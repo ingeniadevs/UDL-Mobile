@@ -6,16 +6,154 @@
   --safe-right: env(safe-area-inset-right, 0px);
 }
 
-.layout-dark .topbar {
-  padding-top: calc(0.75rem + var(--safe-top)) !important;
+html,
+body,
+#app {
+  overscroll-behavior: none;
+  touch-action: pan-y;
+}
+
+/* Topbar con safe area en todos los layouts */
+.topbar {
+  padding-top: calc(0.5rem + var(--safe-top)) !important;
+  padding-left: calc(1rem + var(--safe-left)) !important;
+  padding-right: calc(1rem + var(--safe-right)) !important;
+  padding-bottom: 0.5rem !important;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.topbar-title {
+  font-size: 0.95rem !important;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 55vw;
 }
 
 .content-area {
-  padding-bottom: calc(1rem + var(--safe-bottom)) !important;
+  padding-bottom: calc(2.5rem + var(--safe-bottom)) !important;
+  padding-left: calc(1rem + var(--safe-left)) !important;
+  padding-right: calc(1rem + var(--safe-right)) !important;
 }
 
-/* Tablas admin: scroll horizontal en pantallas pequeñas */
-.p-datatable-wrapper {
+/* Login y pantallas sin layout */
+.login-container,
+.auth-screen {
+  padding-top: calc(1rem + var(--safe-top));
+  padding-bottom: calc(2.5rem + var(--safe-bottom));
+  padding-left: calc(1rem + var(--safe-left));
+  padding-right: calc(1rem + var(--safe-right));
+}
+
+.ingenia-promo {
+  padding-bottom: calc(0.35rem + var(--safe-bottom)) !important;
+}
+
+/* Sidebar usuario */
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.25rem 1rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.sidebar-user__info {
+  min-width: 0;
+  flex: 1;
+}
+
+.sidebar-user__name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-user__email {
+  font-size: 0.75rem;
+  color: var(--text-color-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Botones más compactos en mobile */
+.p-button {
+  font-size: 0.85rem;
+}
+
+.p-button.p-button-sm,
+.p-button-sm {
+  font-size: 0.78rem;
+  padding: 0.4rem 0.65rem;
+}
+
+.p-button.p-button-icon-only {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.topbar .p-button.p-button-icon-only {
+  width: 2rem;
+  height: 2rem;
+}
+
+/* Headers de página */
+.page-title,
+h1.text-3xl {
+  font-size: 1.35rem !important;
+  line-height: 1.25;
+}
+
+/* Filas de datos en cards */
+.record-card__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+}
+
+.record-card__label {
+  color: var(--text-color-secondary);
+}
+
+.record-card__value {
+  color: var(--text-color);
+  font-weight: 500;
+  text-align: right;
+}
+
+/* Selector de socio en diálogos */
+.socio-selector-list .record-card {
+  cursor: pointer;
+}
+
+.socio-selector-list .record-card:active {
+  opacity: 0.85;
+}
+
+.mobile-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Ocultar tablas: la app mobile usa cards */
+.p-datatable.mobile-hide-table {
+  display: none !important;
+}
+
+/* Tablas legacy en diálogos/charts: scroll horizontal */
+.p-dialog .p-datatable-wrapper,
+.p-tabview .p-datatable-wrapper {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }

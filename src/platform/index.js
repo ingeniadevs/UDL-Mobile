@@ -1,5 +1,4 @@
 import { Capacitor } from '@capacitor/core'
-import { App } from '@capacitor/app'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import { SplashScreen } from '@capacitor/splash-screen'
 import { Keyboard } from '@capacitor/keyboard'
@@ -12,25 +11,24 @@ export function setNetworkToastHandler(handler) {
   networkToastHandler = handler
 }
 
+export async function syncStatusBar(isDark) {
+  if (!Capacitor.isNativePlatform()) return
+  try {
+    await StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light })
+    await StatusBar.setBackgroundColor({ color: isDark ? '#0f0f0f' : '#ffffff' })
+    await StatusBar.setOverlaysWebView({ overlay: false })
+  } catch {
+    /* iOS puede ignorar algunas opciones */
+  }
+}
+
 export async function initPlatform() {
   if (!Capacitor.isNativePlatform()) return
 
-  try {
-    await StatusBar.setStyle({ style: Style.Dark })
-    await StatusBar.setBackgroundColor({ color: '#0f0f0f' })
-  } catch {
-    /* iOS puede ignorar background */
-  }
+  const isDark = document.documentElement.classList.contains('theme-dark')
+  await syncStatusBar(isDark)
 
   await SplashScreen.hide()
-
-  App.addListener('backButton', ({ canGoBack }) => {
-    if (canGoBack) {
-      window.history.back()
-    } else {
-      App.minimizeApp()
-    }
-  })
 
   const status = await Network.getStatus()
   if (!status.connected && networkToastHandler) {

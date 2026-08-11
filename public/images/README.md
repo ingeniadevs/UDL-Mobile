@@ -1,7 +1,12 @@
-Coloca aquí los assets de imagen del proyecto web, por ejemplo:
+# Assets de imagen
 
-- `logo-udl.png`
+## App (Ingenia Club)
+- `/images/ingenia-club-icon.svg` — icono de la app y login (Ingenia Labs)
+- `/favicon.svg` — alias del mismo icono
 
-Origen de referencia (copiar manualmente desde tu entorno si no están en git):
+## Club por defecto (UDL)
+- `logo-udl.png` — logo del club conectado
+
+Origen de referencia UDL (copiar manualmente si no está en git):
 
 `C:\Users\juanc\OneDrive\Escritorio\UDL\UDL-Frontend\public\images\`

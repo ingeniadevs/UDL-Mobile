@@ -1,5 +1,5 @@
 <template>  <div class="carnet-container">
-    <h1 class="text-3xl font-bold mb-4 text-center">Mi Carnet Digital</h1>
+    <PageHeader title="Mi Carnet Digital" />
 
     <div v-if="loading" class="flex justify-content-center p-5">
       <ProgressSpinner />
@@ -120,6 +120,7 @@ import { ref, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { sociosService } from '@/services'
 import Button from 'primevue/button'
+import PageHeader from '@/components/mobile/PageHeader.vue'
 import Avatar from 'primevue/avatar'
 import ProgressSpinner from 'primevue/progressspinner'
 import html2canvas from 'html2canvas'

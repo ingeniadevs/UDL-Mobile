@@ -1,90 +1,61 @@
 <template>
   <div>
-    <div class="flex justify-content-between align-items-center mb-4">
-      <h1 class="text-3xl font-bold" style="color: var(--text-color)">Empleados</h1>
-      <Button label="Nuevo Empleado" icon="pi pi-plus" @click="openNewDialog" />
+    <PageHeader title="Empleados">
+      <template #actions>
+        <Button label="Nuevo Empleado" icon="pi pi-plus" size="small" @click="openNewDialog" />
+      </template>
+    </PageHeader>
+
+    <div class="card mb-3">
+      <span class="p-input-icon-left w-full">
+        <i class="pi pi-search" />
+        <InputText v-model="searchTerm" placeholder="Buscar..." class="w-full" />
+      </span>
     </div>
 
-    <div class="card">
-      <DataTable 
-        :value="empleados" 
-        :loading="loading"
-        :paginator="true" 
-        :rows="10"
-        :rowsPerPageOptions="[5, 10, 20, 50]"
-        dataKey="id"
-        filterDisplay="row"
-        :globalFilterFields="['nombre', 'apellido', 'email', 'puesto']"
-        responsiveLayout="scroll"
-        stripedRows
-      >
-        <template #header>
-          <div class="flex justify-content-end">
-            <IconField>
-              <InputIcon class="pi pi-search" />
-              <InputText v-model="filters.global.value" placeholder="Buscar..." />
-            </IconField>
-          </div>
-        </template>
-
-        <template #empty>
-          <div class="text-center py-4 text-gray-400">
-            No se encontraron empleados
-          </div>
-        </template>
-
-        <Column field="nombre" header="Nombre" sortable>
-          <template #body="{ data }">
-            <div class="flex align-items-center gap-2">
-              <Avatar 
-                :label="(data.nombre?.charAt(0) + data.apellido?.charAt(0)).toUpperCase()" 
-                shape="circle" 
-                class="avatar-red"
-              />
-              <span class="font-medium" style="color: var(--text-color)">{{ data.nombre }} {{ data.apellido }}</span>
-            </div>
-          </template>
-        </Column>
-
-        <Column field="email" header="Email" sortable>
-          <template #body="{ data }">
-            <span class="text-gray-300">{{ data.email }}</span>
-          </template>
-        </Column>
-
-        <Column field="puesto" header="Puesto" sortable>
-          <template #body="{ data }">
-            <Tag :value="data.puesto" severity="info" />
-          </template>
-        </Column>
-
-        <Column field="salario" header="Salario" sortable>
-          <template #body="{ data }">
-            <span class="text-green-400 font-semibold">${{ data.salario?.toLocaleString() }}</span>
-          </template>
-        </Column>
-
-        <Column field="fechaIngreso" header="Fecha Ingreso" sortable>
-          <template #body="{ data }">
-            <span class="text-gray-300">{{ formatDate(data.fechaIngreso) }}</span>
-          </template>
-        </Column>
-
-        <Column field="activo" header="Estado" sortable>
-          <template #body="{ data }">
-            <Tag :severity="data.activo ? 'success' : 'danger'" :value="data.activo ? 'Activo' : 'Inactivo'" />
-          </template>
-        </Column>        <Column header="Acciones" style="width: 180px">
-          <template #body="{ data }">
-            <div class="flex gap-2">
-              <Button icon="pi pi-dollar" severity="success" text rounded v-tooltip.top="'Pagar sueldo'" @click="openPagarSueldoDialog(data)" :disabled="!data.activo" />
-              <Button icon="pi pi-pencil" severity="info" text rounded @click="openEditDialog(data)" />
-              <Button icon="pi pi-trash" severity="danger" text rounded @click="confirmDelete(data)" />
-            </div>
-          </template>
-        </Column>
-      </DataTable>
+    <div v-if="loading" class="flex justify-content-center py-5">
+      <ProgressSpinner />
     </div>
+    <template v-else>
+      <div v-if="empleadosFiltrados.length === 0" class="card text-center py-5 text-gray-400">
+        No se encontraron empleados
+      </div>
+      <div v-else class="mobile-card-list">
+        <MobileRecordCard
+          v-for="item in paginatedEmpleados"
+          :key="item.id"
+          :title="`${item.nombre} ${item.apellido}`"
+          :subtitle="item.email"
+        >
+          <template #leading>
+            <Avatar :label="(item.nombre?.charAt(0) + item.apellido?.charAt(0)).toUpperCase()" shape="circle" class="avatar-red" />
+          </template>
+          <template #tags>
+            <Tag :severity="item.activo ? 'success' : 'danger'" :value="item.activo ? 'Activo' : 'Inactivo'" />
+          </template>
+          <template #body>
+            <div class="record-card__row">
+              <span class="record-card__label">Puesto</span>
+              <Tag :value="item.puesto" severity="info" />
+            </div>
+            <div class="record-card__row">
+              <span class="record-card__label">Salario</span>
+              <span class="record-card__value text-green-400">${{ item.salario?.toLocaleString() }}</span>
+            </div>
+            <div class="record-card__row">
+              <span class="record-card__label">Ingreso</span>
+              <span class="record-card__value">{{ formatDate(item.fechaIngreso) }}</span>
+            </div>
+          </template>
+          <template #actions>
+            <Button icon="pi pi-dollar" severity="success" text rounded size="small" v-tooltip.top="'Pagar sueldo'" @click="openPagarSueldoDialog(item)" :disabled="!item.activo" />
+            <Button icon="pi pi-pencil" severity="info" text rounded size="small" @click="openEditDialog(item)" />
+            <Button icon="pi pi-trash" severity="danger" text rounded size="small" @click="confirmDelete(item)" />
+          </template>
+        </MobileRecordCard>
+      </div>
+      <MobilePaginator v-model:page="currentPage" :rows="10" :total="empleadosFiltrados.length" />
+    </template>
 
     <!-- Dialog Crear/Editar -->
     <Dialog 
@@ -187,12 +158,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { empleadosService } from '@/services'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
@@ -203,8 +172,10 @@ import Dialog from 'primevue/dialog'
 import Tag from 'primevue/tag'
 import Avatar from 'primevue/avatar'
 import ConfirmDialog from 'primevue/confirmdialog'
-import IconField from 'primevue/iconfield'
-import InputIcon from 'primevue/inputicon'
+import ProgressSpinner from 'primevue/progressspinner'
+import PageHeader from '@/components/mobile/PageHeader.vue'
+import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
+import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 
 const toast = useToast()
 const confirm = useConfirm()
@@ -222,9 +193,26 @@ const pagarSueldoEmpleado = ref(null)
 const pagandoSueldo = ref(false)
 const pagarSueldoForm = ref({ monto: 0, fecha: new Date(), descripcion: '' })
 
-const filters = ref({
-  global: { value: null, matchMode: 'contains' }
+const searchTerm = ref('')
+const currentPage = ref(1)
+
+const empleadosFiltrados = computed(() => {
+  if (!searchTerm.value.trim()) return empleados.value
+  const q = searchTerm.value.toLowerCase()
+  return empleados.value.filter(e =>
+    e.nombre?.toLowerCase().includes(q) ||
+    e.apellido?.toLowerCase().includes(q) ||
+    e.email?.toLowerCase().includes(q) ||
+    e.puesto?.toLowerCase().includes(q)
+  )
 })
+
+const paginatedEmpleados = computed(() => {
+  const start = (currentPage.value - 1) * 10
+  return empleadosFiltrados.value.slice(start, start + 10)
+})
+
+watch(searchTerm, () => { currentPage.value = 1 })
 
 const puestos = ref([
   'Recepcionista',

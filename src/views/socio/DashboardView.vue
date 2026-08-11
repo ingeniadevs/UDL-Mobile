@@ -1,7 +1,6 @@
 <template>
   <div>
-    <h1 class="text-3xl font-bold page-title mb-4">¡Bienvenido a UDL, {{ authStore.user?.nombre }}!</h1>
-    
+    <PageHeader :title="`¡Bienvenido, ${authStore.user?.nombre}!`" />
     <!-- Quick Stats -->
     <div class="grid">
       <div class="col-12 md:col-6 lg:col-4">
@@ -72,28 +71,25 @@
             <h3 class="text-xl font-semibold m-0" style="color: var(--text-color)">Próximos Vencimientos</h3>
             <Button label="Ver todos" text size="small" @click="goToPagos" />
           </div>
-          <DataTable :value="proximosPagos" :rows="5" class="p-datatable-sm">
-            <template #empty>
-              <div class="text-center text-gray-400 py-3">No hay pagos pendientes</div>
-            </template>
-            <Column field="concepto" header="Concepto"></Column>
-            <Column header="Monto">
-              <template #body="slotProps">
-                ${{ slotProps.data.monto?.toLocaleString() }}
+          <div class="mobile-card-list">
+            <MobileRecordCard
+              v-for="pago in proximosPagos"
+              :key="pago.id"
+              :title="pago.concepto"
+              :subtitle="formatDate(pago.fechaVencimiento)"
+            >
+              <template #tags>
+                <Tag :severity="getEstadoSeverity(pago.estado)" :value="pago.estado" />
               </template>
-            </Column>
-            <Column header="Vencimiento">
-              <template #body="slotProps">
-                {{ formatDate(slotProps.data.fechaVencimiento) }}
+              <template #body>
+                <div class="record-card__row">
+                  <span class="record-card__label">Monto</span>
+                  <span class="record-card__value">${{ pago.monto?.toLocaleString() }}</span>
+                </div>
               </template>
-            </Column>
-            <Column header="Estado">
-              <template #body="slotProps">
-                <Tag :severity="getEstadoSeverity(slotProps.data.estado)" 
-                     :value="slotProps.data.estado" />
-              </template>
-            </Column>
-          </DataTable>
+            </MobileRecordCard>
+            <div v-if="proximosPagos.length === 0" class="text-center text-gray-400 py-3">No hay pagos pendientes</div>
+          </div>
         </div>
       </div>
 
@@ -129,9 +125,9 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { sociosService } from '@/services'
 import { planesService } from '@/services/planesService'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import Tag from 'primevue/tag'
+import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
+import PageHeader from '@/components/mobile/PageHeader.vue'
 import Button from 'primevue/button'
 import Divider from 'primevue/divider'
 

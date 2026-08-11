@@ -7,18 +7,22 @@
     "dev": "vite",
     "dev:local": "vite",
     "dev:railway": "vite --mode railway",
-    "build": "vite build",
-    "build:railway": "vite build --mode production",
+    "build": "vite build --mode railway",
+    "build:android": "vite build --mode railway",
+    "build:local": "vite build --mode android",
+    "build:railway": "vite build --mode railway",
     "preview": "vite preview",
-    "cap:sync": "npm run build && npx cap sync",
-    "cap:android": "npm run build && npx cap sync android && npx cap open android",
-    "cap:ios": "npm run build && npx cap sync ios && npx cap open ios",
+    "cap:sync": "npm run lint:mobile && npm run build:android && npx cap sync",
+    "cap:sync:android": "npm run lint:mobile && npm run build:android && npx cap sync android",
+    "cap:android": "npm run cap:sync:android && npx cap open android",
+    "cap:ios": "npm run lint:mobile && npm run build:android && npx cap sync ios && npx cap open ios",
     "android:run": "npm run cap:sync && npx cap run android",
     "ios:run": "npm run cap:sync && npx cap run ios",
-    "lint:mobile": "node scripts/check-mobile-env.js"
+    "lint:mobile": "node scripts/check-mobile-env.js",
+    "icons:generate": "node scripts/generate-app-icons.mjs && npx capacitor-assets generate --assetPath assets"
   },
   "dependencies": {
-    "@capacitor-community/http": "^1.4.1",
+    "@aparajita/capacitor-biometric-auth": "^10.0.0",
     "@capacitor/android": "^8.3.4",
     "@capacitor/app": "^8.1.0",
     "@capacitor/browser": "^8.0.3",
@@ -32,7 +36,6 @@
     "@capacitor/network": "^8.0.1",
     "@capacitor/preferences": "^8.0.1",
     "@capacitor/push-notifications": "^8.1.1",
-    "@capacitor/share": "^8.0.1",
     "@capacitor/share": "^8.0.1",
     "@capacitor/splash-screen": "^8.0.1",
     "@capacitor/status-bar": "^8.0.2",
@@ -51,7 +54,9 @@
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@vitejs/plugin-vue": "^6.0.6",
+    "sharp": "^0.34.3",
     "typescript": "^6.0.3",
     "vite": "^8.0.12"
   }

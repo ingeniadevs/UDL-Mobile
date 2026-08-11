@@ -1,8 +1,6 @@
 <template>
   <div>
-    <div class="flex align-items-center justify-content-between mb-4">
-      <h1 class="text-3xl font-bold page-title m-0">Disciplinas</h1>
-    </div>
+    <PageHeader title="Disciplinas" />
 
     <!-- Mi cuota actual -->
     <div class="card mb-4">
@@ -90,6 +88,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import { disciplinasService, inscripcionesService, sociosService } from '@/services'
 import { useAuthStore } from '@/stores/auth'
 import Button from 'primevue/button'
+import PageHeader from '@/components/mobile/PageHeader.vue'
 import Tag from 'primevue/tag'
 import ProgressSpinner from 'primevue/progressspinner'
 

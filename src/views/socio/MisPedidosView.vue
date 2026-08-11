@@ -1,9 +1,15 @@
 <template>
   <div>
-    <div class="flex align-items-center justify-content-between mb-4">
-      <h1 class="text-3xl font-bold page-title m-0">Mis Pedidos</h1>
-      <Button label="Ir a la Tienda" icon="pi pi-shopping-cart" @click="$router.push('/socio/tienda')" />
-    </div>
+    <PageHeader title="Mis Pedidos">
+      <template #actions>
+        <Button
+          label="Ir a la Tienda"
+          icon="pi pi-shopping-cart"
+          size="small"
+          @click="$router.push('/socio/tienda')"
+        />
+      </template>
+    </PageHeader>
 
     <!-- Loading -->
     <div v-if="loading" class="flex justify-content-center p-5">
@@ -127,6 +133,7 @@ import { pedidosService } from '@/services'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import ProgressSpinner from 'primevue/progressspinner'
+import PageHeader from '@/components/mobile/PageHeader.vue'
 
 const toast = useToast()
 const pedidos = ref([])

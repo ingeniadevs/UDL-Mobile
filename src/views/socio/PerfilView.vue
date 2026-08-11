@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1 class="text-3xl font-bold mb-4" style="color: var(--text-color)">Mi Perfil</h1>
+    <PageHeader title="Mi Perfil" />
 
     <div v-if="loading" class="flex justify-content-center p-5">
       <ProgressSpinner />
@@ -307,6 +307,7 @@ import Divider from 'primevue/divider'
 import ProgressSpinner from 'primevue/progressspinner'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
+import PageHeader from '@/components/mobile/PageHeader.vue'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Message from 'primevue/message'

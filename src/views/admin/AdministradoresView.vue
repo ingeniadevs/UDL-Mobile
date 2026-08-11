@@ -1,121 +1,62 @@
 <template>
   <div>
-    <div class="flex align-items-center justify-content-between mb-4">
-      <h1 class="text-3xl font-bold page-title m-0">Administradores</h1>
-      <Button label="Nuevo Administrador" icon="pi pi-plus" @click="openNew" />
+    <PageHeader title="Administradores">
+      <template #actions>
+        <Button label="Nuevo Administrador" icon="pi pi-plus" size="small" @click="openNew" />
+      </template>
+    </PageHeader>
+
+    <div v-if="loading" class="flex justify-content-center py-5">
+      <ProgressSpinner />
     </div>
-
-    <!-- Tabla -->
-    <div class="card">
-      <DataTable
-        :value="admins"
-        :loading="loading"
-        paginator
-        :rows="10"
-        responsiveLayout="scroll"
-        class="p-datatable-sm"
-      >
-        <template #empty>
-          <div class="text-center py-4" style="color: var(--text-color-secondary)">
-            No hay administradores registrados
-          </div>
-        </template>
-
-        <Column field="nombre" header="Nombre" sortable />
-        <Column field="email" header="Email" sortable />
-        <Column field="alias" header="Alias" />        <Column field="rol" header="Rol" sortable>
-          <template #body="{ data }">
-            <Tag
-              :value="rolLabel(data.rol)"
-              :severity="rolSeverity(data.rol)"
-            />
+    <template v-else>
+      <div v-if="admins.length === 0" class="card text-center py-5" style="color: var(--text-color-secondary)">
+        No hay administradores registrados
+      </div>
+      <div v-else class="mobile-card-list">
+        <MobileRecordCard
+          v-for="item in paginatedAdmins"
+          :key="item.id"
+          :title="item.nombre"
+          :subtitle="item.email"
+        >
+          <template #leading>
+            <Avatar :label="item.nombre?.charAt(0).toUpperCase()" shape="circle" class="avatar-red" />
           </template>
-        </Column>        <Column header="Secciones">
-          <template #body="{ data }">
-            <span v-if="data.rol === 'master'" style="color: var(--text-color-secondary); font-size: 0.8rem">
-              <i class="pi pi-lock-open mr-1" style="color: #dc2626" />Acceso total
-            </span>
-            <span v-else style="color: var(--text-color-secondary); font-size: 0.8rem">
-              {{ permisosCount(data.permisos) }} sección(es)
-            </span>
+          <template #tags>
+            <Tag :value="rolLabel(item.rol)" :severity="rolSeverity(item.rol)" />
+            <Tag :value="item.activo ? 'Activo' : 'Inactivo'" :severity="item.activo ? 'success' : 'danger'" />
           </template>
-        </Column>        <Column header="Deporte">
-          <template #body="{ data }">
-            <span v-if="data.rol === 'master'" style="color: var(--text-color-secondary); font-size: 0.8rem">—</span>
-            <Tag
-              v-else-if="data.deporte"
-              :value="deporteLabel(data.deporte)"
-              severity="info"
-            />
-            <span v-else style="color: var(--text-color-secondary); font-size: 0.8rem">Sin deporte</span>
-          </template>
-        </Column>
-        <Column header="Espacios asignados">
-          <template #body="{ data }">
-            <span v-if="data.rol === 'master'" style="color: var(--text-color-secondary); font-size: 0.8rem">
-              <i class="pi pi-building mr-1" />Todos
-            </span>
-            <span v-else-if="data.espaciosAsignados && data.espaciosAsignados.length > 0" class="text-sm">
-              <Tag
-                v-for="e in data.espaciosAsignados.slice(0, 2)"
-                :key="e.id"
-                :value="e.nombre"
-                severity="info"
-                class="mr-1 mb-1"
-              />
-              <span v-if="data.espaciosAsignados.length > 2" class="text-gray-400 text-xs">
-                +{{ data.espaciosAsignados.length - 2 }} más
+          <template #body>
+            <div v-if="item.alias" class="record-card__row">
+              <span class="record-card__label">Alias</span>
+              <span class="record-card__value">{{ item.alias }}</span>
+            </div>
+            <div class="record-card__row">
+              <span class="record-card__label">Secciones</span>
+              <span class="record-card__value text-sm">
+                <template v-if="item.rol === 'master'"><i class="pi pi-lock-open mr-1" style="color: #dc2626" />Acceso total</template>
+                <template v-else>{{ permisosCount(item.permisos) }} sección(es)</template>
               </span>
-            </span>
-            <span v-else style="color: var(--text-color-secondary); font-size: 0.8rem">Sin asignar</span>
-          </template>
-        </Column>
-        <Column field="activo" header="Estado">
-          <template #body="{ data }">
-            <Tag
-              :value="data.activo ? 'Activo' : 'Inactivo'"
-              :severity="data.activo ? 'success' : 'danger'"
-            />
-          </template>
-        </Column>
-        <Column field="createdAt" header="Creado" sortable>
-          <template #body="{ data }">
-            {{ formatDate(data.createdAt) }}
-          </template>
-        </Column>        <Column header="Acciones" style="width: 10rem">
-          <template #body="{ data }">
-            <div class="flex gap-2">
-              <Button
-                icon="pi pi-building"
-                text
-                rounded
-                severity="success"
-                v-tooltip.top="'Asignar espacios'"
-                :disabled="data.rol === 'master'"
-                @click="openAsignarEspacios(data)"
-              />
-              <Button
-                icon="pi pi-pencil"
-                text
-                rounded
-                severity="info"
-                v-tooltip.top="'Editar'"
-                @click="openEdit(data)"
-              />
-              <Button
-                icon="pi pi-trash"
-                text
-                rounded
-                severity="danger"
-                v-tooltip.top="'Eliminar'"
-                :disabled="data.id === currentUserId"
-                @click="confirmDelete(data)"
-              />
+            </div>
+            <div v-if="item.deporte && item.rol !== 'master'" class="record-card__row">
+              <span class="record-card__label">Deporte</span>
+              <Tag :value="deporteLabel(item.deporte)" severity="info" />
+            </div>
+            <div class="record-card__row">
+              <span class="record-card__label">Creado</span>
+              <span class="record-card__value">{{ formatDate(item.createdAt) }}</span>
             </div>
           </template>
-        </Column>
-      </DataTable>
-    </div>
+          <template #actions>
+            <Button icon="pi pi-building" text rounded size="small" severity="success" v-tooltip.top="'Asignar espacios'" :disabled="item.rol === 'master'" @click="openAsignarEspacios(item)" />
+            <Button icon="pi pi-pencil" text rounded size="small" severity="info" v-tooltip.top="'Editar'" @click="openEdit(item)" />
+            <Button icon="pi pi-trash" text rounded size="small" severity="danger" v-tooltip.top="'Eliminar'" :disabled="item.id === currentUserId" @click="confirmDelete(item)" />
+          </template>
+        </MobileRecordCard>
+      </div>
+      <MobilePaginator v-model:page="currentPage" :rows="10" :total="admins.length" />
+    </template>
 
     <!-- Dialog crear/editar -->
     <Dialog
@@ -284,10 +225,13 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
 import { adminsService, espaciosService } from '@/services'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
+import Avatar from 'primevue/avatar'
+import ProgressSpinner from 'primevue/progressspinner'
+import PageHeader from '@/components/mobile/PageHeader.vue'
+import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
+import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
@@ -301,6 +245,12 @@ const toast = useToast()
 const authStore = useAuthStore()
 
 const admins = ref([])
+const currentPage = ref(1)
+
+const paginatedAdmins = computed(() => {
+  const start = (currentPage.value - 1) * 10
+  return admins.value.slice(start, start + 10)
+})
 const loading = ref(false)
 const saving = ref(false)
 const dialogVisible = ref(false)
@@ -559,6 +509,11 @@ onMounted(loadAdmins)
 </script>
 
 <style scoped>
+.avatar-red {
+  background-color: #dc2626 !important;
+  color: white !important;
+}
+
 .page-title {
   color: var(--text-color);
 }
