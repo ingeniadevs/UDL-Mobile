@@ -1,4 +1,5 @@
 import api from './api'
+import { normalizeReservaFechaForApi } from '@/utils/reservationDates'
 
 export const authService = {
   // Login unificado: el backend determina el rol según si es email o alias
@@ -85,6 +86,16 @@ export const adminsService = {
 
   async asignarEspacios(id, espacioIds) {
     const response = await api.put(`/admins/${id}/espacios`, { espacioIds })
+    return response.data
+  },
+
+  async getDisciplinasAsignadas(id) {
+    const response = await api.get(`/admins/${id}/disciplinas`)
+    return response.data
+  },
+
+  async asignarDisciplinas(id, disciplinaIds) {
+    const response = await api.put(`/admins/${id}/disciplinas`, { disciplinaIds })
     return response.data
   }
 }
@@ -177,6 +188,30 @@ export const disciplinasService = {
     return response.data
   },
 
+  async getCategorias(disciplinaId) {
+    const response = await api.get(`/disciplinas/${disciplinaId}/categorias`)
+    return response.data
+  },
+
+  async createCategoria(disciplinaId, data) {
+    const response = await api.post(`/disciplinas/${disciplinaId}/categorias`, data)
+    return response.data
+  },
+
+  async updateCategoria(disciplinaId, categoriaId, data) {
+    const response = await api.put(`/disciplinas/${disciplinaId}/categorias/${categoriaId}`, data)
+    return response.data
+  },
+
+  async deleteCategoria(disciplinaId, categoriaId) {
+    await api.delete(`/disciplinas/${disciplinaId}/categorias/${categoriaId}`)
+  },
+
+  async asignarCategoria(disciplinaId, socioId, categoriaId) {
+    const response = await api.put(`/disciplinas/${disciplinaId}/socios/${socioId}/categoria`, { categoriaId })
+    return response.data
+  },
+
   // Inscribir socio a disciplina
   async inscribirSocio(id, socioId, datos = {}) {
     const response = await api.post(`/disciplinas/${id}/socios`, { socioId, ...datos })
@@ -190,10 +225,88 @@ export const disciplinasService = {
   }
 }
 
+export const subcomisionesService = {
+  async getAll(soloActivas = true) {
+    const response = await api.get('/subcomisiones', { params: soloActivas ? { soloActivas: true } : {} })
+    return response.data
+  },
+
+  async create(data) {
+    const response = await api.post('/subcomisiones', data)
+    return response.data
+  },
+
+  async update(id, data) {
+    const response = await api.put(`/subcomisiones/${id}`, data)
+    return response.data
+  },
+
+  async delete(id) {
+    const response = await api.delete(`/subcomisiones/${id}`)
+    return response.data
+  }
+}
+
+export const disciplinaContabilidadService = {
+  async getMovimientos(disciplinaId, params = {}) {
+    const response = await api.get(`/disciplinas/${disciplinaId}/contabilidad/movimientos`, { params })
+    return response.data
+  },
+  async getResumen(disciplinaId, params = {}) {
+    const response = await api.get(`/disciplinas/${disciplinaId}/contabilidad/resumen`, { params })
+    return response.data
+  },
+  async getSaldo(disciplinaId) {
+    const response = await api.get(`/disciplinas/${disciplinaId}/contabilidad/saldo`)
+    return response.data
+  },
+  async create(disciplinaId, data) {
+    const response = await api.post(`/disciplinas/${disciplinaId}/contabilidad/movimientos`, data)
+    return response.data
+  },
+  async update(disciplinaId, id, data) {
+    const response = await api.put(`/disciplinas/${disciplinaId}/contabilidad/movimientos/${id}`, data)
+    return response.data
+  },
+  async delete(disciplinaId, id) {
+    const response = await api.delete(`/disciplinas/${disciplinaId}/contabilidad/movimientos/${id}`)
+    return response.data
+  }
+}
+
+export const balancesAnualesService = {
+  async getAll(params = {}) {
+    const response = await api.get('/balances-anuales', { params })
+    return response.data
+  },
+  async upload(formData) {
+    const response = await api.post('/balances-anuales', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return response.data
+  },
+  async delete(id) {
+    const response = await api.delete(`/balances-anuales/${id}`)
+    return response.data
+  }
+}
+
+export const reportesService = {
+  async getDistribucionDisciplinas(params = {}) {
+    const response = await api.get('/reportes/distribucion-disciplinas', { params })
+    return response.data
+  }
+}
+
 export const pagosService = {
   async getAll(socioId = null) {
     const params = socioId ? { socioId } : {}
     const response = await api.get('/pagos', { params })
+    return response.data
+  },
+
+  async getById(id) {
+    const response = await api.get(`/pagos/${id}`)
     return response.data
   },
 
@@ -217,8 +330,8 @@ export const pagosService = {
   },
 
   // Pago en efectivo (admin confirma)
-  async registrarPagoEfectivo(pagoId) {
-    const response = await api.post(`/pagos/${pagoId}/pagar-efectivo`)
+  async registrarPagoEfectivo(pagoId, metodoPago = 'Efectivo') {
+    const response = await api.post(`/pagos/${pagoId}/pagar-efectivo?metodo=${encodeURIComponent(metodoPago)}`)
     return response.data
   },
 
@@ -476,12 +589,18 @@ export const reservasService = {
   },
 
   async create(data) {
-    const response = await api.post('/reservas', data)
+    const response = await api.post('/reservas', {
+      ...data,
+      fecha: normalizeReservaFechaForApi(data.fecha)
+    })
     return response.data
   },
 
   async createAdmin(data) {
-    const response = await api.post('/reservas/admin', data)
+    const response = await api.post('/reservas/admin', {
+      ...data,
+      fecha: normalizeReservaFechaForApi(data.fecha)
+    })
     return response.data
   },
 
@@ -524,13 +643,13 @@ export const reservasService = {
     const response = await api.get('/reservas/mercadopago/public-key')
     return response.data.publicKey
   },// Solicitar pago en efectivo (socio)
-  async solicitarPagoEfectivo(reservaIds) {
-    const response = await api.post('/reservas/solicitar-efectivo', { reservaIds })
+  async solicitarPagoEfectivo(reservaIds, metodoPago = 'Efectivo') {
+    const response = await api.post('/reservas/solicitar-efectivo', { reservaIds, metodoPago })
     return response.data
   },
   // Confirmar pago en efectivo (admin)
-  async confirmarPagoEfectivo(reservaIds) {
-    const response = await api.post('/reservas/confirmar-efectivo', { reservaIds })
+  async confirmarPagoEfectivo(reservaIds, metodoPago = 'Efectivo') {
+    const response = await api.post('/reservas/confirmar-efectivo', { reservaIds, metodoPago })
     return response.data
   },
   // Aprobar o rechazar reserva (admin)

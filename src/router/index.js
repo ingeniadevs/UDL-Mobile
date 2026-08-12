@@ -2,6 +2,11 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { Capacitor } from '@capacitor/core'
 import { useAuthStore } from '@/stores/auth'
 import { isBiometricEnabled } from '@/platform/biometric'
+import {
+  homeRouteForRole,
+  isAdminPanelRole,
+  isSocioRole
+} from '@/utils/authRoles'
 
 const enableAdmin = import.meta.env.VITE_ENABLE_ADMIN === 'true'
 
@@ -13,12 +18,14 @@ const routes = [
   {
     path: '/login',
     name: 'Login',
-    component: () => import('@/views/auth/LoginView.vue')
+    component: () => import('@/views/auth/LoginView.vue'),
+    meta: { public: true }
   },
   {
     path: '/reset-password',
     name: 'ResetPassword',
-    component: () => import('@/views/auth/ResetPasswordView.vue')
+    component: () => import('@/views/auth/ResetPasswordView.vue'),
+    meta: { public: true }
   },
   {
     path: '/admin/login',
@@ -73,6 +80,11 @@ const routes = [
               component: () => import('@/views/admin/PedidosView.vue')
             },
             {
+              path: 'notificaciones',
+              name: 'Notificaciones',
+              component: () => import('@/views/admin/NotificacionesView.vue')
+            },
+            {
               path: 'empleados',
               name: 'Empleados',
               component: () => import('@/views/admin/EmpleadosView.vue')
@@ -91,6 +103,11 @@ const routes = [
               path: 'movimientos',
               name: 'Movimientos',
               component: () => import('@/views/admin/MovimientosView.vue')
+            },
+            {
+              path: 'contabilidad-disciplinas',
+              name: 'DisciplinaContabilidad',
+              component: () => import('@/views/admin/DisciplinaContabilidadView.vue')
             },
             {
               path: 'eventos',
@@ -176,6 +193,12 @@ const routes = [
     ]
   },
   {
+    path: '/verificar/:id',
+    name: 'VerificarSocio',
+    component: () => import('@/views/public/VerificarSocioView.vue'),
+    meta: { public: true }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/auth/NotFoundView.vue')
@@ -198,7 +221,17 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  if (to.name === 'Login' && authStore.isAuthenticated) {
+  if (authStore.isAuthenticated && !authStore.hasValidSession()) {
+    await authStore.logout()
+    if (to.meta.public) {
+      next()
+    } else {
+      next('/login')
+    }
+    return
+  }
+
+  if (to.meta.public && to.name === 'Login' && authStore.hasValidSession()) {
     const needsBiometric =
       Capacitor.isNativePlatform() &&
       !authStore.sessionUnlocked &&
@@ -207,28 +240,29 @@ router.beforeEach(async (to, from, next) => {
       next()
       return
     }
-    if (authStore.user?.rol === 'admin' || authStore.user?.rol === 'master') {
-      next(enableAdmin ? '/admin/inicio' : '/socio/inicio')
-    } else {
+    const home = homeRouteForRole(authStore.user.rol)
+    if (home.startsWith('/admin') && !enableAdmin) {
       next('/socio/inicio')
+    } else {
+      next(home)
     }
     return
   }
 
   if (to.name === 'AdminDashboard') {
     const isMaster = authStore.user?.rol === 'master'
-    const hasAnyPermiso = isMaster || (authStore.user?.permisos?.length > 0)
-    if (!hasAnyPermiso) {
+    const hasDashboard = authStore.hasPermiso?.('dashboard')
+    if (!isMaster && !hasDashboard) {
       next('/admin/inicio')
       return
     }
   }
 
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+  if (to.meta.requiresAuth && !authStore.hasValidSession()) {
     next('/login')
   } else if (
     to.meta.requiresAuth &&
-    authStore.isAuthenticated &&
+    authStore.hasValidSession() &&
     Capacitor.isNativePlatform() &&
     !authStore.sessionUnlocked &&
     (await isBiometricEnabled())
@@ -238,11 +272,13 @@ router.beforeEach(async (to, from, next) => {
     const userRole = authStore.user?.rol
     const hasAccess =
       userRole === to.meta.role ||
-      (to.meta.role === 'admin' && userRole === 'master')
+      (to.meta.role === 'admin' && isAdminPanelRole(userRole)) ||
+      (to.meta.role === 'master' && userRole === 'master')
+
     if (!hasAccess) {
-      if (userRole === 'admin' || userRole === 'master') {
+      if (isAdminPanelRole(userRole)) {
         next(enableAdmin ? '/admin/inicio' : '/login')
-      } else if (userRole === 'socio') next('/socio/inicio')
+      } else if (isSocioRole(userRole)) next('/socio/inicio')
       else next('/login')
     } else {
       next()

@@ -49,10 +49,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { getPreference, setPreference } from '@/platform/storage'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
@@ -66,31 +65,37 @@ const hp = (s) => isMaster.value || authStore.hasPermiso(s)
 
 const allAvailableTiles = computed(() => {
   const items = []
-  items.push(                    { id: 'dashboard',       label: 'Dashboard',          icono: 'pi-chart-bar',     ruta: '/admin/dashboard' })
+  if (hp('dashboard')) items.push({ id: 'dashboard', label: 'Dashboard', icono: 'pi-chart-bar', ruta: '/admin/dashboard' })
   if (hp('socios'))      items.push({ id: 'socios',          label: 'Socios',             icono: 'pi-users',         ruta: '/admin/socios' })
   if (hp('disciplinas')) items.push({ id: 'disciplinas',     label: 'Disciplinas',        icono: 'pi-bookmark',      ruta: '/admin/disciplinas' })
   if (hp('pagos'))       items.push({ id: 'pagos',           label: 'Pago de Cuotas',     icono: 'pi-dollar',        ruta: '/admin/pagos' })
   if (hp('productos'))   items.push({ id: 'productos',       label: 'Productos',          icono: 'pi-shopping-bag',  ruta: '/admin/productos' })
   if (hp('pedidos'))     items.push({ id: 'pedidos',         label: 'Pedidos',            icono: 'pi-shopping-cart', ruta: '/admin/pedidos' })
   if (hp('empleados'))   items.push({ id: 'empleados',       label: 'Empleados',          icono: 'pi-id-card',       ruta: '/admin/empleados' })
+  if (hp('notificaciones')) items.push({ id: 'notificaciones', label: 'Envío de Notificaciones', icono: 'pi-send', ruta: '/admin/notificaciones' })
   if (isMaster.value)    items.push({ id: 'planes',          label: 'Planes Membresía',    icono: 'pi-credit-card',   ruta: '/admin/planes-membresia' })
   if (hp('espacios'))    items.push({ id: 'espacios',        label: 'Espacios',           icono: 'pi-building',      ruta: '/admin/espacios' })
-  if (hp('reservas'))    items.push({ id: 'reservas',        label: 'Reservas',           icono: 'pi-calendar',      ruta: '/admin/reservas' })
-  if (hp('movimientos')) items.push({ id: 'movimientos',     label: 'Ingresos & Egresos', icono: 'pi-chart-line',    ruta: '/admin/movimientos' })
-  if (hp('eventos'))     items.push({ id: 'eventos',         label: 'Eventos',            icono: 'pi-star',          ruta: '/admin/eventos' })
+  if (hp('reservas'))      items.push({ id: 'reservas',        label: 'Reservas',                    icono: 'pi-calendar',      ruta: '/admin/reservas' })
+  if (hp('movimientos'))   items.push({ id: 'movimientos',     label: 'Ingresos & Egresos',          icono: 'pi-chart-line',    ruta: '/admin/movimientos' })
+  if (hp('contabilidad'))  items.push({ id: 'contabilidad',    label: 'Contabilidad por Disciplina', icono: 'pi-calculator',    ruta: '/admin/contabilidad-disciplinas' })
+  if (hp('eventos'))       items.push({ id: 'eventos',         label: 'Eventos',                     icono: 'pi-star',          ruta: '/admin/eventos' })
   if (hp('inventario') || isMaster.value) items.push({ id: 'inventario', label: 'Inventario', icono: 'pi-box', ruta: '/admin/inventario' })
-  if (isMaster.value)    items.push({ id: 'administradores', label: 'Administradores',    icono: 'pi-shield',        ruta: '/admin/administradores' })
+  if (hp('planes-membresia') || isMaster.value) items.push({ id: 'planes-membresia', label: 'Planes de Membresía', icono: 'pi-credit-card', ruta: '/admin/planes-membresia' })
+  if (isMaster.value)      items.push({ id: 'administradores', label: 'Administradores',             icono: 'pi-shield',        ruta: '/admin/administradores' })
   return items
 })
 
 const storageKey = `inicio_tiles_admin_${authStore.user?.id}`
 
-const savedIds = ref(null)
+const loadSavedIds = () => {
+  try {
+    const raw = localStorage.getItem(storageKey)
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  return null
+}
 
-onMounted(async () => {
-  const stored = await getPreference(storageKey, null)
-  savedIds.value = Array.isArray(stored) ? stored : null
-})
+const savedIds = ref(loadSavedIds())
 
 const visibleTiles = computed(() => {
   if (!savedIds.value) return allAvailableTiles.value
@@ -105,9 +110,9 @@ const openConfig = () => {
   configVisible.value = true
 }
 
-const saveConfig = async () => {
+const saveConfig = () => {
   savedIds.value = [...draftIds.value]
-  await setPreference(storageKey, savedIds.value)
+  localStorage.setItem(storageKey, JSON.stringify(savedIds.value))
   configVisible.value = false
 }
 </script>

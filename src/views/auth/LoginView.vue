@@ -75,7 +75,9 @@
           </div>
         </div>
 
-        <Message v-if="errorMessage" severity="error" :closable="false" class="mb-4" />
+        <Message v-if="errorMessage" severity="error" :closable="false" class="mb-4">
+          {{ errorMessage }}
+        </Message>
 
         <Button
           type="submit"
@@ -496,6 +498,7 @@ import Dialog from 'primevue/dialog'
 import Dropdown from 'primevue/dropdown'
 import { openMercadoPagoCheckout } from '@/platform/mercadopago'
 import { copyToClipboard } from '@/platform/clipboard'
+import { homeRouteForRole } from '@/utils/authRoles'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -539,7 +542,12 @@ async function handleLogin() {
   try {
     await authStore.login(identificador.value.trim(), password.value)
     await maybeOfferBiometric()
-    router.push(authStore.isAdmin ? '/admin/inicio' : '/socio/inicio')
+    const home = homeRouteForRole(authStore.user?.rol)
+    if (home.startsWith('/admin') && import.meta.env.VITE_ENABLE_ADMIN !== 'true') {
+      router.push('/socio/inicio')
+    } else {
+      router.push(home)
+    }
   } catch (error) {
     errorMessage.value = error.response?.data?.message || 'Credenciales inválidas'
   } finally {
@@ -576,7 +584,12 @@ async function handleBiometricUnlock() {
       errorMessage.value = 'No se pudo verificar la biometría'
       return
     }
-    router.push(authStore.isAdmin ? '/admin/inicio' : '/socio/inicio')
+    const home = homeRouteForRole(authStore.user?.rol)
+    if (home.startsWith('/admin') && import.meta.env.VITE_ENABLE_ADMIN !== 'true') {
+      router.push('/socio/inicio')
+    } else {
+      router.push(home)
+    }
   } finally {
     biometricLoading.value = false
   }

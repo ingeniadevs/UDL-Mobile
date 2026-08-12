@@ -43,29 +43,33 @@
 
           <!-- Desglose de Cuotas -->
           <div class="desglose-cuotas">
-            <h4 class="text-sm font-semibold mb-3" style="color: var(--text-color)">💰 Desglose de Cuotas Mensuales</h4>
+            <h4 class="text-sm font-semibold mb-3" style="color: var(--text-color)">💰 Cuota Mensual</h4>
             <div class="flex flex-column gap-2">
               <div class="cuota-item">
                 <div class="flex justify-content-between align-items-center">
                   <span class="text-sm" style="color: var(--text-color-secondary)">Cuota Social</span>
                   <span class="font-bold text-green-400">${{ socio.cuotaSocio?.toLocaleString() || '0' }}</span>
                 </div>
-              </div>              <div v-if="socio.inscripciones && socio.inscripciones.filter(i => i.activa).length > 0">
-                <div v-for="inscripcion in socio.inscripciones.filter(i => i.activa)" 
-                     :key="inscripcion.id" 
-                     class="cuota-item">
-                  <div class="flex justify-content-between align-items-center">
-                    <span class="text-sm" style="color: var(--text-color-secondary)">
-                      🏃 {{ inscripcion.disciplinaNombre }}
-                    </span>
-                    <span class="font-bold text-blue-400">${{ inscripcion.cuotaMensual?.toLocaleString() || '0' }}</span>
-                  </div>
-                </div>
               </div>
               <Divider class="my-2" />
               <div class="flex justify-content-between align-items-center">
-                <span class="font-semibold" style="color: var(--text-color)">Total Mensual</span>
-                <span class="font-bold text-xl" style="color: var(--primary-color)">${{ calcularTotalCuotas() }}</span>
+                <span class="font-semibold" style="color: var(--text-color)">Total al Club</span>
+                <span class="font-bold text-xl" style="color: var(--primary-color)">${{ socio.cuotaSocio?.toLocaleString() || '0' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="socio.inscripciones && socio.inscripciones.filter(i => i.activa).length > 0">
+            <Divider />
+            <div class="desglose-cuotas">
+              <h4 class="text-sm font-semibold mb-3" style="color: var(--text-color)">🏃 Disciplinas (pago a subcomisión)</h4>
+              <div class="flex flex-column gap-2">
+                <div v-for="inscripcion in socio.inscripciones.filter(i => i.activa)"
+                     :key="inscripcion.id"
+                     class="flex justify-content-between align-items-center">
+                  <span class="text-sm" style="color: var(--text-color-secondary)">{{ inscripcion.disciplinaNombre }}</span>
+                  <span class="font-bold text-orange-400">${{ inscripcion.cuotaMensual?.toLocaleString() || '0' }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -100,7 +104,6 @@
             </div>
           </TabPanel>
 
-          <!-- Inscripciones -->
           <TabPanel header="Inscripciones">
             <div v-if="!socio.inscripciones?.length" class="text-center text-gray-400 py-4">
               No hay inscripciones registradas
@@ -212,7 +215,7 @@
                 <Button 
                   label="Ver Titular" 
                   icon="pi pi-user"
-                  class="mt-3 w-full p-button-sm"
+                  class="mt-3 w-full"
                   @click="viewTitular" 
                   v-if="socio.titularId"
                 />
@@ -235,7 +238,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { sociosService } from '@/services'
 import Button from 'primevue/button'
@@ -306,6 +309,10 @@ async function loadSocio() {
 
 onMounted(() => {
   loadSocio()
+})
+
+watch(() => route.params.id, (newId) => {
+  if (newId) loadSocio()
 })
 </script>
 

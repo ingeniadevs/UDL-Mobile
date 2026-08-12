@@ -191,18 +191,18 @@
 
         <!-- Mejor mes del año -->
         <div class="col-12" v-if="dashboard.mejorMesNombre">
-          <div class="card bg-yellow-50">
+          <div class="card" style="border: 1px solid #ca8a04; background: transparent;">
             <h3><i class="pi pi-star text-yellow-500 mr-2"></i>Mejor Mes del Año</h3>
             <div class="flex align-items-center gap-4">
               <div class="text-center">
-                <p class="text-3xl font-bold text-yellow-600 m-0">{{ dashboard.mejorMesNombre }}</p>
-                <p class="text-gray-500 mt-1">Mes con mayores ingresos</p>
+                <p class="text-3xl font-bold text-yellow-400 m-0">{{ dashboard.mejorMesNombre }}</p>
+                <p class="text-gray-400 mt-1">Mes con mayores ingresos</p>
               </div>
               <div class="text-center" v-if="dashboard.evolucionMensual && dashboard.evolucionMensual[dashboard.mejorMesIdx - 1]">
-                <p class="text-2xl font-bold text-green-600 m-0">
+                <p class="text-2xl font-bold text-green-400 m-0">
                   ${{ dashboard.evolucionMensual[dashboard.mejorMesIdx - 1].ingresos.toLocaleString('es-AR') }}
                 </p>
-                <p class="text-gray-500 mt-1">Ingresos del mes</p>
+                <p class="text-gray-400 mt-1">Ingresos del mes</p>
               </div>
             </div>
           </div>
@@ -213,7 +213,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { movimientosService } from '@/services'
 import Calendar from 'primevue/calendar'
 import Button from 'primevue/button'
@@ -221,6 +221,10 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Chart from 'primevue/chart'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
+
+const props = defineProps({
+  refreshKey: { type: Number, default: 0 }
+})
 
 // Estado
 const loading = ref(false)
@@ -236,7 +240,8 @@ const cargarDatos = async () => {
   try {
     loading.value = true
     error.value = null
-    
+    dashboard.value = null
+
     dashboard.value = await movimientosService.getDashboardAnual(anio.value)
   } catch (err) {
     console.error('Error cargando dashboard anual:', err)
@@ -365,6 +370,10 @@ const chartOptionsCategorias = {
 }
 
 onMounted(() => {
+  cargarDatos()
+})
+
+watch(() => props.refreshKey, () => {
   cargarDatos()
 })
 </script>

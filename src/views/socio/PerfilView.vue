@@ -70,7 +70,8 @@
 
       <!-- Info Card -->
       <div class="col-12 lg:col-8">
-        <div class="card">          <h3 class="text-xl font-semibold mb-4" style="color: var(--text-color)">Información Personal</h3>
+        <div class="card">
+          <h3 class="text-xl font-semibold mb-4" style="color: var(--text-color)">Información Personal</h3>
             <div class="grid">
             <div class="col-12 md:col-6 mb-4">
               <label class="block text-gray-400 mb-2">Nombre Completo</label>
@@ -87,7 +88,7 @@
             <div class="col-12 md:col-6 mb-4">
               <label class="block text-gray-400 mb-2">Teléfono</label>
               <div v-if="modoEdicion" class="flex align-items-center gap-1">
-                <span class="px-2 py-2 border-round text-color-secondary border-1 surface-border surface-ground" style="font-size:1rem;line-height:1.5;">0</span>
+                <span class="px-2 py-2 border-round text-color-secondary border-1 surface-border surface-ground" style="font-size:1rem;line-height:1.5;">+549</span>
                 <InputText
                   v-model="telefonoArea"
                   class=""
@@ -95,7 +96,6 @@
                   placeholder="3533"
                   maxlength="4"
                 />
-                <span class="px-2 py-2 border-round text-color-secondary border-1 surface-border surface-ground" style="font-size:1rem;line-height:1.5;">-15-</span>
                 <InputText
                   v-model="telefonoNumero"
                   style="width:110px"
@@ -103,7 +103,7 @@
                   maxlength="8"
                 />
               </div>
-              <div v-else class="font-medium" style="color: var(--text-color)">{{ socio.telefono || 'No registrado' }}</div>
+              <div v-else class="font-medium" style="color: var(--text-color)">{{ formatTelefonoDisplay(socio.telefono) || 'No registrado' }}</div>
             </div>
             <div class="col-12 mb-4" v-if="modoEdicion">
               <label class="block text-gray-400 mb-2">Dirección</label>
@@ -111,26 +111,6 @@
                 v-model="socioEditado.direccion" 
                 class="w-full"
               />
-            </div>
-            <div class="col-12 mb-4" v-if="modoEdicion">
-              <label class="block text-gray-400 mb-2">Notificaciones por WhatsApp</label>
-              <div class="flex align-items-center gap-3">
-                <InputSwitch v-model="socioEditado.recibeNotificacionesWhatsApp" />
-                <span class="text-sm" style="color: var(--text-color)">
-                  {{ socioEditado.recibeNotificacionesWhatsApp ? '✅ Activadas — recibirás avisos de reservas, pagos y más' : '🔕 Desactivadas — no recibirás mensajes automáticos' }}
-                </span>
-              </div>
-            </div>
-            <div class="col-12 md:col-6 mb-4" v-if="!modoEdicion">
-              <label class="block text-gray-400 mb-2">Notificaciones WhatsApp</label>
-              <div class="font-medium">
-                <Tag :severity="socio.recibeNotificacionesWhatsApp ? 'success' : 'secondary'"
-                     :value="socio.recibeNotificacionesWhatsApp ? '✅ Activadas' : '🔕 Desactivadas'" />
-              </div>
-            </div>
-            <div class="col-12 md:col-6 mb-4">
-              <label class="block text-gray-400 mb-2">Cuota Mensual</label>
-              <div class="font-medium" style="color: var(--text-color)">${{ socio.cuotaSocio?.toLocaleString() }}</div>
             </div>
             <div class="col-12 md:col-6 mb-4">
               <label class="block text-gray-400 mb-2">Miembro desde</label>
@@ -142,10 +122,11 @@
 
           <h3 class="text-xl font-semibold mb-4" style="color: var(--text-color)">Mis Inscripciones</h3>
           
-          <div v-if="socio.inscripciones?.length === 0" class="text-center text-gray-400 py-3">
+          <div v-if="inscripcionesActivas.length === 0" class="text-center text-gray-400 py-3">
             No tienes inscripciones activas
-          </div>          <div v-else class="flex flex-wrap gap-3">
-            <div v-for="insc in socio.inscripciones" :key="insc.id" 
+          </div>
+          <div v-else class="flex flex-wrap gap-3">
+            <div v-for="insc in inscripcionesActivas" :key="insc.id" 
                  class="inscription-item flex align-items-center gap-2 p-3 border-round">
               <i class="pi pi-bookmark text-red-400"></i>
               <span class="font-medium" style="color: var(--text-color)">{{ insc.disciplinaNombre }}</span>
@@ -297,45 +278,70 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
 import { sociosService, authService, uploadService } from '@/services'
+import { planesService } from '@/services/planesService'
+import PageHeader from '@/components/mobile/PageHeader.vue'
 import Avatar from 'primevue/avatar'
+import InputSwitch from 'primevue/inputswitch'
 import Tag from 'primevue/tag'
 import Divider from 'primevue/divider'
 import ProgressSpinner from 'primevue/progressspinner'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
-import PageHeader from '@/components/mobile/PageHeader.vue'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Message from 'primevue/message'
 import ImageUpload from '@/components/shared/ImageUpload.vue'
+import { parseTelefonoAR, formatTelefonoStorageAR, formatTelefonoDisplay } from '@/utils/phone'
 
 const toast = useToast()
 const authStore = useAuthStore()
 
 const socio = ref({})
 const socioEditado = ref({})
+const planPrecioMensual = ref(0)
+const recibeNotificacionesWhatsApp = ref(true)
+const savingNotificaciones = ref(false)
+const skipNotifWatch = ref(true)
+
+const inscripcionesActivas = computed(() =>
+  (socio.value.inscripciones || []).filter((i) => i.activa !== false)
+)
+
+const disciplinasActivas = computed(() =>
+  inscripcionesActivas.value
+)
+
+const disciplinasIncluidas = computed(() =>
+  inscripcionesActivas.value.filter(i => i.tipoFacturacion === 'IncluidaEnCuotaSocial')
+)
+
+const disciplinasApartadas = computed(() =>
+  inscripcionesActivas.value.filter(i => i.tipoFacturacion === 'PagoApartado')
+)
+
+const cuotaBase = computed(() => {
+  if (planPrecioMensual.value > 0) return planPrecioMensual.value
+  if (socio.value.cuotaBaseMensual != null) return socio.value.cuotaBaseMensual
+  return socio.value.cuotaSocio || 0
+})
+
+const cuotaAPagarClub = computed(() => {
+  if (socio.value.cuotaTotalMensual != null) return socio.value.cuotaTotalMensual
+  const disciplinasInc = disciplinasIncluidas.value.reduce((sum, i) => sum + (i.cuotaMensual || 0), 0)
+  return cuotaBase.value + disciplinasInc
+})
 
 // Split phone input
 const telefonoArea = ref('')
 const telefonoNumero = ref('')
 
-function parseTelefono(tel) {
-  if (!tel) return { area: '', numero: '' }
-  let num = tel.replace(/\D/g, '')
-  if (num.startsWith('549')) num = num.slice(3)
-  else if (num.startsWith('54')) num = num.slice(2)
-  if (num.startsWith('0')) num = num.slice(1)
-  const m = num.match(/^(\d{2,4})15(\d{6,8})$/) || num.match(/^(\d{2,4})(\d{6,8})$/)
-  if (m) return { area: m[1], numero: m[2] }
-  return { area: '', numero: num }
-}
-
 watch([telefonoArea, telefonoNumero], () => {
-  socioEditado.value.telefono = `0${telefonoArea.value}-15-${telefonoNumero.value}`
+  const formatted = formatTelefonoStorageAR(telefonoArea.value, telefonoNumero.value)
+  if (formatted) socioEditado.value.telefono = formatted
 })
 const loading = ref(true)
 const showPhotoDialog = ref(false)
@@ -415,10 +421,52 @@ async function loadProfile() {
   try {
     socio.value = await sociosService.getById(authStore.user.id)
     newPhoto.value = socio.value.foto || ''
+    skipNotifWatch.value = true
+    recibeNotificacionesWhatsApp.value = socio.value.recibeNotificacionesWhatsApp ?? true
+    await nextTick()
+    skipNotifWatch.value = false
+
+    planPrecioMensual.value = 0
+    if (socio.value.planMembresiaId) {
+      try {
+        const plan = await planesService.getById(socio.value.planMembresiaId)
+        planPrecioMensual.value = plan.precioMensual || 0
+      } catch {
+        planPrecioMensual.value = 0
+      }
+    }
   } catch (error) {
     console.error('Error loading profile:', error)
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar el perfil', life: 3000 })
   } finally {
     loading.value = false
+  }
+}
+
+async function guardarNotificacionesWhatsApp(valor) {
+  const anterior = socio.value.recibeNotificacionesWhatsApp ?? true
+  savingNotificaciones.value = true
+  try {
+    await sociosService.updatePerfil({ recibeNotificacionesWhatsApp: valor })
+    socio.value.recibeNotificacionesWhatsApp = valor
+    toast.add({
+      severity: 'success',
+      summary: valor ? 'Notificaciones activadas' : 'Notificaciones desactivadas',
+      detail: valor
+        ? 'Volverás a recibir avisos por WhatsApp.'
+        : 'No recibirás más mensajes automáticos del club.',
+      life: 3500
+    })
+  } catch (error) {
+    recibeNotificacionesWhatsApp.value = anterior
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.response?.data?.message || 'No se pudo actualizar la preferencia',
+      life: 3000
+    })
+  } finally {
+    savingNotificaciones.value = false
   }
 }
 
@@ -445,14 +493,13 @@ async function savePhoto() {
 // FASE 7.2: Funciones de edición de perfil
 function habilitarEdicion() {
   modoEdicion.value = true
-  const parsed = parseTelefono(socio.value.telefono)
+  const parsed = parseTelefonoAR(socio.value.telefono)
   telefonoArea.value = parsed.area
   telefonoNumero.value = parsed.numero
   socioEditado.value = {
     telefono: socio.value.telefono || '',
     direccion: socio.value.direccion || '',
-    foto: socio.value.foto || '',
-    recibeNotificacionesWhatsApp: socio.value.recibeNotificacionesWhatsApp ?? true
+    foto: socio.value.foto || ''
   }
 }
 
@@ -469,7 +516,6 @@ async function guardarCambios() {
     // Actualizar los datos locales
     socio.value.telefono = socioEditado.value.telefono
     socio.value.direccion = socioEditado.value.direccion
-    socio.value.recibeNotificacionesWhatsApp = socioEditado.value.recibeNotificacionesWhatsApp
     if (socioEditado.value.foto) {
       socio.value.foto = socioEditado.value.foto
     }
@@ -494,12 +540,33 @@ async function guardarCambios() {
   }
 }
 
+watch(recibeNotificacionesWhatsApp, (valor) => {
+  if (skipNotifWatch.value || savingNotificaciones.value) return
+  guardarNotificacionesWhatsApp(valor)
+})
+
 onMounted(() => {
   loadProfile()
 })
 </script>
 
 <style scoped>
+.cuota-resumen {
+  background: var(--surface-hover);
+  border: 1px solid var(--surface-border);
+}
+
+.cuota-resumen__total {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.notif-wa {
+  background: var(--surface-ground);
+  border: 1px solid var(--surface-border);
+}
+
 .profile-photo-container {
   position: relative;
   width: 6rem;

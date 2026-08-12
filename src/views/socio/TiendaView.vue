@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageHeader title="Tienda" subtitle="Productos oficiales del club">
+    <PageHeader title="Tienda UDL">
       <template #actions>
         <Button
           icon="pi pi-shopping-cart"
@@ -57,7 +57,7 @@
           <div class="product-image-wrapper">
             <img 
               v-if="producto.imagen" 
-              :src="assetUrl(producto.imagen)" 
+              :src="producto.imagen" 
               :alt="producto.nombre"
               class="product-image"
             />
@@ -126,7 +126,7 @@
             <div class="detail-image-container">
               <img 
                 v-if="selectedProduct.imagen" 
-                :src="assetUrl(selectedProduct.imagen)" 
+                :src="selectedProduct.imagen" 
                 :alt="selectedProduct.nombre"
                 class="detail-image"
               />
@@ -144,13 +144,30 @@
             <div v-if="selectedProduct.tallas" class="detail-sizes mb-3">
               <label class="detail-label">Seleccionar talla: *</label>
               <div class="sizes-selection mt-2">
-                <Button 
-                  v-for="talla in selectedProduct.tallas.split(',')" 
+                <div
+                  v-for="talla in selectedProduct.tallas.split(',')"
                   :key="talla"
-                  :label="talla.trim()"
-                  :class="['size-btn', { 'selected': selectedTalla === talla.trim() }]"
-                  @click="selectedTalla = talla.trim()"
-                />
+                  class="talla-btn-wrapper"
+                >
+                  <Button
+                    :label="talla.trim()"
+                    :icon="selectedTalla === talla.trim() ? 'pi pi-check' : undefined"
+                    :class="['size-btn', { 'selected': selectedTalla === talla.trim(), 'agotado': stocksPorTalla.length > 0 && (stocksPorTalla.find(s => s.talla === talla.trim())?.cantidad ?? 0) === 0 }]"
+                    :disabled="stocksPorTalla.length > 0 && (stocksPorTalla.find(s => s.talla === talla.trim())?.cantidad ?? 0) === 0"
+                    @click="selectedTalla = talla.trim(); selectedQuantity = 1"
+                  />
+                  <span
+                    v-if="stocksPorTalla.length > 0"
+                    class="talla-stock-badge"
+                    :class="{
+                      'talla-stock-ok': (stocksPorTalla.find(s => s.talla === talla.trim())?.cantidad ?? 0) > 5,
+                      'talla-stock-warn': (stocksPorTalla.find(s => s.talla === talla.trim())?.cantidad ?? 0) > 0 && (stocksPorTalla.find(s => s.talla === talla.trim())?.cantidad ?? 0) <= 5,
+                      'talla-stock-empty': (stocksPorTalla.find(s => s.talla === talla.trim())?.cantidad ?? 0) === 0
+                    }"
+                  >
+                    {{ stocksPorTalla.find(s => s.talla === talla.trim())?.cantidad ?? 0 }}
+                  </span>
+                </div>
               </div>
               <small v-if="tallaError" class="p-error mt-2 block">Debes seleccionar una talla</small>
             </div>
@@ -159,17 +176,17 @@
             <div class="detail-quantity mb-3">
               <label class="detail-label">Cantidad:</label>
               <div class="quantity-selector mt-2">
-                <Button 
-                  icon="pi pi-minus" 
+                <Button
+                  icon="pi pi-minus"
                   class="p-button-outlined p-button-sm"
                   :disabled="selectedQuantity <= 1"
                   @click="selectedQuantity--"
                 />
                 <span class="quantity-value">{{ selectedQuantity }}</span>
-                <Button 
-                  icon="pi pi-plus" 
+                <Button
+                  icon="pi pi-plus"
                   class="p-button-outlined p-button-sm"
-                  :disabled="selectedQuantity >= selectedProduct.stock"
+                  :disabled="selectedQuantity >= (selectedTalla && stocksPorTalla.length > 0 ? (stocksPorTalla.find(s => s.talla === selectedTalla)?.cantidad ?? selectedProduct.stock) : selectedProduct.stock)"
                   @click="selectedQuantity++"
                 />
               </div>
@@ -177,11 +194,20 @@
 
             <div class="detail-stock mb-3">
               <label class="detail-label">Disponibilidad:</label>
-              <Tag 
-                :severity="selectedProduct.stock > 10 ? 'success' : selectedProduct.stock > 0 ? 'warning' : 'danger'"
-                :value="selectedProduct.stock > 0 ? `${selectedProduct.stock} unidades disponibles` : 'Producto agotado'"
-                class="mt-2"
-              />
+              <template v-if="selectedTalla && stocksPorTalla.length > 0">
+                <Tag
+                  :severity="(stocksPorTalla.find(s => s.talla === selectedTalla)?.cantidad ?? 0) > 5 ? 'success' : (stocksPorTalla.find(s => s.talla === selectedTalla)?.cantidad ?? 0) > 0 ? 'warning' : 'danger'"
+                  :value="(stocksPorTalla.find(s => s.talla === selectedTalla)?.cantidad ?? 0) > 0 ? `${stocksPorTalla.find(s => s.talla === selectedTalla)?.cantidad} unidades en talle ${selectedTalla}` : `Sin stock en talle ${selectedTalla}`"
+                  class="mt-2"
+                />
+              </template>
+              <template v-else>
+                <Tag
+                  :severity="selectedProduct.stock > 10 ? 'success' : selectedProduct.stock > 0 ? 'warning' : 'danger'"
+                  :value="selectedProduct.stock > 0 ? `${selectedProduct.stock} unidades disponibles` : 'Producto agotado'"
+                  class="mt-2"
+                />
+              </template>
             </div>
 
             <div class="detail-price">
@@ -220,7 +246,7 @@
         <div class="cart-items">
           <div v-for="(item, index) in cart" :key="index" class="cart-item">
             <div class="cart-item-image">
-              <img v-if="item.imagen" :src="assetUrl(item.imagen)" :alt="item.nombre" />
+              <img v-if="item.imagen" :src="item.imagen" :alt="item.nombre" />
               <div v-else class="cart-item-placeholder">
                 <i class="pi pi-image"></i>
               </div>
@@ -314,6 +340,21 @@
               <i v-if="metodoPago === 'efectivo'" class="pi pi-check-circle text-green-400"></i>
             </div>
 
+            <div
+              class="payment-option"
+              :class="{ 'selected': metodoPago === 'transferencia' }"
+              @click="metodoPago = 'transferencia'"
+            >
+              <div class="payment-icon" style="background: #1a56db22; color: #60a5fa">
+                <i class="pi pi-dollar"></i>
+              </div>
+              <div class="payment-info">
+                <span class="payment-title">Transferencia Bancaria</span>
+                <span class="payment-desc">Transferí y enviá el comprobante por WhatsApp</span>
+              </div>
+              <i v-if="metodoPago === 'transferencia'" class="pi pi-check-circle text-green-400"></i>
+            </div>
+
             <div 
               class="payment-option" 
               :class="{ 'selected': metodoPago === 'mercadopago' }"
@@ -330,10 +371,34 @@
             </div>
           </div>
           <small v-if="pagoError" class="p-error mt-2 block">Debes seleccionar un método de pago</small>
+
+          <!-- Datos de transferencia -->
+          <div v-if="metodoPago === 'transferencia'" class="transferencia-info mt-3">
+            <div class="transferencia-dato">
+              <span class="transferencia-label">CBU</span>
+              <span class="transferencia-valor">0110332640033213198558</span>
+            </div>
+            <div class="transferencia-dato">
+              <span class="transferencia-label">ALIAS</span>
+              <span class="transferencia-valor">UDL.NACION</span>
+            </div>
+            <div class="transferencia-dato">
+              <span class="transferencia-label">CUIT</span>
+              <span class="transferencia-valor">30-70706271-8</span>
+            </div>
+            <div class="transferencia-dato">
+              <span class="transferencia-label">Titular</span>
+              <span class="transferencia-valor">Unión Deportiva Laspiur</span>
+            </div>
+            <div class="flex align-items-start gap-2 mt-2" style="color: #f59e0b">
+              <i class="pi pi-whatsapp mt-1" style="font-size:1rem"></i>
+              <small>Una vez transferido, enviá el comprobante al <strong>+54 9 3533 68-0908</strong> indicando tu nombre y número de pedido.</small>
+            </div>
+          </div>
         </div>
 
-        <!-- Dirección de envío opcional -->
-        <div class="delivery-section mb-4">
+        <!-- Dirección de envío opcional (solo si algún item lo permite) -->
+        <div class="delivery-section mb-4" v-if="cart.some(i => i.entregaDomicilio)">
           <h4 class="mb-3" style="color: var(--text-color)"><i class="pi pi-map-marker mr-2"></i>Entrega</h4>
           <div class="flex align-items-center gap-2 mb-3">
             <Checkbox v-model="envioADomicilio" binary inputId="envio" />
@@ -345,7 +410,7 @@
             placeholder="Ingresa tu dirección completa"
             class="w-full"
           />
-          <small v-if="!envioADomicilio" class="text-gray-400">Retiro en el club: Av. Principal 1234, Laspiur</small>
+          <small v-if="!envioADomicilio" class="text-gray-400">Retiro en secretaria del club: Mendoza 235, S. M. Laspiur</small>
         </div>
 
         <!-- Observaciones -->
@@ -379,15 +444,11 @@ import { useAuthStore } from '@/stores/auth'
 import { productosService, pedidosService } from '@/services'
 import { getPreference, setPreference } from '@/platform/storage'
 import { openMercadoPagoCheckout } from '@/platform/mercadopago'
-import { useMercadoPagoReturn } from '@/composables/useMercadoPagoReturn'
-import { useAssetUrl } from '@/composables/useAssetUrl'
-
-const assetUrl = useAssetUrl()
+import PageHeader from '@/components/mobile/PageHeader.vue'
 import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
 import Checkbox from 'primevue/checkbox'
 import Button from 'primevue/button'
-import PageHeader from '@/components/mobile/PageHeader.vue'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import Sidebar from 'primevue/sidebar'
@@ -405,6 +466,8 @@ const selectedCategory = ref(null)
 const soloDestacados = ref(false)
 const detailDialog = ref(false)
 const selectedProduct = ref(null)
+const stocksPorTalla = ref([])
+const loadingStocks = ref(false)
 const selectedTalla = ref('')
 const selectedQuantity = ref(1)
 const tallaError = ref(false)
@@ -453,17 +516,6 @@ async function saveCart() {
   await setPreference(CART_KEY, cart.value)
 }
 
-useMercadoPagoReturn({
-  messages: {
-    success: {
-      severity: 'success',
-      summary: '¡Pago exitoso!',
-      detail: 'Tu pedido fue pagado correctamente con MercadoPago.',
-      life: 6000
-    }
-  }
-})
-
 async function loadProductos() {
   loading.value = true
   try {
@@ -486,7 +538,17 @@ function openProductDetail(producto) {
   selectedTalla.value = ''
   selectedQuantity.value = 1
   tallaError.value = false
+  stocksPorTalla.value = []
   detailDialog.value = true
+
+  // Cargar stocks por talla si el producto tiene tallas
+  if (producto.tallas) {
+    loadingStocks.value = true
+    productosService.getStocks(producto.id)
+      .then(stocks => { stocksPorTalla.value = stocks })
+      .catch(() => {})
+      .finally(() => { loadingStocks.value = false })
+  }
 }
 
 function addToCart() {
@@ -511,7 +573,8 @@ function addToCart() {
       precio: selectedProduct.value.precio,
       imagen: selectedProduct.value.imagen,
       talla: selectedTalla.value || null,
-      cantidad: selectedQuantity.value
+      cantidad: selectedQuantity.value,
+      entregaDomicilio: selectedProduct.value.entregaDomicilio ?? false
     })
   }
 
@@ -591,7 +654,7 @@ async function confirmCheckout() {
       
       // Limpiar carrito antes de redirigir
       cart.value = []
-      saveCart()
+      await saveCart()
       checkoutDialog.value = false
       showCart.value = false
       toast.add({ 
@@ -606,15 +669,16 @@ async function confirmCheckout() {
       )
     } else {
       // Pago en efectivo
+      const totalConfirmado = cartTotal.value
       cart.value = []
-      saveCart()
+      await saveCart()
       checkoutDialog.value = false
       showCart.value = false
       
       toast.add({ 
         severity: 'success', 
         summary: '¡Pedido confirmado!', 
-        detail: 'Tu pedido fue registrado. Pagarás $' + cartTotal.value.toLocaleString() + ' al retirarlo en el club.', 
+        detail: 'Tu pedido fue registrado. Pagarás $' + totalConfirmado.toLocaleString() + ' al retirarlo en el club.', 
         life: 5000 
       })
     }
@@ -633,6 +697,38 @@ async function confirmCheckout() {
 onMounted(async () => {
   await loadProductos()
   await loadCart()
+
+  // Manejar retorno desde MercadoPago
+  const params = new URLSearchParams(window.location.search)
+  const status = params.get('status')
+  const pedidoId = params.get('pedidoId')
+
+  if (status === 'success' && pedidoId) {
+    toast.add({
+      severity: 'success',
+      summary: '¡Pago exitoso!',
+      detail: `Tu pedido fue pagado correctamente con MercadoPago.`,
+      life: 6000
+    })
+    // Limpiar URL sin recargar
+    window.history.replaceState({}, '', window.location.pathname)
+  } else if (status === 'failure') {
+    toast.add({
+      severity: 'error',
+      summary: 'Pago rechazado',
+      detail: 'El pago no pudo procesarse. Podés intentarlo nuevamente.',
+      life: 6000
+    })
+    window.history.replaceState({}, '', window.location.pathname)
+  } else if (status === 'pending') {
+    toast.add({
+      severity: 'warn',
+      summary: 'Pago pendiente',
+      detail: 'Tu pago está siendo procesado. Te avisaremos cuando se confirme.',
+      life: 6000
+    })
+    window.history.replaceState({}, '', window.location.pathname)
+  }
 })
 </script>
 
@@ -896,19 +992,49 @@ onMounted(async () => {
 .size-btn {
   min-width: 50px;
   background: var(--surface-hover) !important;
-  border-color: var(--surface-border) !important;
+  border: 2px solid var(--surface-border) !important;
   color: var(--text-color) !important;
+  font-weight: 600;
+}
+
+.talla-btn-wrapper {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.talla-stock-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 10px;
+  line-height: 1.4;
+}
+
+.talla-stock-ok   { background: rgba(16,185,129,0.15); color: #10b981; }
+.talla-stock-warn { background: rgba(251,191,36,0.15);  color: #f59e0b; }
+.talla-stock-empty { background: rgba(239,68,68,0.15);  color: #ef4444; }
+
+.size-btn.agotado {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+  text-decoration: line-through;
 }
 
 .size-btn:hover {
   border-color: #dc2626 !important;
-  background: var(--surface-card) !important;
+  background: rgba(220, 38, 38, 0.08) !important;
 }
 
 .size-btn.selected {
   background: #dc2626 !important;
   border-color: #dc2626 !important;
   color: white !important;
+  font-weight: 700;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.3) !important;
+  transform: scale(1.08);
 }
 
 /* Quantity Selector */
@@ -1063,6 +1189,35 @@ onMounted(async () => {
 .payment-icon.mp-icon {
   background: #009ee3;
   color: white;
+}
+
+.transferencia-info {
+  background: var(--surface-ground);
+  border: 1px solid #1d4ed855;
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.transferencia-dato {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.transferencia-label {
+  color: var(--text-color-secondary);
+  font-size: 0.85rem;
+  min-width: 60px;
+}
+
+.transferencia-valor {
+  font-family: monospace;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-color);
 }
 
 .payment-info {

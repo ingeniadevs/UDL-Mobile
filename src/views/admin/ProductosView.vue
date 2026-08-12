@@ -1,8 +1,50 @@
 <template>
   <div>
-    <div class="flex align-items-center justify-content-between mb-4">
-      <h1 class="text-3xl font-bold page-title m-0">Productos</h1>
-      <Button label="Nuevo Producto" icon="pi pi-plus" @click="openNew" />
+    <PageHeader title="Productos">
+      <template #actions>
+        <Button label="Reporte de Stock" icon="pi pi-chart-bar" outlined size="small" @click="abrirReporteStock" />
+        <Button label="Nuevo Producto" icon="pi pi-plus" size="small" @click="openNew" />
+      </template>
+    </PageHeader>
+
+    <!-- Stat cards -->
+    <div class="grid mb-4">
+      <div class="col-6 md:col-3">
+        <div class="stat-card stat-total">
+          <div class="stat-icon"><i class="pi pi-box"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ productos.length }}</span>
+            <span class="stat-label">Total Productos</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 md:col-3">
+        <div class="stat-card stat-success">
+          <div class="stat-icon"><i class="pi pi-check-circle"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ productos.filter(p => p.activo).length }}</span>
+            <span class="stat-label">Activos</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 md:col-3">
+        <div class="stat-card stat-danger">
+          <div class="stat-icon"><i class="pi pi-exclamation-circle"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ productos.filter(p => p.stock === 0 && p.activo).length }}</span>
+            <span class="stat-label">Sin Stock</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 md:col-3">
+        <div class="stat-card stat-warning">
+          <div class="stat-icon"><i class="pi pi-star"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ productos.filter(p => p.destacado).length }}</span>
+            <span class="stat-label">Destacados</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Filtros y Búsqueda -->
@@ -46,92 +88,89 @@
       <Button label="Crear primer producto" icon="pi pi-plus" @click="openNew" />
     </div>
 
-    <div v-else class="grid">
-      <div v-for="prod in filteredProducts" :key="prod.id" class="col-12 sm:col-6 lg:col-4 xl:col-3">
-        <div class="product-card h-full flex flex-column" :class="{ 'inactive': !prod.activo }">
-          <!-- Product Image -->
-          <div class="product-image-container relative">
-            <img 
-              v-if="prod.imagen" 
-              :src="assetUrl(prod.imagen)" 
+    <div v-else class="mobile-card-list">
+      <MobileRecordCard
+        v-for="prod in paginatedProductos"
+        :key="prod.id"
+        :title="prod.nombre"
+        :subtitle="prod.descripcion || 'Sin descripción'"
+        :class="{ 'product-card-inactive': !prod.activo }"
+      >
+        <template #leading>
+          <div class="product-thumb">
+            <img
+              v-if="prod.imagenes?.length || prod.imagen"
+              :src="prod.imagenes?.[0] ?? prod.imagen"
               :alt="prod.nombre"
-              class="product-image"
             />
-            <div v-else class="product-placeholder">
+            <div v-else class="product-thumb-placeholder">
               <i class="pi pi-image"></i>
             </div>
-            
-            <!-- Badges -->
-            <div class="product-badges">
-              <Tag v-if="prod.destacado" severity="warning" value="★ Destacado" />
-              <Tag v-if="!prod.activo" severity="danger" value="Inactivo" />
-            </div>
-
-            <!-- Quick Actions Overlay -->
-            <div class="product-actions-overlay">
-              <Button 
-                icon="pi pi-pencil" 
-                class="p-button-rounded p-button-success"
-                @click="editProducto(prod)"
-                v-tooltip.top="'Editar'"
-              />
-              <Button 
-                icon="pi pi-trash" 
-                class="p-button-rounded p-button-danger"
-                @click="confirmDelete(prod)"
-                v-tooltip.top="'Eliminar'"
-              />
-            </div>
+            <span v-if="(prod.imagenes?.length || 0) > 1" class="product-thumb-count">
+              {{ prod.imagenes.length }}
+            </span>
           </div>
-
-          <!-- Product Info -->
-          <div class="product-body flex-1 flex flex-column">
-            <div class="flex align-items-center justify-content-between mb-2">
-              <Tag severity="secondary" :value="prod.categoria" />
-              <Tag 
-                :severity="prod.stock > 10 ? 'success' : prod.stock > 0 ? 'warning' : 'danger'"
-                :value="'Stock: ' + prod.stock"
-              />
-            </div>
-            
-            <h4 class="product-title">{{ prod.nombre }}</h4>
-            <p class="product-description flex-1">{{ prod.descripcion || 'Sin descripción' }}</p>
-            
-            <div v-if="prod.tallas" class="product-sizes mb-2">
-              <i class="pi pi-tag mr-1"></i>
-              <span>{{ prod.tallas }}</span>
-            </div>
-
-            <!-- Price -->
-            <div class="product-price">
-              ${{ prod.precio?.toLocaleString() }}
-            </div>
-          </div>          <!-- Card Footer Actions -->
-          <div class="product-footer">
-            <Button 
-              label="Stock" 
-              icon="pi pi-chart-bar" 
-              class="p-button-sm p-button-outlined p-button-info"
-              @click="openStockDialog(prod)"
-              v-tooltip.top="'Gestionar stock por talle'"
-            />
-            <Button 
-              label="Editar" 
-              icon="pi pi-pencil" 
-              class="p-button-sm p-button-outlined flex-1"
-              @click="editProducto(prod)"
-            />
-            <Button 
-              :icon="prod.activo ? 'pi pi-eye-slash' : 'pi pi-eye'" 
-              class="p-button-sm p-button-outlined"
-              :class="prod.activo ? 'p-button-warning' : 'p-button-success'"
-              @click="toggleActivo(prod)"
-              v-tooltip.top="prod.activo ? 'Desactivar' : 'Activar'"
+        </template>
+        <template #tags>
+          <Tag v-if="prod.destacado" severity="warning" value="★ Destacado" />
+          <Tag v-if="!prod.activo" severity="danger" value="Inactivo" />
+        </template>
+        <template #body>
+          <div class="record-card__row">
+            <span class="record-card__label">Categoría</span>
+            <Tag severity="secondary" :value="prod.categoria" />
+          </div>
+          <div class="record-card__row">
+            <span class="record-card__label">Stock</span>
+            <Tag
+              :severity="prod.stock > 10 ? 'success' : prod.stock > 0 ? 'warning' : 'danger'"
+              :value="String(prod.stock)"
             />
           </div>
-        </div>
-      </div>
+          <div v-if="prod.tallas" class="record-card__row">
+            <span class="record-card__label">Tallas</span>
+            <span class="record-card__value">{{ prod.tallas }}</span>
+          </div>
+          <div v-if="prod.entregaDomicilio" class="record-card__row">
+            <span class="record-card__label">Entrega</span>
+            <span class="record-card__value">A domicilio</span>
+          </div>
+          <div class="record-card__row">
+            <span class="record-card__label">Precio</span>
+            <span class="record-card__value product-price-value">${{ prod.precio?.toLocaleString() }}</span>
+          </div>
+        </template>
+        <template #actions>
+          <Button
+            label="Stock"
+            icon="pi pi-chart-bar"
+            class="p-button-sm p-button-outlined p-button-info"
+            @click="openStockDialog(prod)"
+            v-tooltip.top="'Gestionar stock por talle'"
+          />
+          <Button
+            label="Editar"
+            icon="pi pi-pencil"
+            class="p-button-sm p-button-outlined"
+            @click="editProducto(prod)"
+          />
+          <Button
+            :icon="prod.activo ? 'pi pi-eye-slash' : 'pi pi-eye'"
+            class="p-button-sm p-button-outlined"
+            :class="prod.activo ? 'p-button-warning' : 'p-button-success'"
+            @click="toggleActivo(prod)"
+            v-tooltip.top="prod.activo ? 'Desactivar' : 'Activar'"
+          />
+          <Button
+            icon="pi pi-trash"
+            class="p-button-sm p-button-outlined p-button-danger"
+            @click="confirmDelete(prod)"
+            v-tooltip.top="'Eliminar'"
+          />
+        </template>
+      </MobileRecordCard>
     </div>
+    <MobilePaginator v-if="filteredProducts.length" v-model:page="productosPage" :rows="10" :total="filteredProducts.length" />
 
     <!-- Create/Edit Dialog -->
     <Dialog 
@@ -183,8 +222,31 @@
         </div>
 
         <div class="field">
-          <label class="font-medium text-gray-300 mb-2 block">Imagen del Producto</label>
-          <ImageUpload v-model="producto.imagen" placeholder="Subir imagen del producto" />
+          <label class="font-medium text-gray-300 mb-2 block">Imágenes del Producto <span class="text-gray-500 text-sm">(máx. 5)</span></label>
+          <div class="flex flex-column gap-3">
+            <div v-for="(img, idx) in producto.imagenes" :key="idx" class="flex align-items-start gap-2">
+              <div class="flex-1">
+                <ImageUpload
+                  :modelValue="img"
+                  @update:modelValue="v => producto.imagenes[idx] = v"
+                  :placeholder="idx === 0 ? 'Imagen principal' : `Imagen ${idx + 1}`"
+                />
+              </div>
+              <Button
+                icon="pi pi-times"
+                text rounded severity="danger" size="small"
+                class="mt-2"
+                v-tooltip.top="'Quitar'"
+                @click="producto.imagenes.splice(idx, 1)"
+              />
+            </div>
+            <Button
+              v-if="producto.imagenes.length < 5"
+              label="Agregar imagen" icon="pi pi-plus"
+              text size="small" class="align-self-start"
+              @click="producto.imagenes.push('')"
+            />
+          </div>
         </div>
 
         <div class="flex gap-4">
@@ -195,6 +257,10 @@
           <div class="field-checkbox" v-if="isEditing">
             <Checkbox id="activo" v-model="producto.activo" binary />
             <label for="activo" class="ml-2 text-gray-300">Activo</label>
+          </div>
+          <div class="field-checkbox">
+            <Checkbox id="entregaDomicilio" v-model="producto.entregaDomicilio" binary />
+            <label for="entregaDomicilio" class="ml-2 text-gray-300">Permite entrega a domicilio</label>
           </div>
         </div>
       </div>      <template #footer>
@@ -303,6 +369,46 @@
         <Button label="Guardar Cambios" icon="pi pi-check" @click="saveStocks" :loading="savingStocks" />
       </template>
     </Dialog>
+
+    <!-- Dialog Reporte de Stock -->
+    <Dialog
+      v-model:visible="reporteStockVisible"
+      header="Reporte de Stock por Talle"
+      :modal="true"
+      :style="{ width: '90vw', maxWidth: '900px' }"
+      :contentStyle="{ overflowX: 'auto' }"
+    >
+      <div class="flex justify-content-end mb-3">
+        <Button label="Exportar Excel" icon="pi pi-file-excel" outlined @click="exportarReporteExcel" />
+      </div>
+
+      <div v-if="loadingReporte" class="flex justify-content-center py-4">
+        <ProgressSpinner />
+      </div>
+      <div v-else class="mobile-card-list">
+        <MobileRecordCard
+          v-for="item in reporteStockData"
+          :key="item.id || item.nombre"
+          :title="item.nombre"
+          :subtitle="item.categoria"
+        >
+          <template #tags>
+            <Tag
+              :severity="item.stockTotal > 10 ? 'success' : item.stockTotal > 0 ? 'warning' : 'danger'"
+              :value="`Stock: ${item.stockTotal}`"
+            />
+          </template>
+          <template #body>
+            <div v-for="talle in tallesReporte" :key="talle" class="record-card__row">
+              <span class="record-card__label">{{ talle }}</span>
+              <span class="record-card__value" :class="(item.talles[talle] ?? 0) === 0 ? 'text-gray-400' : ''">
+                {{ item.talles[talle] ?? 0 }}
+              </span>
+            </div>
+          </template>
+        </MobileRecordCard>
+      </div>
+    </Dialog>
   </div>
 </template>
 
@@ -311,9 +417,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { productosService } from '@/services'
-import { useAssetUrl } from '@/composables/useAssetUrl'
-
-const assetUrl = useAssetUrl()
+import { useMobilePagination } from '@/composables/useMobilePagination'
+import PageHeader from '@/components/mobile/PageHeader.vue'
+import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
+import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -344,6 +451,16 @@ const stocksPorTalla = ref([])
 const nuevaTalla = ref('')
 const savingStocks = ref(false)
 
+// Reporte de stock
+const reporteStockVisible = ref(false)
+const loadingReporte = ref(false)
+const reporteStockData = ref([])
+const tallesReporte = computed(() => {
+  const set = new Set()
+  reporteStockData.value.forEach(p => Object.keys(p.talles).forEach(t => set.add(t)))
+  return Array.from(set).sort()
+})
+
 const producto = ref({})
 
 // Filtros
@@ -368,6 +485,12 @@ const filteredProducts = computed(() => {
   })
 })
 
+const { page: productosPage, paginated: paginatedProductos } = useMobilePagination(
+  filteredProducts,
+  10,
+  [searchTerm, selectedCategory, selectedStatus, soloDestacados]
+)
+
 async function loadProductos() {
   loading.value = true
   try {
@@ -380,14 +503,17 @@ async function loadProductos() {
 }
 
 function openNew() {
-  producto.value = { precio: 0, stock: 0, destacado: false, activo: true }
+  producto.value = { precio: 0, stock: 0, destacado: false, activo: true, entregaDomicilio: false, imagenes: [] }
   submitted.value = false
   isEditing.value = false
   productoDialog.value = true
 }
 
 function editProducto(data) {
-  producto.value = { ...data }
+  producto.value = { 
+    ...data,
+    imagenes: data.imagenes?.length ? [...data.imagenes] : (data.imagen ? [data.imagen] : [])
+  }
   isEditing.value = true
   submitted.value = false
   productoDialog.value = true
@@ -432,10 +558,11 @@ async function saveProducto() {
         precio: producto.value.precio || 0,
         stock: producto.value.stock || 0,
         categoria: producto.value.categoria,
-        imagen: producto.value.imagen,
+        imagenes: producto.value.imagenes?.filter(u => u) ?? [],
         tallas: producto.value.tallas,
         activo: producto.value.activo,
-        destacado: producto.value.destacado
+        destacado: producto.value.destacado,
+        entregaDomicilio: producto.value.entregaDomicilio ?? false
       })
       toast.add({ severity: 'success', summary: 'Éxito', detail: 'Producto actualizado', life: 3000 })
     } else {
@@ -445,9 +572,10 @@ async function saveProducto() {
         precio: producto.value.precio || 0,
         stock: producto.value.stock || 0,
         categoria: producto.value.categoria,
-        imagen: producto.value.imagen,
+        imagenes: producto.value.imagenes?.filter(u => u) ?? [],
         tallas: producto.value.tallas,
-        destacado: producto.value.destacado
+        destacado: producto.value.destacado,
+        entregaDomicilio: producto.value.entregaDomicilio ?? false
       })
       toast.add({ severity: 'success', summary: 'Éxito', detail: 'Producto creado', life: 3000 })
     }
@@ -492,6 +620,54 @@ async function openStockDialog(producto) {
   selectedProducto.value = producto
   stockDialog.value = true
   await loadStocks(producto.id)
+}
+
+// Reporte de stock
+async function abrirReporteStock() {
+  reporteStockVisible.value = true
+  loadingReporte.value = true
+  try {
+    const lista = await productosService.getAll()
+    const rows = await Promise.all(
+      lista.map(async (prod) => {
+        let talles = {}
+        try {
+          const stocks = await productosService.getStocks(prod.id)
+          stocks.forEach(s => { talles[s.talla] = s.cantidad })
+        } catch { /* sin stocks detallados */ }
+        return {
+          nombre: prod.nombre,
+          categoria: prod.categoria || '—',
+          stockTotal: prod.stock ?? 0,
+          talles
+        }
+      })
+    )
+    reporteStockData.value = rows
+  } catch (error) {
+    console.error('Error cargando reporte de stock:', error)
+  } finally {
+    loadingReporte.value = false
+  }
+}
+
+async function exportarReporteExcel() {
+  const { utils, writeFile } = await import('xlsx')
+
+  const talles = Array.from(
+    new Set(reporteStockData.value.flatMap(p => Object.keys(p.talles)))
+  ).sort()
+
+  const datos = reporteStockData.value.map(p => {
+    const row = { Producto: p.nombre, Categoría: p.categoria, 'Stock Total': p.stockTotal }
+    talles.forEach(t => { row[`Talle ${t}`] = p.talles[t] ?? 0 })
+    return row
+  })
+
+  const ws = utils.json_to_sheet(datos)
+  const wb = utils.book_new()
+  utils.book_append_sheet(wb, ws, 'Stock')
+  writeFile(wb, `reporte-stock-${new Date().toISOString().slice(0,10)}.xlsx`)
 }
 
 async function loadStocks(productoId) {
@@ -619,132 +795,82 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.product-card {
-  background: var(--surface-card);
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
   border-radius: 12px;
-  overflow: hidden;
+  background: var(--surface-card);
   border: 1px solid var(--surface-border);
-  transition: all 0.3s ease;
 }
-
-.product-card:hover {
-  border-color: #dc2626;
-  transform: translateY(-4px);
-  box-shadow: 0 10px 30px rgba(220, 38, 38, 0.15);
+.stat-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
+.stat-icon i { font-size: 1.5rem; color: white; }
+.stat-total .stat-icon   { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+.stat-success .stat-icon { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.stat-danger .stat-icon  { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.stat-warning .stat-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.stat-content { display: flex; flex-direction: column; }
+.stat-value { font-size: 1.75rem; font-weight: 700; color: var(--text-color); }
+.stat-label { font-size: 0.85rem; color: var(--text-color-secondary); }
 
-.product-card.inactive {
-  opacity: 0.7;
-}
-
-.product-card.inactive:hover {
-  opacity: 1;
-}
-
-.product-image-container {
+.product-thumb {
   position: relative;
-  height: 220px;
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
   overflow: hidden;
   background: var(--surface-ground);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-shrink: 0;
 }
 
-.product-image {
+.product-thumb img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  object-position: center;
-  transition: transform 0.3s ease;
+  object-fit: cover;
 }
 
-.product-card:hover .product-image {
-  transform: scale(1.02);
-}
-
-.product-placeholder {
+.product-thumb-placeholder {
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--surface-ground);
 }
 
-.product-placeholder i {
-  font-size: 3rem;
+.product-thumb-placeholder i {
+  font-size: 1.25rem;
   color: #dc2626;
-  opacity: 0.5;
+  opacity: 0.6;
 }
 
-.product-badges {
+.product-thumb-count {
   position: absolute;
-  top: 10px;
-  left: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.product-actions-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  right: 2px;
+  bottom: 2px;
   background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.product-card:hover .product-actions-overlay {
-  opacity: 1;
-}
-
-.product-body {
-  padding: 1rem;
-}
-
-.product-title {
-  color: var(--text-color);
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0.5rem 0;
-  line-height: 1.3;
-}
-
-.product-description {
-  color: var(--text-color-secondary);
-  font-size: 0.85rem;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  margin: 0 0 0.75rem 0;
-}
-
-.product-sizes {
-  font-size: 0.8rem;
-  color: var(--text-color-secondary);
-}
-
-.product-price {
-  font-size: 1.5rem;
+  color: #fff;
+  font-size: 0.65rem;
   font-weight: 700;
-  color: #dc2626;
-  margin-top: auto;
+  border-radius: 6px;
+  padding: 0 4px;
+  line-height: 1.4;
 }
 
-.product-footer {
-  padding: 0.75rem 1rem;
-  border-top: 1px solid var(--surface-border);
-  display: flex;
-  gap: 0.5rem;
+.product-card-inactive {
+  opacity: 0.75;
+}
+
+.product-price-value {
+  color: #dc2626;
+  font-weight: 700;
 }
 </style>

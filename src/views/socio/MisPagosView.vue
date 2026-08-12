@@ -66,7 +66,7 @@
       <!-- Pagos pendientes de confirmación -->
       <div v-if="pagosGrouped.pendientesConfirmacion.length > 0" class="mb-4">
         <h3 class="text-xl text-yellow-400 mb-3">
-          <i class="pi pi-clock mr-2"></i>Esperando confirmación de efectivo
+          <i class="pi pi-clock mr-2"></i>Esperando confirmación
         </h3>
         <div class="grid">
           <div v-for="pago in pagosGrouped.pendientesConfirmacion" :key="pago.id" class="col-12 sm:col-6 lg:col-4">
@@ -161,9 +161,9 @@
               <div class="record-card__row">
                 <span class="record-card__label">Método</span>
                 <Tag
-                  :severity="pago.metodoPago === 'Efectivo' ? 'info' : 'success'"
-                  :value="pago.metodoPago === 'Efectivo' ? 'Efectivo' : 'MercadoPago'"
-                  :icon="pago.metodoPago === 'Efectivo' ? 'pi pi-wallet' : 'pi pi-credit-card'"
+                  :severity="pago.metodoPago?.toLowerCase() === 'efectivo' ? 'info' : pago.metodoPago?.toLowerCase() === 'mutual' ? 'warning' : 'success'"
+                  :value="pago.metodoPago || '-'"
+                  :icon="pago.metodoPago?.toLowerCase() === 'efectivo' ? 'pi pi-wallet' : pago.metodoPago?.toLowerCase() === 'mutual' ? 'pi pi-dollar' : 'pi pi-credit-card'"
                 />
               </div>
             </template>
@@ -282,6 +282,21 @@
               <i v-if="metodoPago === 'efectivo'" class="pi pi-check-circle text-green-400"></i>
             </div>
 
+            <div
+              class="payment-option"
+              :class="{ 'selected': metodoPago === 'transferencia' }"
+              @click="metodoPago = 'transferencia'"
+            >
+              <div class="payment-icon" style="background: #1a56db22; color: #60a5fa">
+                <i class="pi pi-dollar"></i>
+              </div>
+              <div class="payment-info">
+                <span class="payment-title">Transferencia Bancaria</span>
+                <span class="payment-desc">Transferí y enviá el comprobante por WhatsApp</span>
+              </div>
+              <i v-if="metodoPago === 'transferencia'" class="pi pi-check-circle text-green-400"></i>
+            </div>
+
             <div 
               class="payment-option" 
               :class="{ 'selected': metodoPago === 'mercadopago' }"
@@ -298,6 +313,30 @@
             </div>
           </div>
           <small v-if="pagoError" class="p-error mt-2 block">Debes seleccionar un método de pago</small>
+
+          <!-- Datos de transferencia -->
+          <div v-if="metodoPago === 'transferencia'" class="transferencia-info mt-3">
+            <div class="transferencia-dato">
+              <span class="transferencia-label">CBU</span>
+              <span class="transferencia-valor">0110332640033213198558</span>
+            </div>
+            <div class="transferencia-dato">
+              <span class="transferencia-label">ALIAS</span>
+              <span class="transferencia-valor">UDL.NACION</span>
+            </div>
+            <div class="transferencia-dato">
+              <span class="transferencia-label">CUIT</span>
+              <span class="transferencia-valor">30-70706271-8</span>
+            </div>
+            <div class="transferencia-dato">
+              <span class="transferencia-label">Titular</span>
+              <span class="transferencia-valor">Unión Deportiva Laspiur</span>
+            </div>
+            <div class="flex align-items-start gap-2 mt-2" style="color: #f59e0b">
+              <i class="pi pi-whatsapp mt-1" style="font-size:1rem"></i>
+              <small>Una vez transferido, enviá el comprobante al <strong>+54 9 3533 68-0908</strong> indicando tu nombre y número de socio.</small>
+            </div>
+          </div>
         </div>
 
         <Message v-if="metodoPago === 'efectivo'" severity="info" :closable="false" class="mb-3">
@@ -309,7 +348,7 @@
       <template #footer>
         <Button label="Cancelar" icon="pi pi-times" text @click="checkoutDialog = false" />
         <Button 
-          :label="metodoPago === 'mercadopago' ? 'Ir a MercadoPago' : 'Solicitar pago efectivo'" 
+          :label="metodoPago === 'mercadopago' ? 'Ir a MercadoPago' : 'Confirmar pago'" 
           :icon="metodoPago === 'mercadopago' ? 'pi pi-external-link' : 'pi pi-check'" 
           @click="procesarPago"
           :loading="processingPayment"
@@ -323,11 +362,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { pagosService } from '@/services'
-import Tag from 'primevue/tag'
+import { pagosService, reservasService, pedidosService } from '@/services'
+import { useMobilePagination } from '@/composables/useMobilePagination'
 import PageHeader from '@/components/mobile/PageHeader.vue'
 import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
 import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
+import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Sidebar from 'primevue/sidebar'
@@ -336,7 +376,6 @@ import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { openMercadoPagoCheckout } from '@/platform/mercadopago'
-import { useMercadoPagoReturn } from '@/composables/useMercadoPagoReturn'
 
 const authStore = useAuthStore()
 const toast = useToast()
@@ -353,23 +392,25 @@ const metodoPago = ref(null)
 const pagoError = ref(false)
 
 const pagosGrouped = computed(() => {
-  return {
-    pendientes: pagos.value.filter(p => p.estado?.toLowerCase() === 'pendiente' && !p.pendienteConfirmacionEfectivo),
-    pagados: pagos.value.filter(p => p.estado?.toLowerCase() === 'pagado'),
-    vencidos: pagos.value.filter(p => p.estado?.toLowerCase() === 'vencido' && !p.pendienteConfirmacionEfectivo),
-    pendientesConfirmacion: pagos.value.filter(p => p.pendienteConfirmacionEfectivo)
+  const sortByFecha = (a, b) => {
+    const fa = new Date(b.fechaPago || b.fechaVencimiento || b.fechaCreacion || 0)
+    const fb = new Date(a.fechaPago || a.fechaVencimiento || a.fechaCreacion || 0)
+    return fa - fb
   }
-})
-
-const pagadosPage = ref(1)
-const paginatedPagados = computed(() => {
-  const start = (pagadosPage.value - 1) * 10
-  return pagosGrouped.value.pagados.slice(start, start + 10)
+  return {
+    pendientes: pagos.value.filter(p => p.estado?.toLowerCase() === 'pendiente' && !p.pendienteConfirmacionEfectivo).sort(sortByFecha),
+    pagados: pagos.value.filter(p => p.estado?.toLowerCase() === 'pagado').sort(sortByFecha),
+    vencidos: pagos.value.filter(p => p.estado?.toLowerCase() === 'vencido' && !p.pendienteConfirmacionEfectivo).sort(sortByFecha),
+    pendientesConfirmacion: pagos.value.filter(p => p.pendienteConfirmacionEfectivo).sort(sortByFecha)
+  }
 })
 
 const pagosDisponiblesPagar = computed(() => {
   return [...pagosGrouped.value.pendientes, ...pagosGrouped.value.vencidos]
 })
+
+const pagosPagados = computed(() => pagosGrouped.value.pagados)
+const { page: pagadosPage, paginated: paginatedPagados } = useMobilePagination(pagosPagados, 10)
 
 const cartItemsCount = computed(() => cart.value.length)
 
@@ -438,6 +479,17 @@ async function procesarPago() {
       checkoutDialog.value = false
       clearCart()
       await loadPagos()
+    } else if (metodoPago.value === 'transferencia') {
+      await pagosService.solicitarPagoEfectivo(pagoIds)
+      toast.add({
+        severity: 'success',
+        summary: 'Transferencia registrada',
+        detail: 'Enviá el comprobante al +54 9 3533 68-0908. Un administrador confirmará tu pago.',
+        life: 8000
+      })
+      checkoutDialog.value = false
+      clearCart()
+      await loadPagos()
     }
   } catch (error) {
     console.error('Error al procesar pago:', error)
@@ -455,7 +507,47 @@ async function procesarPago() {
 async function loadPagos() {
   loading.value = true
   try {
-    pagos.value = await pagosService.getBySocio(authStore.user.id)
+    const [pagosSocio, misReservas, misPedidos] = await Promise.allSettled([
+      pagosService.getBySocio(authStore.user.id),
+      reservasService.getMisReservas(),
+      pedidosService.getMisPedidos()
+    ])
+
+    const listaPagos = pagosSocio.status === 'fulfilled' ? pagosSocio.value : []
+
+    // Reservas pagadas como registros de historial
+    const pagosReservas = misReservas.status === 'fulfilled'
+      ? misReservas.value
+          .filter(r => r.estadoPago?.toLowerCase() === 'pagado' && r.monto > 0)
+          .map(r => ({
+            id: `reserva-${r.id}`,
+            concepto: `Reserva — ${r.espacioNombre || r.espacio?.nombre || 'Espacio'}`,
+            monto: r.monto,
+            estado: 'Pagado',
+            fechaPago: r.fechaPago || r.fecha,
+            metodoPago: r.metodoPago || '-',
+            pendienteConfirmacionEfectivo: false,
+            _tipo: 'reserva'
+          }))
+      : []
+
+    // Pedidos de tienda (todos, con su estado real)
+    const pagosPedidos = misPedidos.status === 'fulfilled'
+      ? misPedidos.value
+          .map(p => ({
+            id: `pedido-${p.id}`,
+            concepto: `Tienda — Pedido #${p.id?.slice(-6).toUpperCase()}`,
+            monto: p.total,
+            estado: p.estadoPago || p.estado || 'Pendiente',
+            fechaPago: p.estadoPago?.toLowerCase() === 'pagado' ? p.fechaPedido : null,
+            fechaCreacion: p.fechaPedido,
+            metodoPago: p.metodoPago || '-',
+            pendienteConfirmacionEfectivo: false,
+            _tipo: 'pedido'
+          }))
+      : []
+
+    pagos.value = [...listaPagos, ...pagosReservas, ...pagosPedidos]
   } catch (error) {
     console.error('Error loading pagos:', error)
     toast.add({
@@ -469,20 +561,38 @@ async function loadPagos() {
   }
 }
 
-useMercadoPagoReturn({
-  messages: {
-    success: {
+onMounted(() => {
+  loadPagos()
+
+  // Manejar retorno desde MercadoPago
+  const params = new URLSearchParams(window.location.search)
+  const status = params.get('status')
+
+  if (status === 'success') {
+    toast.add({
       severity: 'success',
       summary: '¡Pago exitoso!',
       detail: 'Tus pagos fueron procesados correctamente con MercadoPago.',
       life: 6000
-    }
-  },
-  reload: loadPagos
-})
-
-onMounted(() => {
-  loadPagos()
+    })
+    window.history.replaceState({}, '', window.location.pathname)
+  } else if (status === 'failure') {
+    toast.add({
+      severity: 'error',
+      summary: 'Pago rechazado',
+      detail: 'El pago no pudo procesarse. Podés intentarlo nuevamente.',
+      life: 6000
+    })
+    window.history.replaceState({}, '', window.location.pathname)
+  } else if (status === 'pending') {
+    toast.add({
+      severity: 'warn',
+      summary: 'Pago pendiente',
+      detail: 'Tu pago está siendo procesado. Te avisaremos cuando se confirme.',
+      life: 6000
+    })
+    window.history.replaceState({}, '', window.location.pathname)
+  }
 })
 </script>
 
@@ -703,6 +813,19 @@ onMounted(() => {
 }
 
 .payment-icon.mp-icon { background: rgba(0, 158, 227, 0.2); color: #00b1ea; }
+
+.transferencia-info {
+  background: var(--surface-ground);
+  border: 1px solid #1d4ed855;
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.transferencia-dato { display: flex; justify-content: space-between; align-items: center; }
+.transferencia-label { color: var(--text-color-secondary); font-size: 0.85rem; min-width: 60px; }
+.transferencia-valor { font-family: monospace; font-size: 0.9rem; font-weight: 600; color: var(--text-color); }
 
 .payment-icon i { font-size: 1.25rem; }
 

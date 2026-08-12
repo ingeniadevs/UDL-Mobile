@@ -17,10 +17,11 @@
           @click="desktopSidebarVisible = !desktopSidebarVisible"
           class="hidden lg:flex btn-menu"
         />
-        <IngeniaClubIcon size="sm" class="topbar-app-icon" />
-        <span class="text-xl font-semibold topbar-title">{{ app.name }}</span>
+        <img src="/images/logo-udl.png" alt="UDL" class="topbar-logo hidden lg:block" />        <span class="text-xl font-semibold topbar-title">UDL - Mi Portal</span>
       </div>
-        <div class="flex align-items-center gap-2">
+        <div class="flex align-items-center gap-3">
+        <span class="topbar-username hidden md:block">{{ authStore.user?.nombre }}</span>
+        <Avatar :image="authStore.user?.foto || undefined" :label="authStore.user?.foto ? undefined : avatarLabel" shape="circle" class="avatar-red" />
         <Button 
           :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'" 
           text 
@@ -43,23 +44,10 @@
     <Sidebar v-model:visible="mobileSidebarVisible" class="sidebar-dark w-18rem">
       <template #header>
         <div class="flex align-items-center gap-2">
-          <img :src="branding.logo" :alt="branding.logoAlt" class="sidebar-logo" />
-          <span class="font-bold text-xl sidebar-title">{{ branding.shortName }}</span>
+          <img src="/images/logo-udl.png" alt="UDL" class="sidebar-logo" />
+          <span class="font-bold text-xl sidebar-title">UDL</span>
         </div>
       </template>
-      <div class="sidebar-user">
-        <Avatar
-          :image="authStore.user?.foto || undefined"
-          :label="authStore.user?.foto ? undefined : avatarLabel"
-          shape="circle"
-          class="avatar-red"
-          size="large"
-        />
-        <div class="sidebar-user__info">
-          <div class="sidebar-user__name">{{ authStore.user?.nombre }}</div>
-          <div class="sidebar-user__email">{{ authStore.user?.email }}</div>
-        </div>
-      </div>
       <Menu :model="menuItems" class="w-full border-none menu-dark" />
     </Sidebar>
 
@@ -72,18 +60,6 @@
         @mouseenter="hoverExpanded = true"
         @mouseleave="hoverExpanded = false"
       >
-        <div v-if="desktopSidebarVisible || hoverExpanded" class="sidebar-user px-3">
-          <Avatar
-            :image="authStore.user?.foto || undefined"
-            :label="authStore.user?.foto ? undefined : avatarLabel"
-            shape="circle"
-            class="avatar-red"
-          />
-          <div class="sidebar-user__info">
-            <div class="sidebar-user__name">{{ authStore.user?.nombre }}</div>
-            <div class="sidebar-user__email">{{ authStore.user?.email }}</div>
-          </div>
-        </div>
         <template v-for="group in menuItems" :key="group.label">
           <div v-if="group.label && (desktopSidebarVisible || hoverExpanded)" class="nav-group-label">{{ group.label }}</div>
           <button
@@ -105,19 +81,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Ingenia Labs -->
-  <div class="ingenia-promo">
-    <span>Desarrollado por</span>
-    <a href="https://ingenialabs.ar/" target="_blank" rel="noopener noreferrer" class="ingenia-link">
-      <strong>Ingenia Labs</strong>
-    </a>
-    <span class="ingenia-sep">&bull;</span>
-    <a href="https://www.instagram.com/ingenia.labs/" target="_blank" rel="noopener noreferrer" class="ingenia-ig">
-      <i class="pi pi-instagram"></i>
-      <span>@ingenia.labs</span>
-    </a>
-  </div>
 </template>
 
 <script setup>
@@ -125,9 +88,6 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
-import { useClubBranding } from '@/composables/useClubBranding'
-import { useAppBranding } from '@/composables/useAppBranding'
-import IngeniaClubIcon from '@/components/brand/IngeniaClubIcon.vue'
 import { setSidebarCloseHandler } from '@/platform/navigation'
 import Sidebar from 'primevue/sidebar'
 import Menu from 'primevue/menu'
@@ -139,8 +99,6 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const { isDark, toggleTheme } = useTheme()
-const { branding } = useClubBranding()
-const { app } = useAppBranding()
 
 const mobileSidebarVisible = ref(false)
 const desktopSidebarVisible = ref(true)
@@ -384,14 +342,6 @@ function handleLogout() {
   object-fit: contain;
 }
 
-.topbar-app-icon {
-  height: 28px;
-  width: auto;
-  max-width: 84px;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
 .topbar-logo {
   width: 36px;
   height: 36px;
@@ -406,53 +356,5 @@ function handleLogout() {
 :deep(.menu-dark) {
   background: transparent !important;
 }
-
-/* Ingenia Labs promo */
-.ingenia-promo {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  font-size: 0.7rem;
-  color: var(--text-color-secondary);
-  opacity: 0.4;
-  padding: 0.35rem 0;
-  background: transparent;
-  pointer-events: auto;
-  z-index: 10;
-  transition: opacity 0.2s ease;
-}
-
-.ingenia-promo:hover {
-  opacity: 0.7;
-}
-
-.ingenia-link,
-.ingenia-ig {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  color: inherit;
-  text-decoration: none;
-  transition: color 0.15s;
-}
-
-.ingenia-link:hover {
-  color: #dc2626;
-}
-
-.ingenia-ig:hover {
-  color: #e1306c;
-}
-
-.ingenia-sep {
-  opacity: 0.5;
-  user-select: none;
-}
-
 
 </style>

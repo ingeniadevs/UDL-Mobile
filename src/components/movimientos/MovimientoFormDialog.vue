@@ -120,6 +120,26 @@
         </div>
       </div>
 
+      <!-- Socio pagador (ingresos) -->
+      <div class="grid" v-if="form.tipo === 'ingreso'">
+        <div class="col-12">
+          <label class="block text-sm font-medium mb-2">Socio / pagador</label>
+          <Dropdown
+            v-model="form.socioId"
+            :options="sociosOpciones"
+            optionLabel="nombreCompleto"
+            optionValue="id"
+            placeholder="Seleccionar socio (opcional)"
+            :loading="loadingSocios"
+            :filter="true"
+            filterPlaceholder="Nombre, apellido o DNI..."
+            :filterFields="['nombreCompleto', 'nombre', 'apellido', 'dni', 'numeroSocio']"
+            class="w-full"
+            showClear
+          />
+        </div>
+      </div>
+
       <!-- Empleado (solo para sueldos) -->
       <div class="grid" v-if="mostrarEmpleado">
         <div class="col-12">          <label class="block text-sm font-medium mb-2">
@@ -190,7 +210,7 @@
 
 <script setup>
 import { ref, watch, computed, onMounted } from 'vue'
-import { movimientosService, empleadosService } from '@/services'
+import { movimientosService, empleadosService, sociosService } from '@/services'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -212,7 +232,9 @@ const emit = defineEmits(['update:visible', 'saved'])
 // Estado
 const loading = ref(false)
 const loadingEmpleados = ref(false)
+const loadingSocios = ref(false)
 const empleados = ref([])
+const sociosOpciones = ref([])
 const errors = ref({})
 
 // Formulario
@@ -224,6 +246,7 @@ const form = ref({
   monto: null,
   fecha: new Date(),
   empleadoId: null,
+  socioId: null,
   comprobante: '',
   metodoPago: null
 })
@@ -290,6 +313,7 @@ watch(() => props.visible, (newVal) => {
       cargarDatosMovimiento()
     }
     cargarEmpleados()
+    if (form.value.tipo === 'ingreso') cargarSocios()
   }
 })
 
@@ -297,6 +321,8 @@ watch(() => form.value.tipo, (newTipo, oldTipo) => {
   if (newTipo !== oldTipo) {
     form.value.categoria = ''
     form.value.empleadoId = null
+    form.value.socioId = null
+    if (newTipo === 'ingreso') cargarSocios()
   }
 })
 
@@ -316,6 +342,7 @@ const resetForm = () => {
     monto: null,
     fecha: new Date(),
     empleadoId: null,
+    socioId: null,
     comprobante: '',
     metodoPago: null
   }
@@ -332,9 +359,31 @@ const cargarDatosMovimiento = () => {
       monto: props.movimiento.monto,
       fecha: new Date(props.movimiento.fecha),
       empleadoId: props.movimiento.empleadoId || null,
+      socioId: props.movimiento.socioId || null,
       comprobante: props.movimiento.comprobante || '',
       metodoPago: props.movimiento.metodoPago || null
     }
+  }
+}
+
+const cargarSocios = async () => {
+  if (sociosOpciones.value.length > 0) return
+  try {
+    loadingSocios.value = true
+    const socios = await sociosService.getAll()
+    sociosOpciones.value = socios.map(s => {
+      const nombreApellido = `${s.nombre || ''} ${s.apellido || ''}`.trim()
+      const dni = s.dni?.trim() || ''
+      return {
+        ...s,
+        nombreApellido,
+        nombreCompleto: dni ? `${nombreApellido} — DNI ${dni}` : nombreApellido
+      }
+    })
+  } catch (error) {
+    console.error('Error cargando socios:', error)
+  } finally {
+    loadingSocios.value = false
   }
 }
 
@@ -396,6 +445,7 @@ const guardarMovimiento = async () => {
       monto: form.value.monto,
       fecha: form.value.fecha.toISOString().split('T')[0],
       empleadoId: form.value.empleadoId || null,
+      socioId: form.value.tipo === 'ingreso' ? (form.value.socioId || null) : null,
       comprobante: form.value.comprobante?.trim() || null,
       metodoPago: form.value.metodoPago || null
     }
