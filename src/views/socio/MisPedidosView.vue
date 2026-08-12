@@ -2,12 +2,7 @@
   <div>
     <PageHeader title="Mis Pedidos">
       <template #actions>
-        <Button
-          label="Ir a la Tienda"
-          icon="pi pi-shopping-cart"
-          size="small"
-          @click="$router.push('/socio/tienda')"
-        />
+        <Button label="Ir a la Tienda" icon="pi pi-shopping-cart" size="small" @click="$router.push('/socio/tienda')" />
       </template>
     </PageHeader>
 
@@ -130,10 +125,10 @@
 import { ref, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { pedidosService } from '@/services'
+import PageHeader from '@/components/mobile/PageHeader.vue'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import ProgressSpinner from 'primevue/progressspinner'
-import PageHeader from '@/components/mobile/PageHeader.vue'
 
 const toast = useToast()
 const pedidos = ref([])

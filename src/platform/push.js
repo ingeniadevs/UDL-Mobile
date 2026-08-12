@@ -28,12 +28,17 @@ export async function initPushNotifications() {
     await PushNotifications.addListener('registration', async (token) => {
       console.info('[Push] Token registrado')
       try {
+        // Soft-fail: BE main aún no expone POST /notificaciones/dispositivos
         await api.post('/notificaciones/dispositivos', {
           token: token.value,
           plataforma: Capacitor.getPlatform()
         })
       } catch (err) {
-        console.warn('[Push] No se pudo registrar token en API', err)
+        const status = err?.response?.status
+        console.warn(
+          '[Push] Registro de dispositivo omitido (API no disponible o error).',
+          status ? `HTTP ${status}` : err?.message || err
+        )
       }
     })
 

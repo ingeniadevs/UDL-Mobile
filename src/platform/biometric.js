@@ -1,39 +1,36 @@
 import { Capacitor } from '@capacitor/core'
+import { BiometricAuth } from '@aparajita/capacitor-biometric-auth'
 import { getPreference, setPreference } from './storage'
 
 const BIOMETRIC_ENABLED_KEY = 'udl_biometric_enabled'
 const BIOMETRIC_USER_KEY = 'udl_biometric_user'
 
-let NativeBiometric = null
-
-async function loadPlugin() {
-  if (!Capacitor.isNativePlatform() || NativeBiometric !== null) return NativeBiometric
-  try {
-    const mod = await import('@aparajita/capacitor-biometric-auth')
-    NativeBiometric = mod.BiometricAuth
-  } catch {
-    NativeBiometric = false
-  }
-  return NativeBiometric
-}
+/**
+ * Importante: no guardar/await/truthy-check el proxy de Capacitor.
+ * El proxy es Thenable (trampa en `.then`) y genera:
+ * "BiometricAuthNative.then() is not implemented on android".
+ * Llamar métodos del plugin solo en plataforma nativa.
+ */
 
 export async function isBiometricAvailable() {
-  const plugin = await loadPlugin()
-  if (!plugin) return { available: false, biometryType: null }
+  if (!Capacitor.isNativePlatform()) {
+    return { available: false, biometryType: null }
+  }
 
   try {
-    const result = await plugin.checkBiometry()
+    const result = await BiometricAuth.checkBiometry()
     return {
-      available: result.isAvailable,
+      available: !!result.isAvailable,
       biometryType: result.biometryType || null
     }
-  } catch {
+  } catch (err) {
+    console.warn('[Biometric] checkBiometry failed', err?.message || err)
     return { available: false, biometryType: null }
   }
 }
 
 export function getBiometricLabel(biometryType) {
-  const t = (biometryType || '').toLowerCase()
+  const t = String(biometryType ?? '').toLowerCase()
   if (t.includes('face')) return 'Face ID'
   if (t.includes('touch') || t.includes('finger')) return 'Huella digital'
   if (t.includes('iris')) return 'Iris'
@@ -59,11 +56,15 @@ export async function disableBiometric() {
 }
 
 export async function authenticateWithBiometric(reason) {
-  const plugin = await loadPlugin()
-  if (!plugin) return { success: false, error: 'no_plugin' }
+  if (!Capacitor.isNativePlatform()) {
+    return { success: false, error: 'no_plugin' }
+  }
 
   try {
-    await plugin.authenticate({
+    const { available } = await isBiometricAvailable()
+    if (!available) return { success: false, error: 'unavailable' }
+
+    await BiometricAuth.authenticate({
       reason: reason || 'Desbloqueá la app para continuar',
       cancelTitle: 'Cancelar',
       allowDeviceCredential: true

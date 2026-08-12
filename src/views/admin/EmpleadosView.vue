@@ -6,11 +6,54 @@
       </template>
     </PageHeader>
 
-    <div class="card mb-3">
-      <span class="p-input-icon-left w-full">
-        <i class="pi pi-search" />
-        <InputText v-model="searchTerm" placeholder="Buscar..." class="w-full" />
-      </span>
+    <!-- Stat cards -->
+    <div class="grid mb-4">
+      <div class="col-6 md:col-3">
+        <div class="stat-card stat-total">
+          <div class="stat-icon"><i class="pi pi-users"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ empleados.length }}</span>
+            <span class="stat-label">Total Empleados</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 md:col-3">
+        <div class="stat-card stat-success">
+          <div class="stat-icon"><i class="pi pi-check-circle"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ empleados.filter(e => e.activo).length }}</span>
+            <span class="stat-label">Activos</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 md:col-3">
+        <div class="stat-card stat-danger">
+          <div class="stat-icon"><i class="pi pi-times-circle"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ empleados.filter(e => !e.activo).length }}</span>
+            <span class="stat-label">Inactivos</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 md:col-3">
+        <div class="stat-card stat-warning">
+          <div class="stat-icon"><i class="pi pi-dollar"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">${{ empleados.filter(e => e.activo).reduce((s, e) => s + (e.salario || 0), 0).toLocaleString() }}</span>
+            <span class="stat-label">Masa Salarial</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+      <div class="flex flex-wrap align-items-center gap-3">
+        <span class="p-input-icon-left flex-1" style="min-width: 200px">
+          <i class="pi pi-search" />
+          <InputText v-model="filters.global.value" placeholder="Buscar por nombre, email o puesto..." class="w-full" />
+        </span>
+      </div>
     </div>
 
     <div v-if="loading" class="flex justify-content-center py-5">
@@ -54,7 +97,7 @@
           </template>
         </MobileRecordCard>
       </div>
-      <MobilePaginator v-model:page="currentPage" :rows="10" :total="empleadosFiltrados.length" />
+      <MobilePaginator v-model:page="empleadosPage" :rows="10" :total="empleadosFiltrados.length" />
     </template>
 
     <!-- Dialog Crear/Editar -->
@@ -95,7 +138,7 @@
           <label class="block text-gray-300 mb-2">Salario *</label>
           <InputNumber v-model="form.salario" mode="currency" currency="ARS" locale="es-AR" class="w-full" />
         </div>
-        <div class="col-12 md:col-6" v-if="!isEditing">
+        <div class="col-12 md:col-6">
           <label class="block text-gray-300 mb-2">Fecha Ingreso</label>
           <Calendar v-model="form.fechaIngreso" dateFormat="dd/mm/yy" class="w-full" />
         </div>
@@ -153,15 +196,18 @@
     </Dialog>
 
     <!-- Confirm Delete -->
-    <ConfirmDialog />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { empleadosService } from '@/services'
+import { useMobilePagination } from '@/composables/useMobilePagination'
+import PageHeader from '@/components/mobile/PageHeader.vue'
+import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
+import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
@@ -171,11 +217,7 @@ import Checkbox from 'primevue/checkbox'
 import Dialog from 'primevue/dialog'
 import Tag from 'primevue/tag'
 import Avatar from 'primevue/avatar'
-import ConfirmDialog from 'primevue/confirmdialog'
 import ProgressSpinner from 'primevue/progressspinner'
-import PageHeader from '@/components/mobile/PageHeader.vue'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
-import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 
 const toast = useToast()
 const confirm = useConfirm()
@@ -193,37 +235,32 @@ const pagarSueldoEmpleado = ref(null)
 const pagandoSueldo = ref(false)
 const pagarSueldoForm = ref({ monto: 0, fecha: new Date(), descripcion: '' })
 
-const searchTerm = ref('')
-const currentPage = ref(1)
-
+const filters = ref({
+  global: { value: null, matchMode: 'contains' }
+})
 const empleadosFiltrados = computed(() => {
-  if (!searchTerm.value.trim()) return empleados.value
-  const q = searchTerm.value.toLowerCase()
+  const search = (filters.value.global?.value || '').toLowerCase()
+  if (!search) return empleados.value
   return empleados.value.filter(e =>
-    e.nombre?.toLowerCase().includes(q) ||
-    e.apellido?.toLowerCase().includes(q) ||
-    e.email?.toLowerCase().includes(q) ||
-    e.puesto?.toLowerCase().includes(q)
+    e.nombre?.toLowerCase().includes(search) ||
+    e.apellido?.toLowerCase().includes(search) ||
+    e.email?.toLowerCase().includes(search) ||
+    e.puesto?.toLowerCase().includes(search)
   )
 })
-
-const paginatedEmpleados = computed(() => {
-  const start = (currentPage.value - 1) * 10
-  return empleadosFiltrados.value.slice(start, start + 10)
-})
-
-watch(searchTerm, () => { currentPage.value = 1 })
+const { page: empleadosPage, paginated: paginatedEmpleados } = useMobilePagination(
+  empleadosFiltrados,
+  10,
+  [() => filters.value.global?.value]
+)
 
 const puestos = ref([
-  'Recepcionista',
   'Entrenador',
-  'Profesor',
   'Mantenimiento',
   'Limpieza',
   'Administrativo',
-  'Seguridad',
-  'Coordinador',
-  'Gerente'
+  'CM',
+  'Otros'
 ])
 
 const defaultForm = {
@@ -270,6 +307,7 @@ function openEditDialog(empleado) {
     telefono: empleado.telefono || '',
     puesto: empleado.puesto,
     salario: empleado.salario,
+    fechaIngreso: empleado.fechaIngreso ? new Date(empleado.fechaIngreso) : new Date(),
     activo: empleado.activo
   }
   isEditing.value = true
@@ -360,8 +398,82 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+}
+.stat-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.stat-icon i { font-size: 1.5rem; color: white; }
+.stat-total .stat-icon   { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+.stat-success .stat-icon { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.stat-danger .stat-icon  { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.stat-warning .stat-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.stat-content { display: flex; flex-direction: column; }
+.stat-value { font-size: 1.5rem; font-weight: 700; color: var(--text-color); }
+.stat-label { font-size: 0.85rem; color: var(--text-color-secondary); }
+
 .avatar-red {
   background-color: #dc2626 !important;
   color: white !important;
+}
+.empleado-card {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.empleado-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+.empleado-card--inactivo {
+  opacity: 0.65;
+}
+.empleado-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0.75rem;
+}
+.empleado-card__body {
+  padding: 0 1rem 0.75rem;
+  flex: 1;
+}
+.empleado-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--surface-border);
+  background: rgba(255,255,255,0.02);
+}
+.emp-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
 }
 </style>

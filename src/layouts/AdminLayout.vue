@@ -4,22 +4,10 @@
     <Sidebar v-model:visible="mobileSidebarVisible" class="sidebar-dark w-18rem">
       <template #header>
         <div class="flex align-items-center gap-2">
-          <img :src="branding.logo" :alt="branding.logoAlt" class="sidebar-logo" />
-          <span class="font-bold text-xl sidebar-title">{{ branding.shortName }}</span>
+          <img src="/images/logo-udl.png" alt="UDL" class="sidebar-logo" />
+          <span class="font-bold text-xl text-white">UDL</span>
         </div>
       </template>
-      <div class="sidebar-user">
-        <Avatar :label="avatarLabel" shape="circle" class="avatar-red" size="large" />
-        <div class="sidebar-user__info">
-          <div class="sidebar-user__name">{{ authStore.user?.nombre }}</div>
-          <div class="sidebar-user__email">{{ authStore.user?.email }}</div>
-          <Tag
-            :value="authStore.user?.rol === 'master' ? 'Master' : 'Admin'"
-            :severity="authStore.user?.rol === 'master' ? 'danger' : 'info'"
-            class="text-xs mt-1"
-          />
-        </div>
-      </div>
       <Menu :model="menuItems" class="w-full border-none menu-dark" />
     </Sidebar>
 
@@ -42,9 +30,15 @@
           @click="desktopSidebarVisible = !desktopSidebarVisible"
           class="hidden lg:flex btn-menu"
         />
-        <IngeniaClubIcon size="sm" class="topbar-app-icon" />
-        <span class="text-xl font-semibold topbar-title">{{ app.name }}</span>
-      </div>      <div class="flex align-items-center gap-2">
+        <span class="text-xl font-semibold topbar-title hidden sm:inline">UDL - Panel de Administración</span>
+      </div>      <div class="flex align-items-center gap-3">
+        <span class="topbar-username hidden md:inline">{{ authStore.user?.nombre }}</span>
+        <Tag 
+          :value="authStore.user?.rol === 'master' ? 'Master' : 'Admin'" 
+          :severity="authStore.user?.rol === 'master' ? 'danger' : 'info'"
+          class="text-xs hidden md:inline-flex"
+        />
+        <Avatar :label="avatarLabel" shape="circle" class="avatar-red" />
         <Button 
           :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'" 
           text 
@@ -60,14 +54,6 @@
           @click="handleLogout"
           v-tooltip.bottom="'Cerrar sesión'"
           class="btn-logout"
-        />
-        <Button
-          icon="pi pi-lock"
-          text
-          rounded
-          @click="showChangePasswordDialog = true"
-          v-tooltip.bottom="'Cambiar contraseña'"
-          class="btn-menu"
         />
       </div>
     </div>
@@ -139,13 +125,6 @@
         @mouseenter="hoverExpanded = true"
         @mouseleave="hoverExpanded = false"
       >
-        <div v-if="desktopSidebarVisible || hoverExpanded" class="sidebar-user px-3">
-          <Avatar :label="avatarLabel" shape="circle" class="avatar-red" />
-          <div class="sidebar-user__info">
-            <div class="sidebar-user__name">{{ authStore.user?.nombre }}</div>
-            <div class="sidebar-user__email">{{ authStore.user?.email }}</div>
-          </div>
-        </div>
         <template v-for="group in menuItems" :key="group.label">
           <div v-if="group.label && (desktopSidebarVisible || hoverExpanded)" class="nav-group-label">{{ group.label }}</div>
           <button
@@ -174,9 +153,6 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
-import { useClubBranding } from '@/composables/useClubBranding'
-import { useAppBranding } from '@/composables/useAppBranding'
-import IngeniaClubIcon from '@/components/brand/IngeniaClubIcon.vue'
 import { setSidebarCloseHandler } from '@/platform/navigation'
 import { useToast } from 'primevue/usetoast'
 import { authService } from '@/services'
@@ -195,8 +171,6 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const { isDark, toggleTheme } = useTheme()
-const { branding } = useClubBranding()
-const { app } = useAppBranding()
 const toast = useToast()
 
 const mobileSidebarVisible = ref(false)
@@ -294,16 +268,16 @@ const avatarLabel = computed(() => {
 
 const menuItems = computed(() => {
   const isMaster = authStore.user?.rol === 'master'
+  const scopedSubcomision = !!authStore.user?.subcomisionId
   const hp = (seccion) => isMaster || authStore.hasPermiso(seccion)
-  const hasAnyPermiso = isMaster || (authStore.user?.permisos?.length > 0)
   const result = []
 
   // --- Principal --- siempre visible para cualquier admin
   const principal = [
     { label: 'Inicio', icon: 'pi pi-home', command: () => router.push('/admin/inicio') }
   ]
-  // Dashboard solo si tiene al menos un permiso (o es master)
-  if (hasAnyPermiso) {
+  // Dashboard solo si tiene permiso 'dashboard' (o es master)
+  if (hp('dashboard')) {
     principal.push({ label: 'Dashboard', icon: 'pi pi-chart-bar', command: () => router.push('/admin/dashboard') })
   }
   result.push({ label: 'Principal', items: principal })// --- Gestión ---
@@ -314,7 +288,9 @@ const menuItems = computed(() => {
   if (hp('productos'))   gestion.push({ label: 'Productos',   icon: 'pi pi-shopping-bag',   command: () => router.push('/admin/productos') })
   if (hp('pedidos'))     gestion.push({ label: 'Pedidos',     icon: 'pi pi-shopping-cart',  command: () => router.push('/admin/pedidos') })
   if (hp('empleados'))   gestion.push({ label: 'Empleados',   icon: 'pi pi-id-card',        command: () => router.push('/admin/empleados') })
+  if (hp('notificaciones')) gestion.push({ label: 'Envío de Notificaciones', icon: 'pi pi-send', command: () => router.push('/admin/notificaciones') })
   if (isMaster)          gestion.push({ label: 'Planes de Membresía', icon: 'pi pi-credit-card', command: () => router.push('/admin/planes-membresia') })
+  else if (hp('planes-membresia')) gestion.push({ label: 'Planes de Membresía', icon: 'pi pi-credit-card', command: () => router.push('/admin/planes-membresia') })
   if (gestion.length) result.push({ label: 'Gestión', items: gestion })
 
   // --- Reservas ---
@@ -324,7 +300,8 @@ const menuItems = computed(() => {
   if (reservas.length) result.push({ label: 'Reservas', items: reservas })
   // --- Finanzas ---
   const finanzas = []
-  if (hp('movimientos')) finanzas.push({ label: 'Ingresos & Egresos', icon: 'pi pi-chart-bar', command: () => router.push('/admin/movimientos') })
+  if (hp('movimientos') && !scopedSubcomision) finanzas.push({ label: 'Ingresos & Egresos', icon: 'pi pi-chart-bar', command: () => router.push('/admin/movimientos') })
+  if (hp('contabilidad')) finanzas.push({ label: 'Contabilidad por Disciplina', icon: 'pi pi-calculator', command: () => router.push('/admin/contabilidad-disciplinas') })
   if (hp('eventos'))     finanzas.push({ label: 'Eventos',            icon: 'pi pi-star',       command: () => router.push('/admin/eventos') })
   if (finanzas.length) result.push({ label: 'Finanzas', items: finanzas })
 
@@ -364,14 +341,6 @@ function handleLogout() {
 
 .topbar-title {
   color: var(--text-color);
-}
-
-.topbar-app-icon {
-  height: 28px;
-  width: auto;
-  max-width: 84px;
-  object-fit: contain;
-  flex-shrink: 0;
 }
 
 .topbar-username {

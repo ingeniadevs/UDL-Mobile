@@ -9,13 +9,13 @@
         <span class="text-gray-400 font-medium">Panel de Administración</span>
       </div>      <form @submit.prevent="handleLogin">
         <div class="mb-4">
-          <label for="identificador" class="block text-gray-300 font-medium mb-2">Usuario o Email</label>
+          <label for="identificador" class="block text-gray-300 font-medium mb-2">Alias de administrador</label>
           <InputText 
             id="identificador" 
             v-model="identificador" 
             type="text" 
             class="w-full" 
-            placeholder="admin o admin@udl.com"
+            placeholder="Ej: admin, fulbo"
             :class="{ 'p-invalid': errors.identificador }"
             autocomplete="username"
           />
@@ -72,8 +72,10 @@ const errors = ref({})
 
 function validate() {
   errors.value = {}
-  if (!identificador.value) {
-    errors.value.identificador = 'El usuario o email es requerido'
+  if (!identificador.value.trim()) {
+    errors.value.identificador = 'El alias es requerido'
+  } else if (identificador.value.includes('@')) {
+    errors.value.identificador = 'Usá tu alias de admin (sin @). Para email, contactá al master.'
   }
   if (!password.value) {
     errors.value.password = 'La contraseña es requerida'
@@ -88,8 +90,7 @@ async function handleLogin() {
   errorMessage.value = ''
 
   try {
-    // Login unificado: acepta alias (ej: "admin", "fulbo") o email
-    await authStore.login(identificador.value, password.value)
+    await authStore.login(identificador.value.trim(), password.value)
     router.push('/admin/inicio')
   } catch (error) {
     errorMessage.value = error.response?.data?.message || 'Credenciales inválidas'

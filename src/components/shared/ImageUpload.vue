@@ -51,10 +51,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import Button from 'primevue/button'
-import { Capacitor } from '@capacitor/core'
-import { pickImage } from '@/platform/camera'
 import api from '@/services/api'
-import { resolveAssetUrl } from '@/utils/assetUrl'
 
 const props = defineProps({
   modelValue: {
@@ -86,7 +83,9 @@ const displayUrl = computed(() => {
   if (localPreview.value) return localPreview.value
   if (!props.modelValue) return ''
   // Si es una URL relativa, asegurar que funcione con el proxy
-  return resolveAssetUrl(props.modelValue)
+  if (props.modelValue.startsWith('/uploads')) return props.modelValue
+  if (props.modelValue.startsWith('http')) return props.modelValue
+  return props.modelValue
 })
 
 // Cuando cambia modelValue externo, limpiar preview local
@@ -100,18 +99,7 @@ function handleImageError() {
   console.error('Error loading image:', displayUrl.value)
 }
 
-async function triggerFileInput() {
-  if (Capacitor.isNativePlatform()) {
-    try {
-      const file = await pickImage({ source: 'prompt' })
-      await uploadFile(file)
-    } catch (err) {
-      if (err?.message !== 'No se seleccionó imagen') {
-        error.value = err?.message || 'No se pudo obtener la imagen'
-      }
-    }
-    return
-  }
+function triggerFileInput() {
   fileInput.value?.click()
 }
 

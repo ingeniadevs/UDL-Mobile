@@ -14,7 +14,7 @@
           <div class="espacio-image-wrapper">
             <img 
               v-if="espacio.imagen" 
-              :src="assetUrl(espacio.imagen)" 
+              :src="espacio.imagen" 
               :alt="espacio.nombre"
               class="espacio-image"
             />
@@ -41,8 +41,16 @@
                 <Tag :value="espacio.tipo" :severity="getTipoSeverity(espacio.tipo)" class="mt-1" />
               </div>
               <div class="text-right">
-                <div class="espacio-price">${{ espacio.precioPorHora }}</div>
-                <small class="text-gray-400">precio</small>
+                <template v-if="espacio.tipoReserva === 'PorTurno'">
+                  <div class="espacio-price">
+                    ${{ Math.min(...[espacio.precioTurnoManana, espacio.precioTurnoNoche, espacio.precioTodoDia].filter(p => p > 0)).toLocaleString() }}
+                  </div>
+                  <small class="text-gray-400">desde / turno</small>
+                </template>
+                <template v-else>
+                  <div class="espacio-price">${{ espacio.precioPorHora?.toLocaleString() }}</div>
+                  <small class="text-gray-400">precio / hora</small>
+                </template>
               </div>
             </div>
             
@@ -74,7 +82,7 @@
           <div class="header-image">
             <img 
               v-if="selectedEspacio.imagen" 
-              :src="assetUrl(selectedEspacio.imagen)" 
+              :src="selectedEspacio.imagen" 
               :alt="selectedEspacio.nombre"
             />
             <div v-else class="header-placeholder">
@@ -98,7 +106,6 @@
             :minDate="new Date()"
             showIcon
             inline
-            @date-select="loadTurnos"
           />
         </div>
 
@@ -114,7 +121,7 @@
             <p>No hay turnos disponibles para esta fecha</p>
           </div>
 
-          <div v-else-if="turnos.length === 0" class="text-center py-4 text-gray-400">
+          <div v-else-if="!selectedDate" class="text-center py-4 text-gray-400">
             <i class="pi pi-calendar text-4xl mb-2"></i>
             <p>Selecciona una fecha para ver los turnos disponibles</p>
           </div>
@@ -126,7 +133,7 @@
                 :key="turno.horaInicio"
                 class="turno-salon-card p-3 border-round cursor-pointer mb-2"
                 :class="{
-                  'selected': selectedTurno?.horaInicio === turno.horaInicio,
+                  'selected': selectedTurno?.horaInicio === turno.horaInicio && selectedTurno?.horaFin === turno.horaFin,
                   'disabled-turno': !turno.disponible
                 }"
                 @click="turno.disponible && selectTurno(turno)"
@@ -139,7 +146,7 @@
                   <div class="text-right">
                     <div v-if="turno.precio" class="font-bold text-primary-400 text-lg">${{ turno.precio.toLocaleString() }}</div>
                     <Tag v-if="!turno.disponible" severity="danger" value="Ocupado" size="small" />
-                    <i v-else-if="selectedTurno?.horaInicio === turno.horaInicio" class="pi pi-check-circle text-primary-400 text-xl"></i>
+                    <i v-else-if="selectedTurno?.horaInicio === turno.horaInicio && selectedTurno?.horaFin === turno.horaFin" class="pi pi-check-circle text-primary-400 text-xl"></i>
                   </div>
                 </div>
               </div>
@@ -224,20 +231,18 @@
 
     <!-- Mis Reservas con Pagos -->
     <div class="card mt-4">
-      <div class="flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
-        <h2 class="text-xl font-bold m-0" style="color: var(--text-color)">
+      <div class="flex align-items-center justify-content-between mb-4">        <h2 class="text-xl font-bold m-0" style="color: var(--text-color)">
           <i class="pi pi-calendar mr-2"></i>Mis Reservas
         </h2>
         <div class="flex gap-2">
-          <Button
+          <Button 
             v-if="reservasSeleccionadas.length > 0"
             :label="`Pagar ${reservasSeleccionadas.length} reserva(s) - $${totalSeleccionado.toLocaleString()}`"
-            icon="pi pi-wallet"
-            size="small"
-            severity="success"
+            icon="pi pi-wallet" 
             @click="abrirModalPago"
+            severity="success"
           />
-          <Button icon="pi pi-refresh" text rounded size="small" @click="loadMisReservas" v-tooltip.left="'Actualizar'" />
+          <Button icon="pi pi-refresh" text rounded @click="loadMisReservas" v-tooltip.left="'Actualizar'" />
         </div>
       </div>
 
@@ -281,18 +286,30 @@
               </div>
             </template>
             <template #actions>
-              <Checkbox
-                v-if="canSelect(item)"
-                :modelValue="reservasSeleccionadas.some(r => r.id === item.id)"
-                :binary="true"
-                @update:modelValue="val => toggleReservaSeleccion(item, val)"
+              <Button
+                v-if="item.estadoPago === 'pendiente' && item.estado?.toLowerCase() === 'confirmada'"
+                icon="pi pi-wallet"
+                text
+                rounded
+                size="small"
+                severity="success"
+                @click="pagarReservaIndividual(item)"
+                v-tooltip.top="'Pagar'"
               />
-              <Button v-if="item.estadoPago === 'pendiente'" icon="pi pi-wallet" text rounded size="small" severity="success" @click="pagarReservaIndividual(item)" v-tooltip.top="'Pagar'" />
-              <Button v-if="canCancel(item)" icon="pi pi-times" text rounded size="small" severity="danger" @click="cancelarReserva(item)" v-tooltip.top="'Cancelar reserva'" />
+              <Button
+                v-if="canCancel(item)"
+                icon="pi pi-times"
+                text
+                rounded
+                size="small"
+                severity="danger"
+                @click="cancelarReserva(item)"
+                v-tooltip.top="'Cancelar reserva'"
+              />
             </template>
           </MobileRecordCard>
         </div>
-        <MobilePaginator v-model:page="reservasPage" :rows="10" :total="misReservas.length" />
+        <MobilePaginator v-model:page="reservasPage" :rows="5" :total="misReservas.length" />
       </template>
     </div>
 
@@ -338,6 +355,21 @@
 
             <div
               class="payment-option"
+              :class="{ 'selected': metodoPagoSeleccionado === 'Transferencia' }"
+              @click="metodoPagoSeleccionado = 'Transferencia'"
+            >
+              <div class="payment-icon" style="background: #1a56db22; color: #60a5fa">
+                <i class="pi pi-dollar"></i>
+              </div>
+              <div class="payment-info">
+                <span class="payment-title">Transferencia Bancaria</span>
+                <span class="payment-desc">Transferí y enviá el comprobante por WhatsApp</span>
+              </div>
+              <i v-if="metodoPagoSeleccionado === 'Transferencia'" class="pi pi-check-circle text-green-400"></i>
+            </div>
+
+            <div
+              class="payment-option"
               :class="{ 'selected': metodoPagoSeleccionado === 'MercadoPago' }"
               @click="metodoPagoSeleccionado = 'MercadoPago'"
             >
@@ -356,13 +388,41 @@
         <Message v-if="metodoPagoSeleccionado === 'Efectivo'" severity="info" :closable="false">
           <small>Deberás acercarte al club para realizar el pago. La reserva quedará pendiente de confirmación.</small>
         </Message>
+
+        <div v-if="metodoPagoSeleccionado === 'Transferencia'" class="transferencia-info">
+          <div class="transferencia-dato">
+            <span class="transferencia-label">CBU</span>
+            <span class="transferencia-valor">0110332640033213198558</span>
+          </div>
+          <div class="transferencia-dato">
+            <span class="transferencia-label">ALIAS</span>
+            <span class="transferencia-valor">UDL.NACION</span>
+          </div>
+          <div class="transferencia-dato">
+            <span class="transferencia-label">CUIT</span>
+            <span class="transferencia-valor">30-70706271-8</span>
+          </div>
+          <div class="transferencia-dato">
+            <span class="transferencia-label">Titular</span>
+            <span class="transferencia-valor">Unión Deportiva Laspiur</span>
+          </div>
+          <Divider class="my-2" />
+          <div class="flex align-items-start gap-2" style="color: #f59e0b">
+            <i class="pi pi-whatsapp mt-1" style="font-size: 1.1rem"></i>
+            <small>
+              Una vez realizada la transferencia, enviá el comprobante al WhatsApp
+              <strong>+54 9 3533 68-0908</strong> indicando tu nombre y la fecha de la reserva.
+              La reserva quedará pendiente hasta confirmar la acreditación.
+            </small>
+          </div>
+        </div>
       </div>
 
       <template #footer>
         <Button label="Cancelar" icon="pi pi-times" text @click="pagoDialog = false" />
         <Button 
-          :label="metodoPagoSeleccionado === 'MercadoPago' ? 'Pagar con MercadoPago' : 'Solicitar pago en efectivo'" 
-          :icon="metodoPagoSeleccionado === 'MercadoPago' ? 'pi pi-credit-card' : 'pi pi-money-bill'" 
+          :label="metodoPagoSeleccionado === 'MercadoPago' ? 'Pagar con MercadoPago' : metodoPagoSeleccionado === 'Transferencia' ? 'Ya transferí, avisar por WhatsApp' : 'Solicitar pago en efectivo'" 
+          :icon="metodoPagoSeleccionado === 'MercadoPago' ? 'pi pi-credit-card' : metodoPagoSeleccionado === 'Transferencia' ? 'pi pi-whatsapp' : 'pi pi-money-bill'" 
           @click="procesarPago"
           :loading="procesandoPago"
           :disabled="!metodoPagoSeleccionado"
@@ -373,15 +433,21 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { reservasService, espaciosService } from '@/services'
-import Button from 'primevue/button'
-import Checkbox from 'primevue/checkbox'
+import {
+  formatCalendarDateFromApi,
+  formatDateOnlyForApi,
+  isSameLocalCalendarDay,
+  startOfTodayLocal
+} from '@/utils/reservationDates'
+import { useMobilePagination } from '@/composables/useMobilePagination'
+import PageHeader from '@/components/mobile/PageHeader.vue'
 import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
 import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
-import PageHeader from '@/components/mobile/PageHeader.vue'
+import Button from 'primevue/button'
 import Calendar from 'primevue/calendar'
 import Textarea from 'primevue/textarea'
 import Tag from 'primevue/tag'
@@ -390,10 +456,6 @@ import Dialog from 'primevue/dialog'
 import Divider from 'primevue/divider'
 import Message from 'primevue/message'
 import { openMercadoPagoCheckout } from '@/platform/mercadopago'
-import { useMercadoPagoReturn } from '@/composables/useMercadoPagoReturn'
-import { useAssetUrl } from '@/composables/useAssetUrl'
-
-const assetUrl = useAssetUrl()
 
 const toast = useToast()
 const confirm = useConfirm()
@@ -406,23 +468,7 @@ const turnos = ref([])
 const observaciones = ref('')
 const misReservas = ref([])
 const reservasSeleccionadas = ref([])
-const reservasPage = ref(1)
-
-const paginatedReservas = computed(() => {
-  const start = (reservasPage.value - 1) * 10
-  return misReservas.value.slice(start, start + 10)
-})
-
-function toggleReservaSeleccion(item, selected) {
-  if (!canSelect(item)) return
-  if (selected) {
-    if (!reservasSeleccionadas.value.some(r => r.id === item.id)) {
-      reservasSeleccionadas.value = [...reservasSeleccionadas.value, item]
-    }
-  } else {
-    reservasSeleccionadas.value = reservasSeleccionadas.value.filter(r => r.id !== item.id)
-  }
-}
+const { page: reservasPage, paginated: paginatedReservas } = useMobilePagination(misReservas, 5)
 
 const loadingTurnos = ref(false)
 const loadingReservas = ref(false)
@@ -442,8 +488,8 @@ const totalAPagar = computed(() => {
   return reservasAPagar.value.reduce((sum, r) => sum + (r.monto || 0), 0)
 })
 
-function canSelect(item) {
-  return item.estadoPago === 'pendiente' && item.estado !== 'cancelada'
+function canSelect({ data }) {
+  return data.estadoPago === 'pendiente' && data.estado !== 'cancelada'
 }
 
 function getTipoSeverity(tipo) {
@@ -500,17 +546,7 @@ function formatDate(date) {
 }
 
 function formatDateShort(date) {
-  return new Date(date).toLocaleDateString('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  })
-}
-
-function formatDateForApi(date) {
-  if (!date) return null
-  const d = new Date(date)
-  return d.toISOString().split('T')[0]
+  return formatCalendarDateFromApi(date)
 }
 
 function canCancel(reserva) {
@@ -539,7 +575,7 @@ async function loadMisReservas() {
 
 function selectEspacio(espacio) {
   selectedEspacio.value = espacio
-  selectedDate.value = null
+  selectedDate.value = startOfTodayLocal()
   selectedTurno.value = null
   turnos.value = []
   observaciones.value = ''
@@ -555,7 +591,7 @@ async function loadTurnos() {
   selectedTurno.value = null
   
   try {
-    const fecha = formatDateForApi(selectedDate.value)
+    const fecha = formatDateOnlyForApi(selectedDate.value)
     turnos.value = await espaciosService.getTurnosDisponibles(selectedEspacio.value.id, fecha)
   } catch (error) {
     const detalle = error.response?.data?.message || 'No se pudieron cargar los turnos'
@@ -592,9 +628,10 @@ async function crearReserva() {
   try {
     await reservasService.create({
       espacioId: selectedEspacio.value.id,
-      fecha: formatDateForApi(selectedDate.value),
+      fecha: formatDateOnlyForApi(selectedDate.value),
       horaInicio: selectedTurno.value.horaInicio,
       horaFin: selectedTurno.value.horaFin,
+      turno: selectedTurno.value.tipo ?? null,
       observaciones: observaciones.value
     })
 
@@ -637,9 +674,7 @@ async function cancelarReserva(reserva) {
         toast.add({ severity: 'success', summary: 'Éxito', detail: 'Reserva cancelada', life: 3000 })
         await loadMisReservas()
         if (selectedEspacio.value?.id === reserva.espacioId && selectedDate.value) {
-          const reservaFecha = new Date(reserva.fecha).toDateString()
-          const selectedFecha = new Date(selectedDate.value).toDateString()
-          if (reservaFecha === selectedFecha) {
+          if (isSameLocalCalendarDay(reserva.fecha, selectedDate.value)) {
             await loadTurnos()
           }
         }
@@ -683,16 +718,19 @@ async function procesarPago() {
       const response = reservaIds.length === 1
         ? await reservasService.initMercadoPago(reservaIds[0])
         : await reservasService.initMercadoPagoMultiple(reservaIds)
-        // Abrir MercadoPago en nueva pestaña
       await openMercadoPagoCheckout(response.initPoint || response.sandboxInitPoint)
     } else {
-      // Pago en efectivo
-      await reservasService.solicitarPagoEfectivo(reservaIds)
+      // Pago en efectivo o transferencia
+      await reservasService.solicitarPagoEfectivo(reservaIds, metodoPagoSeleccionado.value)
+
+      const esTransferencia = metodoPagoSeleccionado.value === 'Transferencia'
       toast.add({ 
         severity: 'success', 
-        summary: 'Solicitud enviada', 
-        detail: 'Acércate al club para completar el pago en efectivo', 
-        life: 5000 
+        summary: esTransferencia ? 'Transferencia registrada' : 'Solicitud enviada', 
+        detail: esTransferencia
+          ? 'Enviá el comprobante al +54 9 3533 68-0908 indicando tu nombre y fecha de reserva. Tu reserva quedará pendiente hasta confirmar la acreditación.'
+          : 'Acércate al club para completar el pago en efectivo', 
+        life: 8000 
       })
       pagoDialog.value = false
       await loadMisReservas()
@@ -709,27 +747,29 @@ async function procesarPago() {
   }
 }
 
-useMercadoPagoReturn({
-  messages: {
-    success: {
-      severity: 'success',
-      summary: 'Pago exitoso',
-      detail: 'Tu pago fue procesado correctamente',
-      life: 5000
-    },
-    failure: {
-      severity: 'error',
-      summary: 'Pago fallido',
-      detail: 'El pago no pudo ser procesado',
-      life: 5000
-    }
-  },
-  reload: loadMisReservas
+watch(selectedDate, (fecha) => {
+  if (!selectedEspacio.value) return
+  if (!fecha) {
+    turnos.value = []
+    return
+  }
+  loadTurnos()
 })
 
 onMounted(async () => {
   await loadEspacios()
   await loadMisReservas()
+  
+  // Verificar si volvemos de MercadoPago
+  const urlParams = new URLSearchParams(window.location.search)
+  const status = urlParams.get('status')
+  if (status === 'success') {
+    toast.add({ severity: 'success', summary: 'Pago exitoso', detail: 'Tu pago fue procesado correctamente', life: 5000 })
+    window.history.replaceState({}, document.title, window.location.pathname)
+  } else if (status === 'failure') {
+    toast.add({ severity: 'error', summary: 'Pago fallido', detail: 'El pago no pudo ser procesado', life: 5000 })
+    window.history.replaceState({}, document.title, window.location.pathname)
+  }
 })
 </script>
 
@@ -1065,6 +1105,37 @@ onMounted(async () => {
 .payment-desc {
   color: var(--text-color-secondary);
   font-size: 0.85rem;
+}
+
+.transferencia-info {
+  background: var(--surface-ground);
+  border: 1px solid #1d4ed855;
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.transferencia-dato {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.transferencia-label {
+  color: var(--text-color-secondary);
+  font-size: 0.85rem;
+  min-width: 60px;
+}
+
+.transferencia-valor {
+  font-family: monospace;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-color);
+  letter-spacing: 0.5px;
 }
 
 /* Turno Salon Cards */

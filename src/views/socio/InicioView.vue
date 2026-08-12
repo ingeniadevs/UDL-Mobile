@@ -46,10 +46,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { getPreference, setPreference } from '@/platform/storage'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Checkbox from 'primevue/checkbox'
@@ -71,12 +70,15 @@ const ALL_TILES = [
 
 const storageKey = `inicio_tiles_socio_${authStore.user?.id}`
 
-const savedIds = ref(null)
+const loadSavedIds = () => {
+  try {
+    const raw = localStorage.getItem(storageKey)
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  return null
+}
 
-onMounted(async () => {
-  const stored = await getPreference(storageKey, null)
-  savedIds.value = Array.isArray(stored) ? stored : null
-})
+const savedIds = ref(loadSavedIds())
 
 const visibleTiles = computed(() => {
   if (!savedIds.value) return ALL_TILES
@@ -91,9 +93,9 @@ const openConfig = () => {
   configVisible.value = true
 }
 
-const saveConfig = async () => {
+const saveConfig = () => {
   savedIds.value = [...draftIds.value]
-  await setPreference(storageKey, savedIds.value)
+  localStorage.setItem(storageKey, JSON.stringify(savedIds.value))
   configVisible.value = false
 }
 </script>

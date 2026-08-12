@@ -1,6 +1,5 @@
 <template>
   <div class="movimientos-view">
-    <!-- Header -->
     <PageHeader title="Ingresos & Egresos">
       <template #actions>
         <Button
@@ -13,66 +12,47 @@
     </PageHeader>
 
     <!-- Tabs principales -->
-    <TabView v-model:activeIndex="activeTabIndex" class="custom-tabview">
+    <TabView v-model:activeIndex="activeTabIndex" class="custom-tabview" @tab-change="onTabChange">
       <!-- Tab 1: Lista de Movimientos -->
       <TabPanel header="Movimientos" leftIcon="pi pi-list">
         <div class="movimientos-panel">
           <!-- Tarjetas resumen -->
           <div class="grid mb-4">
-            <div class="col-12 md:col-3">
+            <div class="col-6 md:col-3">
               <div class="stat-card">
-                <div class="flex align-items-center justify-content-between">
-                  <div>
-                    <span class="block stat-label font-medium mb-2">Total Ingresos</span>
-                    <div class="stat-value font-bold text-3xl">${{ resumen.totalIngresos?.toLocaleString('es-AR') ?? '0' }}</div>
-                  </div>
-                  <div class="stat-icon bg-green">
-                    <i class="pi pi-arrow-down text-2xl"></i>
-                  </div>
+                <div class="stat-icon bg-green"><i class="pi pi-arrow-down"></i></div>
+                <div class="stat-content">
+                  <span class="stat-value">${{ resumen.totalIngresos?.toLocaleString('es-AR') ?? '0' }}</span>
+                  <span class="stat-label">Total Ingresos</span>
                 </div>
               </div>
             </div>
-            
-            <div class="col-12 md:col-3">
+            <div class="col-6 md:col-3">
               <div class="stat-card">
-                <div class="flex align-items-center justify-content-between">
-                  <div>
-                    <span class="block stat-label font-medium mb-2">Total Egresos</span>
-                    <div class="stat-value font-bold text-3xl">${{ resumen.totalEgresos?.toLocaleString('es-AR') ?? '0' }}</div>
-                  </div>
-                  <div class="stat-icon bg-red">
-                    <i class="pi pi-arrow-up text-2xl"></i>
-                  </div>
+                <div class="stat-icon bg-red"><i class="pi pi-arrow-up"></i></div>
+                <div class="stat-content">
+                  <span class="stat-value">${{ resumen.totalEgresos?.toLocaleString('es-AR') ?? '0' }}</span>
+                  <span class="stat-label">Total Egresos</span>
                 </div>
               </div>
             </div>
-
-            <div class="col-12 md:col-3">
+            <div class="col-6 md:col-3">
               <div class="stat-card">
-                <div class="flex align-items-center justify-content-between">
-                  <div>
-                    <span class="block stat-label font-medium mb-2">Saldo del Período</span>
-                    <div class="font-bold text-3xl" :class="saldo >= 0 ? 'text-green-400' : 'text-red-400'">
-                      {{ saldo >= 0 ? '+' : '' }}${{ saldo.toLocaleString('es-AR') }}
-                    </div>
-                  </div>
-                  <div class="stat-icon" :class="saldo >= 0 ? 'bg-blue' : 'bg-orange'">
-                    <i class="pi pi-wallet text-2xl"></i>
-                  </div>
+                <div class="stat-icon" :class="saldo >= 0 ? 'bg-blue' : 'bg-orange'"><i class="pi pi-wallet"></i></div>
+                <div class="stat-content">
+                  <span class="stat-value" :class="saldo >= 0 ? 'text-green-400' : 'text-red-400'">
+                    {{ saldo >= 0 ? '+' : '' }}${{ saldo.toLocaleString('es-AR') }}
+                  </span>
+                  <span class="stat-label">Saldo del Período</span>
                 </div>
               </div>
             </div>
-
-            <div class="col-12 md:col-3">
+            <div class="col-6 md:col-3">
               <div class="stat-card">
-                <div class="flex align-items-center justify-content-between">
-                  <div>
-                    <span class="block stat-label font-medium mb-2">Total Movimientos</span>
-                    <div class="stat-value font-bold text-3xl">{{ movimientosFiltrados.length }}</div>
-                  </div>
-                  <div class="stat-icon bg-purple">
-                    <i class="pi pi-list text-2xl"></i>
-                  </div>
+                <div class="stat-icon bg-purple"><i class="pi pi-list"></i></div>
+                <div class="stat-content">
+                  <span class="stat-value">{{ movimientosFiltrados.length }}</span>
+                  <span class="stat-label">Movimientos</span>
                 </div>
               </div>
             </div>
@@ -80,7 +60,6 @@
 
           <!-- Filtros -->
           <div class="card mb-4">
-            <h3 class="mb-3">Filtros</h3>
             <div class="grid">
               <div class="col-12 md:col-3">
                 <label class="block text-sm font-medium mb-2">Desde</label>
@@ -118,15 +97,24 @@
               </div>
 
               <div class="col-12 md:col-3">
-                <label class="block text-sm font-medium mb-2">Categoría</label>                <Dropdown 
+                <label class="block text-sm font-medium mb-2">Categoría</label>
+                <Dropdown 
                   v-model="filtros.categoria" 
                   :options="categorias"
                   optionLabel="label"
                   optionValue="value"
                   placeholder="Todas las categorías"
                   :showClear="true"
+                  class="w-full"
                   @change="aplicarFiltros"
                 />
+              </div>
+              <div class="col-12 md:col-12">
+                <label class="block text-sm font-medium mb-2">Buscar</label>
+                <span class="p-input-icon-left w-full">
+                  <i class="pi pi-search" />
+                  <InputText v-model="busqueda" placeholder="Buscar por concepto, categoría, pagador..." class="w-full" @input="aplicarFiltros" />
+                </span>
               </div>
             </div>
           </div>
@@ -134,18 +122,8 @@
           <!-- Lista de movimientos -->
           <div class="card">
             <div class="flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-              <span class="p-input-icon-left">
-                <i class="pi pi-search" />
-                <InputText v-model="busqueda" placeholder="Buscar..." @input="aplicarFiltros" />
-              </span>
-              <Button
-                icon="pi pi-refresh"
-                size="small"
-                @click="cargarMovimientos"
-                :loading="loading"
-                outlined
-                v-tooltip="'Actualizar datos'"
-              />
+              <h3 class="m-0">Listado de Movimientos</h3>
+              <Button icon="pi pi-refresh" text rounded size="small" @click="cargarMovimientos" :loading="loading" v-tooltip="'Actualizar datos'" />
             </div>
 
             <div v-if="loading" class="flex justify-content-center py-4">
@@ -154,62 +132,88 @@
             <div v-else-if="movimientosFiltrados.length === 0" class="text-center text-gray-400 py-4">
               No hay movimientos para mostrar
             </div>
-            <div v-else class="mobile-card-list">
-              <MobileRecordCard
-                v-for="item in paginatedMovimientos"
-                :key="item.id"
-                :title="item.concepto"
-                :subtitle="formatFecha(item.fecha)"
-              >
-                <template #tags>
-                  <Tag
-                    :severity="item.tipo === 'ingreso' ? 'success' : 'danger'"
-                    :value="item.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'"
-                  />
-                </template>
-                <template #body>
-                  <div class="record-card__row">
-                    <span class="record-card__label">Categoría</span>
-                    <span class="record-card__value">{{ item.categoria }}</span>
-                  </div>
-                  <div v-if="item.empleadoNombre" class="record-card__row">
-                    <span class="record-card__label">Empleado</span>
-                    <span class="record-card__value">{{ item.empleadoNombre }}</span>
-                  </div>
-                  <div class="record-card__row">
-                    <span class="record-card__label">Monto</span>
-                    <span
-                      class="record-card__value font-bold"
-                      :class="item.tipo === 'ingreso' ? 'text-green-400' : 'text-red-400'"
-                    >
-                      {{ item.tipo === 'ingreso' ? '+' : '-' }}${{ item.monto.toLocaleString('es-AR') }}
-                    </span>
-                  </div>
-                </template>
-                <template #actions>
-                  <Button icon="pi pi-pencil" text rounded size="small" @click="editarMovimiento(item)" />
-                  <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmarEliminar(item)" />
-                </template>
-              </MobileRecordCard>
-            </div>
-            <MobilePaginator v-model:page="currentPage" :rows="10" :total="movimientosFiltrados.length" />
+            <template v-else>
+              <div class="mobile-card-list">
+                <MobileRecordCard
+                  v-for="item in paginatedMovimientos"
+                  :key="item.id"
+                  :title="item.concepto"
+                  :subtitle="formatFecha(item.fecha)"
+                >
+                  <template #tags>
+                    <Tag
+                      :severity="item.tipo === 'ingreso' ? 'success' : 'danger'"
+                      :value="item.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'"
+                      :icon="item.tipo === 'ingreso' ? 'pi pi-arrow-down' : 'pi pi-arrow-up'"
+                    />
+                  </template>
+                  <template #body>
+                    <div class="record-card__row">
+                      <span class="record-card__label">Categoría</span>
+                      <span class="record-card__value">{{ item.categoria }}</span>
+                    </div>
+                    <div v-if="item.pagadorNombre" class="record-card__row">
+                      <span class="record-card__label">Pagador</span>
+                      <span class="record-card__value">
+                        {{ item.pagadorNombre }}
+                        <span v-if="item.pagadorDni" class="text-gray-500 text-xs block">DNI {{ item.pagadorDni }}</span>
+                      </span>
+                    </div>
+                    <div v-if="item.empleadoNombre" class="record-card__row">
+                      <span class="record-card__label">Empleado</span>
+                      <span class="record-card__value">{{ item.empleadoNombre }}</span>
+                    </div>
+                    <div v-if="item.usuarioRegistro" class="record-card__row">
+                      <span class="record-card__label">Usuario</span>
+                      <span class="record-card__value">{{ item.usuarioRegistro }}</span>
+                    </div>
+                    <div class="record-card__row">
+                      <span class="record-card__label">Monto</span>
+                      <span
+                        class="record-card__value font-bold"
+                        :class="item.tipo === 'ingreso' ? 'text-green-400' : 'text-red-400'"
+                      >
+                        {{ item.tipo === 'ingreso' ? '+' : '-' }}${{ item.monto.toLocaleString('es-AR') }}
+                      </span>
+                    </div>
+                  </template>
+                  <template #actions>
+                    <Button icon="pi pi-pencil" text rounded size="small" @click="editarMovimiento(item)" v-tooltip="'Editar'" />
+                    <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmarEliminar(item)" v-tooltip="'Eliminar'" />
+                  </template>
+                </MobileRecordCard>
+              </div>
+              <MobilePaginator v-model:page="movimientosPage" :rows="10" :total="movimientosFiltrados.length" />
+            </template>
           </div>
         </div>
       </TabPanel>
 
       <!-- Tab 2: Dashboard Mensual -->
       <TabPanel header="Dashboard Mensual" leftIcon="pi pi-chart-line">
-        <DashboardMensual />
+        <DashboardMensual :key="`dash-m-${movimientosVersion}`" :refresh-key="movimientosVersion" />
       </TabPanel>
 
       <!-- Tab 3: Dashboard Anual -->
       <TabPanel header="Dashboard Anual" leftIcon="pi pi-chart-bar">
-        <DashboardAnual />
+        <DashboardAnual :key="`dash-a-${movimientosVersion}`" :refresh-key="movimientosVersion" />
       </TabPanel>
 
       <!-- Tab 4: Reportes -->
       <TabPanel header="Reportes" leftIcon="pi pi-file-pdf">
-        <ReporteMovimientos />
+        <ReporteMovimientos :key="`rep-${movimientosVersion}`" :refresh-key="movimientosVersion" />
+      </TabPanel>
+
+      <!-- Tab 5: Balances anuales -->
+      <TabPanel header="Balances anuales" leftIcon="pi pi-file">
+        <div class="tab-panel-content">
+          <BalanceAnualUpload :key="`bal-${balancesVersion}`" scope="Club" :refresh-key="balancesVersion" />
+        </div>
+      </TabPanel>
+
+      <!-- Tab 6: Distribución disciplinas -->
+      <TabPanel header="Distribución disciplinas" leftIcon="pi pi-sitemap">
+        <ReporteDistribucionDisciplinas />
       </TabPanel>
     </TabView>
 
@@ -257,12 +261,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { movimientosService } from '@/services'
 import { useToast } from 'primevue/usetoast'
-import TabView from 'primevue/tabview'
-import TabPanel from 'primevue/tabpanel'
-import Button from 'primevue/button'
+import { useMobilePagination } from '@/composables/useMobilePagination'
 import PageHeader from '@/components/mobile/PageHeader.vue'
 import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
 import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
+import TabView from 'primevue/tabview'
+import TabPanel from 'primevue/tabpanel'
+import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Calendar from 'primevue/calendar'
 import Dropdown from 'primevue/dropdown'
@@ -271,6 +276,8 @@ import Tag from 'primevue/tag'
 import DashboardMensual from '@/components/movimientos/DashboardMensual.vue'
 import DashboardAnual from '@/components/movimientos/DashboardAnual.vue'
 import ReporteMovimientos from '@/components/movimientos/ReporteMovimientos.vue'
+import BalanceAnualUpload from '@/components/contabilidad/BalanceAnualUpload.vue'
+import ReporteDistribucionDisciplinas from '@/components/contabilidad/ReporteDistribucionDisciplinas.vue'
 import MovimientoFormDialog from '@/components/movimientos/MovimientoFormDialog.vue'
 
 const toast = useToast()
@@ -287,6 +294,8 @@ const mostrarFormulario = ref(false)
 const mostrarConfirmacionEliminar = ref(false)
 const movimientoEditando = ref(null)
 const movimientoAEliminar = ref(null)
+const movimientosVersion = ref(0)
+const balancesVersion = ref(0)
 
 // Filtros
 const filtros = ref({
@@ -332,21 +341,25 @@ const movimientosFiltrados = computed(() => {
     resultado = resultado.filter(mov => 
       mov.concepto.toLowerCase().includes(termino) ||
       mov.categoria.toLowerCase().includes(termino) ||
+      mov.pagadorNombre?.toLowerCase().includes(termino) ||
+      mov.pagadorDni?.toLowerCase().includes(termino) ||
       mov.descripcion?.toLowerCase().includes(termino) ||
       mov.empleadoNombre?.toLowerCase().includes(termino) ||
       mov.usuarioRegistro?.toLowerCase().includes(termino)
     )
   }
 
-  // Filtro por fechas
+  // Filtro por fechas (comparar solo parte de fecha, sin hora UTC)
   if (filtros.value.fechaDesde) {
+    const desdeStr = filtros.value.fechaDesde.toISOString().substring(0, 10)
     resultado = resultado.filter(mov => 
-      new Date(mov.fecha) >= filtros.value.fechaDesde
+      (typeof mov.fecha === 'string' ? mov.fecha.substring(0, 10) : mov.fecha.toISOString().substring(0, 10)) >= desdeStr
     )
   }
   if (filtros.value.fechaHasta) {
+    const hastaStr = filtros.value.fechaHasta.toISOString().substring(0, 10)
     resultado = resultado.filter(mov => 
-      new Date(mov.fecha) <= filtros.value.fechaHasta
+      (typeof mov.fecha === 'string' ? mov.fecha.substring(0, 10) : mov.fecha.toISOString().substring(0, 10)) <= hastaStr
     )
   }
 
@@ -360,13 +373,15 @@ const movimientosFiltrados = computed(() => {
     resultado = resultado.filter(mov => mov.categoria === filtros.value.categoria)
   }
 
-  return resultado
-})
-
-const currentPage = ref(1)
-const paginatedMovimientos = computed(() => {
-  const start = (currentPage.value - 1) * 10
-  return movimientosFiltrados.value.slice(start, start + 10)
+  // Ordenar: por fecha desc, luego por createdAt desc (para que ingresos manuales no queden al fondo)
+  return [...resultado].sort((a, b) => {
+    const fechaA = (a.fecha || '').substring(0, 10)
+    const fechaB = (b.fecha || '').substring(0, 10)
+    if (fechaA !== fechaB) return fechaA > fechaB ? -1 : 1
+    const caA = a.createdAt || ''
+    const caB = b.createdAt || ''
+    return caA > caB ? -1 : 1
+  })
 })
 
 const resumen = computed(() => {
@@ -385,6 +400,22 @@ const resumen = computed(() => {
 })
 
 const saldo = computed(() => resumen.value.totalIngresos - resumen.value.totalEgresos)
+
+const { page: movimientosPage, paginated: paginatedMovimientos } = useMobilePagination(
+  movimientosFiltrados,
+  10,
+  [busqueda, () => filtros.value.fechaDesde, () => filtros.value.fechaHasta, () => filtros.value.tipo, () => filtros.value.categoria]
+)
+
+const notificarCambioMovimientos = () => {
+  movimientosVersion.value++
+}
+
+const onTabChange = (event) => {
+  if (event.index === 4) {
+    balancesVersion.value++
+  }
+}
 
 // Métodos
 const cargarMovimientos = async () => {
@@ -409,7 +440,11 @@ const aplicarFiltros = () => {
 }
 
 const formatFecha = (fecha) => {
-  return new Date(fecha).toLocaleDateString('es-AR')
+  if (!fecha) return '—'
+  // Usar solo la parte de la fecha (YYYY-MM-DD) para evitar el desfase por zona horaria
+  const datePart = typeof fecha === 'string' ? fecha.substring(0, 10) : fecha.toISOString().substring(0, 10)
+  const [y, m, d] = datePart.split('-')
+  return `${d}/${m}/${y}`
 }
 
 const abrirFormulario = () => {
@@ -440,7 +475,8 @@ const eliminarMovimiento = async () => {
     })
     
     mostrarConfirmacionEliminar.value = false
-    cargarMovimientos()
+    await cargarMovimientos()
+    notificarCambioMovimientos()
   } catch (error) {
     console.error('Error eliminando movimiento:', error)
     toast.add({
@@ -454,8 +490,9 @@ const eliminarMovimiento = async () => {
   }
 }
 
-const onMovimientoGuardado = () => {
-  cargarMovimientos()
+const onMovimientoGuardado = async () => {
+  await cargarMovimientos()
+  notificarCambioMovimientos()
   toast.add({
     severity: 'success',
     summary: 'Éxito',
@@ -474,6 +511,10 @@ onMounted(() => {
   padding: 1rem;
 }
 
+.tab-panel-content {
+  padding: 0.5rem 0;
+}
+
 .page-title {
   color: var(--text-color);
 }
@@ -487,30 +528,44 @@ onMounted(() => {
 }
 
 .stat-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   background: var(--surface-card);
   border: 1px solid var(--surface-border);
   border-radius: 12px;
-  padding: 1.5rem;
+  padding: 1.25rem;
+}
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
 }
 
 .stat-label {
+  font-size: 0.85rem;
   color: var(--text-color-secondary);
 }
 
 .stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
   color: var(--text-color);
+  line-height: 1.2;
 }
 
 .stat-icon {
-  width: 3rem;
-  height: 3rem;
-  border-radius: 10px;
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   flex-shrink: 0;
 }
+
+.stat-icon i { font-size: 1.4rem; }
 
 .stat-icon.bg-green {
   background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);

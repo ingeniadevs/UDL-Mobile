@@ -2,10 +2,49 @@
   <div>
     <PageHeader title="Gestión de Pedidos">
       <template #actions>
-        <Tag severity="info" :value="`${filteredPedidos.length} pedidos`" />
         <Button label="Nuevo Pedido" icon="pi pi-plus" size="small" @click="openManualDialog" />
       </template>
     </PageHeader>
+
+    <!-- Stat cards -->
+    <div class="grid mb-4">
+      <div class="col-6 md:col-3">
+        <div class="stat-card stat-total">
+          <div class="stat-icon"><i class="pi pi-shopping-cart"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ filteredPedidos.length }}</span>
+            <span class="stat-label">Total Pedidos</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 md:col-3">
+        <div class="stat-card stat-warning">
+          <div class="stat-icon"><i class="pi pi-clock"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ filteredPedidos.filter(p => p.estado === 'Pendiente').length }}</span>
+            <span class="stat-label">Pendientes</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 md:col-3">
+        <div class="stat-card stat-info">
+          <div class="stat-icon"><i class="pi pi-spin pi-cog"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ filteredPedidos.filter(p => ['Confirmado','EnPreparacion','Enviado'].includes(p.estado)).length }}</span>
+            <span class="stat-label">En Proceso</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 md:col-3">
+        <div class="stat-card stat-success">
+          <div class="stat-icon"><i class="pi pi-check-circle"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ filteredPedidos.filter(p => p.estado === 'Entregado').length }}</span>
+            <span class="stat-label">Entregados</span>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Filtros -->
     <div class="card mb-4">
@@ -33,62 +72,61 @@
       </div>
     </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="flex justify-content-center p-5">
+    <div v-if="loading" class="flex justify-content-center py-5">
       <ProgressSpinner />
     </div>
-
-    <!-- Error State -->
-    <div v-else-if="errorMessage" class="card text-center py-6">
-      <i class="pi pi-exclamation-triangle text-4xl text-red-400 mb-3"></i>
-      <p class="text-red-400 mb-3">{{ errorMessage }}</p>
-      <Button label="Reintentar" icon="pi pi-refresh" @click="loadPedidos" />
-    </div>
-
-    <!-- Empty State -->
-    <div v-else-if="filteredPedidos.length === 0" class="card text-center py-6">
-      <i class="pi pi-shopping-cart text-4xl text-gray-400 mb-3"></i>
-      <p class="text-gray-400">No hay pedidos para mostrar</p>
-    </div>
-
-    <!-- Vista Cards -->
-    <div v-else class="mobile-card-list">
-      <MobileRecordCard
-        v-for="pedido in paginatedPedidos"
-        :key="pedido.id"
-        :title="pedido.nombreSocio"
-        :subtitle="`Socio #${pedido.numeroSocio}`"
-        @click="viewPedido(pedido)"
-      >
-        <template #leading>
-          <Avatar :label="pedido.nombreSocio?.charAt(0)" shape="circle" class="avatar-red" size="small" />
-        </template>
-        <template #tags>
-          <Tag :severity="getEstadoSeverity(pedido.estado)" :value="pedido.estado" />
-          <Tag :severity="getEstadoPagoSeverity(pedido.estadoPago)" :value="pedido.estadoPago" />
-        </template>
-        <template #body>
-          <div v-for="item in pedido.items" :key="item.id" class="text-xs mb-1">
-            <span class="text-red-400 font-bold">{{ item.cantidad }}x</span>
-            {{ item.nombreProducto }}
-            <span v-if="item.talla" class="text-color-secondary">({{ item.talla }})</span>
-          </div>
-          <div class="record-card__row mt-2">
-            <span class="record-card__label">Total</span>
-            <span class="record-card__value font-bold text-red-400">${{ pedido.total.toLocaleString() }}</span>
-          </div>
-          <div class="record-card__row">
-            <span class="record-card__label">Fecha</span>
-            <span class="record-card__value">{{ formatDate(pedido.fechaPedido) }}</span>
-          </div>
-        </template>
-        <template #actions>
-          <Button icon="pi pi-eye" text rounded size="small" @click="viewPedido(pedido)" v-tooltip.top="'Ver detalle'" />
-          <Button icon="pi pi-pencil" text rounded size="small" severity="success" @click="editPedido(pedido)" v-tooltip.top="'Actualizar estado'" />
-        </template>
-      </MobileRecordCard>
-    </div>
-    <MobilePaginator v-if="!loading && !errorMessage && filteredPedidos.length > 0" v-model:page="currentPage" :rows="10" :total="filteredPedidos.length" />
+    <template v-else>
+      <div v-if="errorMessage" class="card text-center py-6">
+        <i class="pi pi-exclamation-triangle text-4xl text-red-400 mb-3"></i>
+        <p class="text-red-400 mb-3">{{ errorMessage }}</p>
+        <Button label="Reintentar" icon="pi pi-refresh" @click="loadPedidos" />
+      </div>
+      <div v-else-if="filteredPedidos.length === 0" class="card text-center py-6">
+        <i class="pi pi-shopping-cart text-4xl text-gray-400 mb-3"></i>
+        <p class="text-gray-400">No hay pedidos para mostrar</p>
+      </div>
+      <div v-else class="mobile-card-list">
+        <MobileRecordCard
+          v-for="pedido in paginatedPedidos"
+          :key="pedido.id"
+          :title="pedido.nombreSocio"
+          :subtitle="`Socio #${pedido.numeroSocio}`"
+          @click="viewPedido(pedido)"
+        >
+          <template #leading>
+            <Avatar :label="pedido.nombreSocio?.charAt(0)" shape="circle" class="avatar-red" size="small" />
+          </template>
+          <template #tags>
+            <Tag :severity="getEstadoSeverity(pedido.estado)" :value="pedido.estado" />
+            <Tag :severity="getEstadoPagoSeverity(pedido.estadoPago)" :value="pedido.estadoPago" />
+          </template>
+          <template #body>
+            <div v-for="item in pedido.items" :key="item.id" class="text-xs mb-1">
+              <span class="text-red-400 font-bold">{{ item.cantidad }}x</span>
+              {{ item.nombreProducto }}
+              <span v-if="item.talla" class="text-color-secondary">({{ item.talla }})</span>
+            </div>
+            <div class="record-card__row mt-2">
+              <span class="record-card__label">Total</span>
+              <span class="record-card__value font-bold text-red-400">${{ pedido.total.toLocaleString() }}</span>
+            </div>
+            <div v-if="pedido.metodoPago" class="record-card__row">
+              <span class="record-card__label">Método</span>
+              <span class="record-card__value">{{ pedido.metodoPago }}</span>
+            </div>
+            <div class="record-card__row">
+              <span class="record-card__label">Fecha</span>
+              <span class="record-card__value">{{ formatDate(pedido.fechaPedido) }}</span>
+            </div>
+          </template>
+          <template #actions>
+            <Button icon="pi pi-eye" text rounded size="small" @click="viewPedido(pedido)" v-tooltip.top="'Ver detalle'" />
+            <Button icon="pi pi-pencil" text rounded size="small" severity="success" @click="editPedido(pedido)" v-tooltip.top="'Actualizar estado'" />
+          </template>
+        </MobileRecordCard>
+      </div>
+      <MobilePaginator v-model:page="pedidosPage" :rows="10" :total="filteredPedidos.length" />
+    </template>
 
     <!-- Manual Order Dialog -->
     <Dialog
@@ -177,7 +215,7 @@
                   @update:modelValue="(val) => onProductoSelect(item, val)"
                 />
                 <small v-if="item.stock != null" class="text-color-secondary block mt-1">
-                  Stock disponible: {{ item.stock }}
+                  Stock disponible{{ item.talla ? ` (talle ${item.talla})` : '' }}: {{ item.stock }}
                 </small>
               </div>
 
@@ -196,14 +234,32 @@
               <Dropdown
                 v-if="item.tallas && item.tallas.length > 0"
                 v-model="item.talla"
-                :options="item.tallas"
+                :options="item.tallas.map(t => ({ label: item.stocksPorTalla?.length ? `${t} (${item.stocksPorTalla.find(s => s.talla === t)?.cantidad ?? '?'})` : t, value: t }))"
+                optionLabel="label"
+                optionValue="value"
                 placeholder="Talla"
-                style="width: 110px"
+                style="width: 130px"
+                @update:modelValue="(talla) => { const st = item.stocksPorTalla?.find(s => s.talla === talla); if (st) { item.stock = st.cantidad; if (item.cantidad > item.stock) item.cantidad = item.stock || 1 } }"
               />
 
-              <span class="font-bold text-red-400 w-7rem text-right pt-2">
-                ${{ itemSubtotal(item).toLocaleString() }}
-              </span>
+              <!-- Precio: editable si no hay socio vinculado -->
+              <div class="flex flex-column align-items-end" style="min-width: 130px">
+                <template v-if="!manualForm.socioSeleccionado">
+                  <InputNumber
+                    v-model="item.precio"
+                    mode="currency"
+                    currency="ARS"
+                    locale="es-AR"
+                    :min="0"
+                    :inputStyle="{ width: '120px', textAlign: 'right' }"
+                    v-tooltip.top="'Precio no-socio'"
+                  />
+                  <small class="text-orange-400" style="font-size:0.7rem">No socio</small>
+                </template>
+                <span v-else class="font-bold text-red-400 pt-2">
+                  ${{ itemSubtotal(item).toLocaleString() }}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -334,6 +390,10 @@
               <Tag :severity="getEstadoPagoSeverity(selectedPedido.estadoPago)" :value="selectedPedido.estadoPago" />
             </div>
             <div class="col-6">
+              <label>Método de pago:</label>
+              <p>{{ selectedPedido.metodoPago || 'No especificado' }}</p>
+            </div>
+            <div class="col-6">
               <label>Fecha Pedido:</label>
               <p>{{ formatDate(selectedPedido.fechaPedido) }}</p>
             </div>
@@ -421,9 +481,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { pedidosService, productosService, sociosService } from '@/services'
+import { useMobilePagination } from '@/composables/useMobilePagination'
+import PageHeader from '@/components/mobile/PageHeader.vue'
+import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
+import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Dropdown from 'primevue/dropdown'
@@ -438,9 +502,6 @@ import Calendar from 'primevue/calendar'
 import Textarea from 'primevue/textarea'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
-import PageHeader from '@/components/mobile/PageHeader.vue'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
-import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 
 const toast = useToast()
 
@@ -448,7 +509,6 @@ const pedidos = ref([])
 const loading = ref(false)
 const errorMessage = ref('')
 const searchTerm = ref('')
-const currentPage = ref(1)
 const selectedEstado = ref(null)
 const selectedEstadoPago = ref(null)
 const detailDialog = ref(false)
@@ -485,7 +545,7 @@ const estadosPagoManual = [
   { label: 'Pagado (cobrado ahora)', value: 'Pagado' }
 ]
 
-const metodosPago = ['Efectivo', 'Transferencia', 'Tarjeta', 'MercadoPago']
+const metodosPago = ['Efectivo', 'Transferencia', 'MercadoPago']
 
 // ── Manual order ──────────────────────────────────────────────────────────────
 const manualDialog = ref(false)
@@ -504,7 +564,8 @@ function newManualItem() {
     talla: null,
     tallas: [],
     precio: 0,
-    stock: null
+    stock: null,
+    stocksPorTalla: []
   }
 }
 
@@ -585,12 +646,29 @@ function onProductoSelect(item, productoId) {
     item.stock = prod.stockTotal ?? prod.stock
     item.tallas = prod.tallas ? prod.tallas.split(',').map(t => t.trim()).filter(Boolean) : []
     item.talla = item.tallas.length > 0 ? item.tallas[0] : null
+    item.stocksPorTalla = []
     if (item.cantidad > item.stock) item.cantidad = item.stock || 1
+
+    // Cargar stocks por talla si tiene tallas
+    if (item.tallas.length > 0) {
+      productosService.getStocks(productoId)
+        .then(stocks => {
+          item.stocksPorTalla = stocks
+          // Actualizar stock para la talla inicial
+          if (item.talla) {
+            const st = stocks.find(s => s.talla === item.talla)
+            if (st) item.stock = st.cantidad
+          }
+          if (item.cantidad > item.stock) item.cantidad = item.stock || 1
+        })
+        .catch(() => {})
+    }
   } else {
     item.precio = 0
     item.stock = null
     item.tallas = []
     item.talla = null
+    item.stocksPorTalla = []
   }
   manualProductsError.value = ''
 }
@@ -664,7 +742,9 @@ async function saveManual() {
       items: validItems.map(i => ({
         productoId: i.productoId,
         cantidad: i.cantidad,
-        talla: i.talla || null
+        talla: i.talla || null,
+        // Enviar precio override solo cuando no hay socio vinculado
+        precioOverride: !manualForm.value.socioSeleccionado && i.precio > 0 ? i.precio : null
       }))
     })
 
@@ -703,12 +783,11 @@ const filteredPedidos = computed(() => {
   })
 })
 
-const paginatedPedidos = computed(() => {
-  const start = (currentPage.value - 1) * 10
-  return filteredPedidos.value.slice(start, start + 10)
-})
-
-watch([searchTerm, selectedEstado, selectedEstadoPago], () => { currentPage.value = 1 })
+const { page: pedidosPage, paginated: paginatedPedidos } = useMobilePagination(
+  filteredPedidos,
+  10,
+  [searchTerm, selectedEstado, selectedEstadoPago]
+)
 
 function getEstadoSeverity(estado) {
   const map = {
@@ -812,105 +891,37 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.pedido-card {
-  background: var(--surface-card);
-  border-radius: 12px;
-  border: 1px solid var(--surface-border);
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-.pedido-card:hover {
-  border-color: #dc2626;
-  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.15);
-}
-
-.pedido-header {
-  padding: 1rem;
+.stat-card {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  border-bottom: 1px solid var(--surface-border);
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
 }
-
-.pedido-socio {
-  color: var(--text-color);
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0;
+.stat-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
-
-.pedido-numero {
-  color: var(--text-color-secondary);
-  font-size: 0.8rem;
-}
+.stat-icon i { font-size: 1.5rem; color: white; }
+.stat-total .stat-icon   { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+.stat-success .stat-icon { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.stat-warning .stat-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.stat-info .stat-icon    { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.stat-content { display: flex; flex-direction: column; }
+.stat-value { font-size: 1.75rem; font-weight: 700; color: var(--text-color); }
+.stat-label { font-size: 0.85rem; color: var(--text-color-secondary); }
+.stat-amount { font-size: 0.75rem; color: var(--text-color-secondary); margin-top: 0.25rem; }
 
 .avatar-red {
   background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
   color: white;
-}
-
-.pedido-items {
-  padding: 0.75rem 1rem;
-  max-height: 150px;
-  overflow-y: auto;
-}
-
-.pedido-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--surface-border);
-  font-size: 0.85rem;
-}
-
-.pedido-item:last-child {
-  border-bottom: none;
-}
-
-.item-cantidad {
-  color: #dc2626;
-  font-weight: 600;
-  min-width: 30px;
-}
-
-.item-nombre {
-  color: var(--text-color);
-}
-
-.item-talla {
-  color: var(--text-color-secondary);
-  font-size: 0.8rem;
-}
-
-.item-precio {
-  color: var(--text-color-secondary);
-}
-
-.pedido-footer {
-  padding: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-top: 1px solid var(--surface-border);
-  background: var(--surface-ground);
-}
-
-.pedido-total {
-  color: var(--text-color);
-  font-weight: 500;
-}
-
-.pedido-total span {
-  color: #dc2626;
-  font-size: 1.25rem;
-  font-weight: 700;
-}
-
-.pedido-actions {
-  display: flex;
-  gap: 4px;
 }
 
 .detail-section {

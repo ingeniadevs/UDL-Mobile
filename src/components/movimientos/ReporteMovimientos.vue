@@ -114,15 +114,9 @@
         <h3>Vista Previa del Reporte</h3>
         <div class="flex gap-2">
           <Button 
-            label="Imprimir" 
-            icon="pi pi-print" 
-            @click="imprimirReporte"
-            outlined
-          />
-          <Button 
-            label="Descargar PDF" 
-            icon="pi pi-download" 
-            @click="descargarPDF"
+            label="Descargar Excel" 
+            icon="pi pi-file-excel" 
+            @click="descargarExcel"
             outlined
           />
         </div>
@@ -213,6 +207,15 @@
             </Column>
             <Column field="categoria" header="Categoría" sortable />
             <Column field="concepto" header="Concepto" sortable />
+            <Column field="pagadorNombre" header="Pagador" sortable>
+              <template #body="slotProps">
+                <div v-if="slotProps.data.pagadorNombre">
+                  <div>{{ slotProps.data.pagadorNombre }}</div>
+                  <div v-if="slotProps.data.pagadorDni" class="text-gray-500 text-xs">DNI {{ slotProps.data.pagadorDni }}</div>
+                </div>
+                <span v-else class="text-gray-400">—</span>
+              </template>
+            </Column>
             <Column field="descripcion" header="Descripción" />
             <Column field="empleadoNombre" header="Empleado">
               <template #body="slotProps">
@@ -252,7 +255,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { movimientosService } from '@/services'
 import Calendar from 'primevue/calendar'
@@ -262,8 +265,10 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Chart from 'primevue/chart'
-import { Capacitor } from '@capacitor/core'
-import { savePdfDocument, printHtmlContent } from '@/platform/files'
+
+const props = defineProps({
+  refreshKey: { type: Number, default: 0 }
+})
 
 // Estado
 const toast = useToast()
@@ -409,69 +414,31 @@ const formatFecha = (fecha) => {
   return new Date(fecha).toLocaleDateString('es-AR')
 }
 
-const imprimirReporte = () => {
-  const contenido = document.getElementById('reporte-contenido')
-  if (!contenido) return
-
-  if (Capacitor.isNativePlatform()) {
-    toast.add({
-      severity: 'info',
-      summary: 'Impresión',
-      detail: 'En móvil usá "Descargar PDF" y compartí el archivo',
-      life: 4000
-    })
-    return
-  }
-
-  const html = `
-    <html><head><title>Reporte de Movimientos</title>
-    <style>
-      body { font-family: Arial, sans-serif; margin: 20px; }
-      table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-      th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-      th { background-color: #f2f2f2; }
-    </style></head><body>${contenido.innerHTML}</body></html>
-  `
-  printHtmlContent(html)
-}
-
-// Descargar PDF
-const descargarPDF = async () => {
+// Descargar Excel con todos los movimientos
+const descargarExcel = async () => {
   try {
-    const { default: html2canvas } = await import('html2canvas')
-    const { jsPDF } = await import('jspdf')
-    
-    const elemento = document.getElementById('reporte-contenido')
-    if (elemento) {
-      const canvas = await html2canvas(elemento, { scale: 2 })
-      const imgData = canvas.toDataURL('image/png')
-      
-      const pdf = new jsPDF('p', 'mm', 'a4')
-      const imgWidth = 210
-      const pageHeight = 295
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-      let heightLeft = imgHeight
-      
-      let position = 0
-      
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-      heightLeft -= pageHeight
-      
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight
-        pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-        heightLeft -= pageHeight
-      }
-      
-      const fechaDesde = formatFecha(filtros.value.fechaDesde).replace(/\//g, '-')
-      const fechaHasta = formatFecha(filtros.value.fechaHasta).replace(/\//g, '-')
-      const nombreArchivo = `reporte-movimientos-${fechaDesde}-${fechaHasta}.pdf`
-      
-      await savePdfDocument(pdf, nombreArchivo)
-    }
+    const { utils, writeFile } = await import('xlsx')
+
+    const datos = movimientosReporte.value.map(m => ({
+      Fecha: formatFecha(m.fecha),
+      Tipo: m.tipo === 'ingreso' ? 'Ingreso' : 'Egreso',
+      Categoría: m.categoriaLabel || m.categoria,
+      Concepto: m.concepto,
+      Descripción: m.descripcion || '',
+      Pagador: m.pagadorNombre || '',
+      'Medio de Pago': m.metodoPago || '',
+      Monto: m.tipo === 'ingreso' ? m.monto : -m.monto,
+    }))
+
+    const ws = utils.json_to_sheet(datos)
+    const wb = utils.book_new()
+    utils.book_append_sheet(wb, ws, 'Movimientos')
+
+    const fechaDesde = formatFecha(filtros.value.fechaDesde).replace(/\//g, '-')
+    const fechaHasta = formatFecha(filtros.value.fechaHasta).replace(/\//g, '-')
+    writeFile(wb, `movimientos-${fechaDesde}-${fechaHasta}.xlsx`)
   } catch (error) {
-    console.error('Error generando PDF:', error)
+    console.error('Error generando Excel:', error)
   }
 }
 
@@ -526,6 +493,10 @@ const chartOptionsReporte = {
 onMounted(() => {
   cargarCategorias()
   seleccionarEsteMes() // Seleccionar este mes por defecto
+})
+
+watch(() => props.refreshKey, () => {
+  if (reporte.value) generarReporte()
 })
 </script>
 

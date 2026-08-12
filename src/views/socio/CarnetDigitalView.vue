@@ -45,68 +45,28 @@
 
           <!-- Código QR -->
           <div class="qr-code-section">
-            <img v-if="carnet.qrCode" :src="carnet.qrCode" alt="QR Code" class="qr-image" />
-            <p class="qr-label">Código de verificación</p>
+            <img
+              :src="`https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=SOCIO-${carnet.numeroSocio}`"
+              alt="QR"
+              class="qr-image"
+            />
+            <p class="qr-label">N° {{ carnet.numeroSocio }}</p>
           </div>
         </div>
 
-        <!-- Reverso (opcional) -->
-        <div class="carnet-back" v-if="showBack">
+        <!-- Reverso -->
+        <div class="carnet-back">
           <h4>Disciplinas Activas</h4>
           <div v-if="carnet.disciplinas && carnet.disciplinas.length > 0" class="disciplinas-list">
             <div v-for="disc in carnet.disciplinas" :key="disc.id" class="disciplina-item">
               <i class="pi pi-check-circle"></i>
               <span>{{ disc.disciplinaNombre }}</span>
-              <span class="cuota">${{ disc.cuotaMensual.toLocaleString() }}/mes</span>
             </div>
           </div>
           <p v-else class="no-disciplinas">Sin disciplinas activas</p>
         </div>
       </div>
 
-      <!-- Información adicional -->
-      <div class="info-cards-wrapper">
-        <div class="info-card">
-          <i class="pi pi-calendar"></i>
-          <div>
-            <span class="label">Último Pago</span>
-            <span class="value">{{ formatDate(carnet.ultimoPago) }}</span>
-          </div>
-        </div>
-        <div class="info-card">
-          <i class="pi pi-users"></i>
-          <div>
-            <span class="label">Disciplinas</span>
-            <span class="value">{{ carnet.disciplinas?.length || 0 }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Botones de acción -->
-      <div class="botones-wrapper">
-        <Button 
-          label="Descargar Carnet" 
-          icon="pi pi-download" 
-          class="flex-1"
-          @click="descargarCarnet"
-          :loading="downloading"
-        />
-        <Button 
-          label="Compartir" 
-          icon="pi pi-share-alt" 
-          outlined
-          class="flex-1"
-          @click="compartirCarnet"
-        />
-      </div>
-
-      <!-- Toggle para ver reverso -->
-      <Button 
-        :label="showBack ? 'Ver Frente' : 'Ver Disciplinas'" 
-        icon="pi pi-refresh" 
-        text
-        @click="showBack = !showBack"
-      />
     </div>
 
     <div v-else class="card">
@@ -119,8 +79,8 @@
 import { ref, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { sociosService } from '@/services'
-import Button from 'primevue/button'
 import PageHeader from '@/components/mobile/PageHeader.vue'
+import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
 import ProgressSpinner from 'primevue/progressspinner'
 import html2canvas from 'html2canvas'
@@ -174,7 +134,7 @@ async function descargarCarnet() {
       scale: 2,
       logging: false
     })
-    
+
     const dataUrl = canvas.toDataURL('image/png')
     await shareDataUrl(dataUrl, `carnet-socio-${carnet.value.numeroSocio}.png`)
 
@@ -245,10 +205,10 @@ onMounted(() => {
 .carnet-card {
   width: 100%;
   max-width: 400px;
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  background: #ffffff;
   border-radius: 20px;
   padding: 30px 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
   border: 2px solid rgba(220, 38, 38, 0.3);
   position: relative;
   overflow: hidden;
@@ -295,7 +255,7 @@ onMounted(() => {
 }
 
 .carnet-header .subtitle {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 0.75rem;
   margin: 5px 0 0 0;
   letter-spacing: 2px;
@@ -314,7 +274,7 @@ onMounted(() => {
   overflow: hidden;
   border: 4px solid #dc2626;
   box-shadow: 0 4px 20px rgba(220, 38, 38, 0.3);
-  background: #334155;
+  background: #e2e8f0;
 }
 
 .carnet-photo img {
@@ -329,7 +289,7 @@ onMounted(() => {
 }
 
 .carnet-info h2 {
-  color: white;
+  color: #0f172a;
   font-size: 1.4rem;
   font-weight: 700;
   margin: 0 0 5px 0;
@@ -337,7 +297,7 @@ onMounted(() => {
 }
 
 .numero-socio {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 0.9rem;
   font-weight: 600;
   letter-spacing: 2px;
@@ -386,24 +346,34 @@ onMounted(() => {
 }
 
 .qr-image {
-  width: 100px;
-  height: 100px;
+  width: 90px;
+  height: 90px;
   border-radius: 8px;
   background: white;
-  padding: 5px;
+  padding: 4px;
+  border: 1px solid #e2e8f0;
 }
 
 .qr-label {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 0.75rem;
   margin: 0;
+  font-weight: 600;
+  letter-spacing: 1px;
 }
 
 /* Reverso */
+.carnet-back {
+  padding-top: 10px;
+  border-top: 2px solid rgba(220, 38, 38, 0.3);
+  width: 100%;
+}
+
 .carnet-back h4 {
   color: #dc2626;
   font-size: 1.1rem;
   margin: 0 0 15px 0;
+  text-align: center;
 }
 
 .disciplinas-list {
@@ -418,24 +388,19 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  background: rgba(220, 38, 38, 0.1);
+  background: rgba(220, 38, 38, 0.07);
   border-radius: 8px;
-  color: white;
+  color: #0f172a;
   font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .disciplina-item i {
   color: #10b981;
 }
 
-.disciplina-item .cuota {
-  margin-left: auto;
-  color: #10b981;
-  font-weight: 600;
-}
-
 .no-disciplinas {
-  color: #94a3b8;
+  color: #64748b;
   font-style: italic;
 }
 

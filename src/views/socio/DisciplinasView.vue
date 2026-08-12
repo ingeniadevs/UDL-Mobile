@@ -2,18 +2,6 @@
   <div>
     <PageHeader title="Disciplinas" />
 
-    <!-- Mi cuota actual -->
-    <div class="card mb-4">
-      <div class="flex align-items-center gap-3">
-        <div class="stat-icon">
-          <i class="pi pi-dollar text-2xl"></i>
-        </div>        <div>
-          <span class="block" style="color: var(--text-color-secondary)">Mi Cuota Mensual Total</span>
-          <span class="text-2xl font-bold" style="color: var(--text-color)">${{ cuotaTotal.toLocaleString() }}</span>
-        </div>
-      </div>
-    </div>
-
     <!-- Mis Inscripciones -->
     <div class="mb-4">
       <h2 class="text-xl font-semibold page-title mb-3">Mis Inscripciones Activas</h2>
@@ -30,17 +18,25 @@
               <span style="color: var(--text-color-secondary)">Cuota:</span>
               <span class="font-semibold" style="color: var(--text-color)">${{ inscripcion.cuotaMensual?.toLocaleString() }}</span>
             </div>
+            <div class="mb-3">
+              <Tag
+                v-if="inscripcion.tipoFacturacion === 'PagoApartado'"
+                severity="warning"
+                value="Pago en efectivo en subcomisión"
+                class="text-xs"
+              />
+              <Tag
+                v-else
+                severity="info"
+                value="Incluida en cuota social"
+                class="text-xs"
+              />
+            </div>
             <div class="flex justify-content-between align-items-center mb-3">
               <span style="color: var(--text-color-secondary)">Desde:</span>
               <span style="color: var(--text-color)">{{ formatDate(inscripcion.fechaInicio) }}</span>
             </div>
-            <Button 
-              label="Cancelar Inscripción" 
-              icon="pi pi-times" 
-              class="w-full p-button-outlined p-button-danger"
-              @click="confirmCancelar(inscripcion)"
-              :loading="cancelando === inscripcion.disciplinaId"
-            />
+
           </div>
         </div>
       </div>
@@ -87,8 +83,8 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { disciplinasService, inscripcionesService, sociosService } from '@/services'
 import { useAuthStore } from '@/stores/auth'
-import Button from 'primevue/button'
 import PageHeader from '@/components/mobile/PageHeader.vue'
+import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import ProgressSpinner from 'primevue/progressspinner'
 
@@ -101,7 +97,18 @@ const misInscripciones = ref([])
 const loading = ref(false)
 const inscribiendo = ref(null)
 const cancelando = ref(null)
-const cuotaTotal = ref(0)
+const cuotaAPagarClub = ref(0)
+const cuotaBase = ref(0)
+
+const disciplinasIncluidas = computed(() =>
+  misInscripciones.value.filter(i => i.activa && i.tipoFacturacion === 'IncluidaEnCuotaSocial')
+)
+const disciplinasApartadas = computed(() =>
+  misInscripciones.value.filter(i => i.activa && i.tipoFacturacion === 'PagoApartado')
+)
+const totalApartadas = computed(() =>
+  disciplinasApartadas.value.reduce((sum, d) => sum + (d.cuotaMensual || 0), 0)
+)
 
 const disciplinasDisponibles = computed(() => {
   const inscritas = misInscripciones.value
@@ -125,7 +132,11 @@ async function loadData() {
     ])
     disciplinas.value = disciplinasData
     misInscripciones.value = inscripcionesData.filter(i => i.activa)
-    cuotaTotal.value = socioData.cuotaSocio || 0
+    cuotaBase.value = socioData.planMembresia?.precioMensual ?? socioData.cuotaSocio ?? 0
+    const disciplinasIncluidasTotal = inscripcionesData
+      .filter(i => i.activa && i.tipoFacturacion === 'IncluidaEnCuotaSocial')
+      .reduce((sum, d) => sum + (d.cuotaMensual || 0), 0)
+    cuotaAPagarClub.value = cuotaBase.value + disciplinasIncluidasTotal
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los datos', life: 3000 })
   } finally {
@@ -210,6 +221,29 @@ onMounted(() => {
 
 .inscripcion-card {
   border-left: 3px solid #22c55e;
+}
+
+.cuota-desglose {
+  border-top: 1px solid var(--surface-border);
+  padding-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.cuota-desglose-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cuota-desglose-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--surface-border);
+  padding-top: 0.4rem;
+  margin-top: 0.2rem;
 }
 
 .disciplina-card {

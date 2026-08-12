@@ -29,14 +29,6 @@
         <template #header>
           <div class="plan-header">
             <Tag :value="planActual.tipoPlan" :severity="getPlanSeverity(planActual.tipoPlan)" />
-            <Button 
-              v-if="puedesCambiarPlan" 
-              label="Cambiar Plan" 
-              icon="pi pi-refresh" 
-              @click="mostrarDialogCambiarPlan = true"
-              outlined
-              size="small"
-            />
           </div>
         </template>        <template #content>
           <h2 class="plan-nombre">{{ planActual.nombre }}</h2>
@@ -50,9 +42,9 @@
 
           <Divider />
 
-          <!-- Desglose de Cuotas Mensuales -->
+          <!-- Cuota Mensual -->
           <div class="desglose-cuotas-plan">
-            <h3>💰 Desglose de tu Cuota Mensual</h3>
+            <h3>💰 Tu Cuota Mensual</h3>
             <div class="desglose-items">
               <div class="desglose-item">
                 <span class="desglose-label">
@@ -62,20 +54,11 @@
                 <span class="desglose-valor text-green-400">${{ formatPrice(planActual.precioMensual) }}</span>
               </div>
               
-              <div v-if="misDisciplinasActivas.length > 0">                <div v-for="disc in misDisciplinasActivas" :key="disc.id" class="desglose-item">
-                  <span class="desglose-label">
-                    <i class="pi pi-bookmark"></i>
-                    {{ disc.disciplinaNombre }}
-                  </span>
-                  <span class="desglose-valor text-blue-400">${{ formatPrice(disc.cuotaMensual || 0) }}</span>
-                </div>
-              </div>
-              
               <Divider class="my-2" />
               
               <div class="desglose-total">
                 <span class="total-label">Total Mensual</span>
-                <span class="total-valor">${{ formatPrice(calcularTotalCuota()) }}</span>
+                <span class="total-valor">${{ formatPrice(planActual.precioMensual) }}</span>
               </div>
             </div>
           </div>
@@ -176,22 +159,13 @@
                     :severity="calcularEdad(adherente.fechaNacimiento) >= 18 ? 'info' : 'warning'" 
                     size="small" 
                   />
-                  <Tag v-else value="Sin edad" severity="secondary" size="small" />
                   <span class="detalle-item">
-                    <i class="pi pi-money-bill"></i>
-                    {{ adherente.pagaCuotaElAdherente ? 'Paga cuota' : 'No paga cuota' }}
+                    <i class="pi pi-check-circle" style="color: var(--green-400)"></i>
+                    Cuota incluida en plan familiar
                   </span>
                 </div>
               </div>
 
-              <Button 
-                icon="pi pi-times" 
-                severity="danger"
-                text
-                rounded
-                @click="confirmarQuitarAdherente(adherente)"
-                v-tooltip.top="'Quitar del plan'"
-              />
             </div>
           </div>
         </template>
@@ -200,7 +174,9 @@
       <!-- Planes Disponibles (para cambiar) -->
       <Card v-if="planesDisponibles.length > 0" class="planes-disponibles-card">
         <template #header>
-          <h3>Otros Planes Disponibles</h3>
+          <div class="adherentes-header">
+            <h3>Otros Planes Disponibles</h3>
+          </div>
         </template>
         <template #content>
           <div class="planes-grid">
@@ -226,16 +202,6 @@
                 <span><i class="pi pi-users"></i> {{ plan.cupoMayores }} mayores</span>
                 <span v-if="plan.cupoMenores > 0"><i class="pi pi-user"></i> {{ plan.cupoMenores }} menores</span>
               </div>
-              <Button 
-                label="Seleccionar" 
-                @click="solicitarCambioPlan(plan)"
-                :disabled="!puedeCambiarAPlan(plan)"
-                outlined
-                class="btn-seleccionar"
-              />
-              <small v-if="!puedeCambiarAPlan(plan)" class="text-warning">
-                Este plan no tiene suficiente capacidad para tus adherentes actuales
-              </small>
             </div>
           </div>
         </template>
@@ -451,6 +417,7 @@ import { sociosService } from '@/services';
 import Card from 'primevue/card';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
+import { getPlanTypeSeverity } from '@/utils/planTypes';
 import Divider from 'primevue/divider';
 import ProgressBar from 'primevue/progressbar';
 import ProgressSpinner from 'primevue/progressspinner';
@@ -463,6 +430,11 @@ import Checkbox from 'primevue/checkbox';
 import Message from 'primevue/message';
 import Avatar from 'primevue/avatar';
 import Calendar from 'primevue/calendar';
+import {
+  toLocalCalendarDate,
+  normalizeReservaFechaForApi,
+  calcularEdadDesdeFechaNacimiento
+} from '@/utils/reservationDates';
 
 const toast = useToast();
 const authStore = useAuthStore();
@@ -501,7 +473,7 @@ const adherenteAQuitar = ref(null);
 const adherentesMayores = computed(() => {
   return adherentes.value.filter(a => {
     if (a.fechaNacimiento) {
-      return calcularEdadDesdeNacimiento(new Date(a.fechaNacimiento)) >= 18;
+      return calcularEdadDesdeNacimiento(a.fechaNacimiento) >= 18;
     }
     // Si no tiene fecha de nacimiento, asumir mayor por defecto
     return true;
@@ -511,7 +483,7 @@ const adherentesMayores = computed(() => {
 const adherentesMenores = computed(() => {
   return adherentes.value.filter(a => {
     if (a.fechaNacimiento) {
-      return calcularEdadDesdeNacimiento(new Date(a.fechaNacimiento)) < 18;
+      return calcularEdadDesdeNacimiento(a.fechaNacimiento) < 18;
     }
     return false;
   });
@@ -556,19 +528,8 @@ const puedesCambiarPlan = computed(() => {
 });
 
 // Methods
-const calcularEdadDesdeNacimiento = (fechaNacimiento) => {
-  if (!fechaNacimiento) return 0;
-  const hoy = new Date();
-  const nacimiento = new Date(fechaNacimiento);
-  let edad = hoy.getFullYear() - nacimiento.getFullYear();
-  const mes = hoy.getMonth() - nacimiento.getMonth();
-  
-  if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
-    edad--;
-  }
-  
-  return edad;
-};
+const calcularEdadDesdeNacimiento = (fechaNacimiento) =>
+  calcularEdadDesdeFechaNacimiento(fechaNacimiento);
 
 const calcularEdad = (fecha) => {
   // Para adherentes existentes que pueden no tener fecha de nacimiento
@@ -595,14 +556,7 @@ const puedeCambiarAPlan = (plan) => {
   return plan.cupoMayores >= mayores && plan.cupoMenores >= menores;
 };
 
-const getPlanSeverity = (tipoPlan) => {
-  const severityMap = {
-    'Individual': 'info',
-    'Familiar': 'success',
-    'Jubilado': 'warning'
-  };
-  return severityMap[tipoPlan] || 'info';
-};
+const getPlanSeverity = getPlanTypeSeverity;
 
 const getDiferenciaSeverity = () => {
   if (!planSeleccionado.value) return 'info';
@@ -730,6 +684,7 @@ const agregarAdherente = async () => {
     // La cuota se toma del plan, no se ingresa manualmente
     await sociosService.create({
       ...nuevoAdherente.value,
+      fechaNacimiento: normalizeReservaFechaForApi(nuevoAdherente.value.fechaNacimiento),
       cuotaSocio: 0, // Se calculará en el backend según el plan
       tipoSocio: 'Adherente',
       titularId: authStore.user.id,

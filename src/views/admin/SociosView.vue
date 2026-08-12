@@ -2,20 +2,61 @@
   <div>
     <PageHeader title="Socios">
       <template #actions>
-        <Tag v-if="sociosPendientes > 0" :value="`${sociosPendientes} pendiente${sociosPendientes > 1 ? 's' : ''}`" severity="warning" icon="pi pi-clock" />
         <Button label="Nuevo Socio" icon="pi pi-plus" size="small" @click="openNew" />
       </template>
     </PageHeader>
 
-    <div class="card mb-3">
-      <div class="flex flex-column gap-3">
-        <span class="p-input-icon-left w-full">
+    <!-- Stat cards -->
+    <div class="grid mb-4">
+      <div class="col-6 md:col-3">
+        <div class="stat-card stat-total">
+          <div class="stat-icon"><i class="pi pi-users"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ socios.length }}</span>
+            <span class="stat-label">Total Socios</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 md:col-3">
+        <div class="stat-card stat-success">
+          <div class="stat-icon"><i class="pi pi-check-circle"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ sociosActivos }}</span>
+            <span class="stat-label">Activos</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 md:col-3">
+        <div class="stat-card stat-warning">
+          <div class="stat-icon"><i class="pi pi-ban"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ sociosInactivos }}</span>
+            <span class="stat-label">Inactivos</span>
+            <Button v-if="sociosInactivos > 0" label="Ver" size="small" text @click="filtroEstado = 'inactivos'" />
+          </div>
+        </div>
+      </div>
+      <div class="col-6 md:col-3">
+        <div class="stat-card stat-mutual">
+          <div class="stat-icon"><i class="pi pi-building"></i></div>
+          <div class="stat-content">
+            <span class="stat-value">{{ socios.filter(s => s.pagaPorMutual).length }}</span>
+            <span class="stat-label">Cobro Mutual</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+      <div class="flex flex-wrap align-items-center gap-3">
+        <span class="p-input-icon-left flex-1" style="min-width: 200px">
           <i class="pi pi-search" />
-          <InputText v-model="searchTerm" placeholder="Buscar..." class="w-full" />
+          <InputText v-model="filters['global'].value" placeholder="Buscar por nombre, email o número..." class="w-full" />
         </span>
-        <div class="flex flex-wrap gap-2">
+        <div class="flex gap-2 flex-wrap">
           <Button :label="`Todos (${socios.length})`" :outlined="filtroEstado !== 'todos'" size="small" @click="filtroEstado = 'todos'" />
-          <Button :label="`Pendientes (${sociosPendientes})`" :outlined="filtroEstado !== 'pendientes'" :severity="sociosPendientes > 0 ? 'warning' : undefined" size="small" @click="filtroEstado = 'pendientes'" />
+          <Button :label="`Inactivos (${sociosInactivos})`" :outlined="filtroEstado !== 'inactivos'" :severity="sociosInactivos > 0 ? 'warning' : undefined" size="small" @click="filtroEstado = 'inactivos'" />
           <Button :label="`Activos (${sociosActivos})`" :outlined="filtroEstado !== 'activos'" severity="success" size="small" @click="filtroEstado = 'activos'" />
         </div>
       </div>
@@ -25,14 +66,16 @@
       <ProgressSpinner />
     </div>
     <template v-else>
-      <div v-if="sociosFiltrados.length === 0" class="card text-center py-5 text-color-secondary">
-        No se encontraron socios
+      <div v-if="sociosParaMostrar.length === 0" class="card text-center py-5 text-gray-400">
+        <i class="pi pi-users text-4xl text-gray-600 mb-3 block"></i>
+        <p class="mb-3">No se encontraron socios</p>
+        <Button label="Nuevo Socio" icon="pi pi-plus" size="small" @click="openNew" />
       </div>
       <div v-else class="mobile-card-list">
         <MobileRecordCard
           v-for="item in paginatedSocios"
           :key="item.id"
-          :title="item.nombre"
+          :title="`${item.nombre} ${item.apellido}`"
           :subtitle="`#${item.numeroSocio} · ${item.email}`"
           @click="viewSocio(item)"
         >
@@ -40,7 +83,8 @@
             <Avatar :label="(item.nombre?.charAt(0) + (item.apellido?.charAt(0) || '')).toUpperCase()" shape="circle" class="avatar-red" />
           </template>
           <template #tags>
-            <Tag :severity="item.activo ? 'success' : 'warning'" :value="item.activo ? 'Activo' : 'Pendiente'" :icon="item.activo ? 'pi pi-check' : 'pi pi-clock'" />
+            <Tag :severity="item.activo ? 'success' : 'danger'" :value="item.activo ? 'Activo' : 'Inactivo'" />
+            <Tag v-if="item.pagaPorMutual" value="Mutual" severity="warning" v-tooltip.top="'Cobra por mutual — cuota no se genera automáticamente'" />
           </template>
           <template #body>
             <div class="record-card__row">
@@ -49,27 +93,37 @@
             </div>
             <div class="record-card__row">
               <span class="record-card__label">Cuota</span>
-              <span class="record-card__value">${{ item.cuotaSocio?.toLocaleString() }}</span>
+              <span class="record-card__value text-green-400">${{ item.cuotaSocio?.toLocaleString() }}</span>
+            </div>
+            <div class="record-card__row">
+              <span class="record-card__label">Plan</span>
+              <span class="record-card__value">{{ item.planNombre || 'Sin plan' }}</span>
+            </div>
+            <div class="record-card__row">
+              <span class="record-card__label">Tipo</span>
+              <span class="record-card__value">
+                <Tag v-if="item.tipoSocio === 'Adherente'" value="Adherente" severity="info"
+                  v-tooltip.top="item.titularNombreCompleto ? `Adherente de: ${item.titularNombreCompleto}` : 'Adherente'" />
+                <Tag v-else :value="item.cantidadAdherentes > 0 ? `Titular (${item.cantidadAdherentes})` : 'Titular'" severity="success"
+                  v-tooltip.top="item.cantidadAdherentes > 0 ? `Titular con ${item.cantidadAdherentes} adherente(s)` : 'Titular'" />
+              </span>
             </div>
             <div v-if="item.disciplinasActivas?.length" class="flex flex-wrap gap-1 mt-1">
               <Tag v-for="d in item.disciplinasActivas" :key="d" :value="d" severity="secondary" style="font-size: 0.7rem" />
             </div>
-            <div v-if="item.tipoSocio === 'Adherente' || item.cantidadAdherentes > 0" class="mt-1">
-              <Tag v-if="item.tipoSocio === 'Adherente'" value="ADH" severity="info" icon="pi pi-user" />
-              <Tag v-else-if="item.cantidadAdherentes > 0" :value="`T (${item.cantidadAdherentes})`" severity="success" icon="pi pi-users" />
-            </div>
+            <div v-else class="text-xs text-gray-600">Sin disciplinas</div>
           </template>
           <template #actions>
-            <Button v-if="!item.activo" icon="pi pi-check-circle" text rounded size="small" severity="success" @click="aprobarSocio(item)" v-tooltip.top="'Aprobar socio'" />
+            <Button v-if="!item.activo" icon="pi pi-check-circle" text rounded size="small" severity="success" @click="aprobarSocio(item)" v-tooltip.top="'Activar socio'" />
             <Button icon="pi pi-eye" text rounded size="small" @click="viewSocio(item)" v-tooltip.top="'Ver detalle'" />
             <Button icon="pi pi-pencil" text rounded size="small" severity="info" @click="editSocio(item)" v-tooltip.top="'Editar'" />
-            <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmDelete(item)" v-tooltip.top="'Eliminar'" />
+            <Button v-if="item.activo" icon="pi pi-ban" text rounded size="small" severity="danger" @click="confirmDesactivar(item)" v-tooltip.top="'Desactivar'" />
             <Button icon="pi pi-key" text rounded size="small" severity="warning" @click="openResetPassword(item)" v-tooltip.top="'Resetear Contraseña'" />
             <Button icon="pi pi-whatsapp" text rounded size="small" severity="success" @click="openWaDialog(item)" v-tooltip.top="'Enviar WhatsApp'" />
           </template>
         </MobileRecordCard>
       </div>
-      <MobilePaginator v-model:page="currentPage" :rows="10" :total="sociosFiltrados.length" />
+      <MobilePaginator v-model:page="sociosPage" :rows="10" :total="sociosParaMostrar.length" />
     </template>
 
     <!-- Create/Edit Dialog -->
@@ -79,6 +133,17 @@
       :modal="true"
       :style="{ width: '500px' }"
     >      <div class="flex flex-column gap-4 pt-3">
+        <Message v-if="saving" severity="info" :closable="false">
+          <span class="flex align-items-center gap-2">
+            <i class="pi pi-spin pi-spinner"></i>
+            Guardando socio...
+          </span>
+        </Message>
+        <Message v-if="saveError" severity="error" :closable="false">{{ saveError }}</Message>
+        <Message v-if="hasFormErrors" severity="warn" :closable="false">
+          Revisá los campos marcados antes de continuar.
+        </Message>
+
         <!-- Plan de Membresía -->
         <div class="field">
           <label for="planMembresia" class="font-medium text-gray-300">
@@ -92,7 +157,7 @@
             optionValue="id"
             placeholder="Seleccionar plan"
             class="w-full"
-            :class="{ 'p-invalid': submitted && !isEditing && !socio.planMembresiaId }"
+            :class="{ 'p-invalid': !!formErrors.planMembresiaId }"
             @change="onPlanChange"
           >
             <template #option="slotProps">
@@ -102,11 +167,8 @@
                 <span class="text-red-400 font-bold">${{ slotProps.option.precioMensual.toLocaleString() }}</span>
               </div>
             </template>
-          </Dropdown>          <small v-if="submitted && !isEditing && !socio.planMembresiaId" class="p-error">El plan es requerido</small>          <small v-if="selectedPlan" class="text-gray-400 block mt-1">
+          </Dropdown>          <small v-if="formErrors.planMembresiaId" class="p-error">{{ formErrors.planMembresiaId }}</small>          <small v-if="selectedPlan" class="text-gray-400 block mt-1">
             {{ selectedPlan.descripcion }} - ${{ selectedPlan.precioMensual.toLocaleString() }}/mes
-          </small>
-          <small v-show="isEditing && socio.planMembresiaIdOriginal === null" class="text-yellow-400 block mt-1">
-            <i class="pi pi-info-circle"></i> Este socio no tiene plan asignado. Puede asignarlo ahora.
           </small>
         </div>        <!-- Tipo de Socio -->
         <div class="field">
@@ -122,15 +184,17 @@
               <label for="titular" class="ml-2">Titular</label>
             </div>
             <div class="flex align-items-center">
-              <RadioButton v-model="socio.tipoSocio" inputId="adherente" value="Adherente" />
-              <label for="adherente" class="ml-2">Adherente</label>
+              <RadioButton
+                v-model="socio.tipoSocio"
+                inputId="adherente"
+                value="Adherente"
+                :disabled="adherenteDisabled"
+              />
+              <label for="adherente" class="ml-2" :class="{ 'text-gray-500': adherenteDisabled }">Adherente</label>
             </div>
           </div>
-          <small v-show="isEditing && socio.tipoSocioOriginal === 'Titular' && hasAdherentes" class="text-yellow-400 block mt-2">
-            <i class="pi pi-exclamation-triangle"></i> Este titular tiene adherentes asociados. No puede cambiarse a adherente.
-          </small>
-          <small v-show="isEditing && socio.tipoSocioOriginal != socio.tipoSocio" class="text-yellow-400 block mt-2">
-            <i class="pi pi-info-circle"></i> Está cambiando el tipo de socio.
+          <small v-show="adherenteDisabled" class="text-gray-400 block mt-2">
+            <i class="pi pi-info-circle"></i> El plan individual no permite socios adherentes.
           </small>
         </div>
 
@@ -145,7 +209,7 @@
             optionValue="id"
             placeholder="Seleccionar titular"
             class="w-full"
-            :class="{ 'p-invalid': submitted && socio.tipoSocio === 'Adherente' && !socio.titularId }"
+            :class="{ 'p-invalid': !!formErrors.titularId }"
             :filter="true"
           >
             <template #option="slotProps">
@@ -153,8 +217,8 @@
                 <div>{{ slotProps.option.nombreCompleto }}</div>
                 <small class="text-gray-400">{{ slotProps.option.numeroSocio }} - {{ slotProps.option.planNombre }}</small>
               </div>
-            </template>          </Dropdown>          <small v-if="submitted && socio.tipoSocio === 'Adherente' && !socio.titularId" class="p-error">
-            Debe seleccionar un titular
+            </template>          </Dropdown>          <small v-if="formErrors.titularId" class="p-error">
+            {{ formErrors.titularId }}
           </small>
           <small v-show="isEditing && socio.titularIdOriginal && socio.titularId != socio.titularIdOriginal" class="text-yellow-400 block mt-1">
             <i class="pi pi-info-circle"></i> Está cambiando el titular de este adherente.
@@ -176,30 +240,38 @@
           </div>
         </div>
 
+        <!-- Cobro por Mutual -->
         <div class="field">
-          <label class="font-medium text-gray-300 mb-2 block">Notificaciones WhatsApp</label>
-          <div class="flex align-items-center gap-3">
-            <InputSwitch v-model="socio.recibeNotificacionesWhatsApp" />
-            <span class="text-sm">{{ socio.recibeNotificacionesWhatsApp ? '✅ Activadas' : '🔕 Desactivadas' }}</span>
+          <label class="font-medium text-gray-300 mb-2 block">Método de cobro de cuota</label>
+          <div class="flex align-items-center gap-2">
+            <InputSwitch v-model="socio.pagaPorMutual" inputId="pagaPorMutual" />
+            <div>
+              <label for="pagaPorMutual" class="block" :class="socio.pagaPorMutual ? 'text-white font-medium' : 'text-gray-400'">
+                Cobra por Mutual
+              </label>
+              <small class="text-gray-500 block">
+                {{ socio.pagaPorMutual ? 'La cuota NO se genera automáticamente — el admin la registra vía Cobro Mutual.' : 'La cuota se genera automáticamente cada mes.' }}
+              </small>
+            </div>
           </div>
         </div>
 
         <div class="field">
           <label for="nombre" class="font-medium text-gray-300">Nombre *</label>
-          <InputText id="nombre" v-model="socio.nombre" class="w-full" :class="{ 'p-invalid': submitted && !socio.nombre }" />
-          <small v-if="submitted && !socio.nombre" class="p-error">El nombre es requerido</small>
+          <InputText id="nombre" v-model="socio.nombre" class="w-full" :class="{ 'p-invalid': !!formErrors.nombre }" />
+          <small v-if="formErrors.nombre" class="p-error">{{ formErrors.nombre }}</small>
         </div>
         
         <div class="field">
           <label for="apellido" class="font-medium text-gray-300">Apellido *</label>
-          <InputText id="apellido" v-model="socio.apellido" class="w-full" :class="{ 'p-invalid': submitted && !socio.apellido }" />
-          <small v-if="submitted && !socio.apellido" class="p-error">El apellido es requerido</small>
+          <InputText id="apellido" v-model="socio.apellido" class="w-full" :class="{ 'p-invalid': !!formErrors.apellido }" />
+          <small v-if="formErrors.apellido" class="p-error">{{ formErrors.apellido }}</small>
         </div>
 
         <div class="field">
           <label for="email" class="font-medium text-gray-300">Email *</label>
-          <InputText id="email" v-model="socio.email" type="email" class="w-full" :class="{ 'p-invalid': submitted && !socio.email }" />
-          <small v-if="submitted && !socio.email" class="p-error">El email es requerido</small>
+          <InputText id="email" v-model="socio.email" type="email" class="w-full" :class="{ 'p-invalid': !!formErrors.email }" />
+          <small v-if="formErrors.email" class="p-error">{{ formErrors.email }}</small>
         </div>
 
         <div class="field" v-if="isEditing">
@@ -209,19 +281,18 @@
 
         <div class="field" v-if="!isEditing">
           <label for="password" class="font-medium text-gray-300">Contraseña *</label>
-          <Password id="password" v-model="socio.password" class="w-full" input-class="w-full" toggle-mask />
-          <small v-if="submitted && !isEditing && !socio.password" class="p-error">La contraseña es requerida</small>
+          <Password id="password" v-model="socioPassword" class="w-full" input-class="w-full" toggle-mask />
+          <small v-if="formErrors.password" class="p-error">{{ formErrors.password }}</small>
         </div>        <div class="field">
           <label for="telefono" class="font-medium text-gray-300">Teléfono</label>
           <div class="flex align-items-center gap-1">
-            <span class="px-2 py-2 border-round text-color-secondary border-1 surface-border surface-ground" style="font-size:1rem;line-height:1.5;">0</span>
+            <span class="px-2 py-2 border-round text-color-secondary border-1 surface-border surface-ground" style="font-size:1rem;line-height:1.5;">+549</span>
             <InputText
               v-model="telefonoAreaAdmin"
               style="width:70px"
               placeholder="3533"
               maxlength="4"
             />
-            <span class="px-2 py-2 border-round text-color-secondary border-1 surface-border surface-ground" style="font-size:1rem;line-height:1.5;">-15-</span>
             <InputText
               v-model="telefonoNumeroAdmin"
               style="width:110px"
@@ -229,6 +300,7 @@
               maxlength="8"
             />
           </div>
+          <small class="text-gray-400 block mt-1">Se guarda como +549 para WhatsApp y notificaciones.</small>
         </div>
 
         <div class="field">
@@ -251,6 +323,9 @@
             <i class="pi pi-calendar mr-1"></i>
             Edad: {{ calcularEdad(socio.fechaNacimiento) }} años 
             ({{ calcularEdad(socio.fechaNacimiento) >= 18 ? 'Mayor' : 'Menor' }})
+            <span v-if="obtenerCategoria(socio.fechaNacimiento)">
+              · Categoría: {{ obtenerCategoria(socio.fechaNacimiento) }}
+            </span>
           </small>
         </div>
 
@@ -352,7 +427,7 @@
       <div class="flex flex-column gap-3 pt-2">
         <p class="text-gray-300 m-0">
           Destinatario: <strong style="color: var(--text-color)">{{ waSocio?.nombre }} {{ waSocio?.apellido }}</strong>
-          — <span class="text-green-400">{{ waSocio?.telefono || 'Sin teléfono' }}</span>
+          — <span class="text-green-400">{{ formatTelefonoDisplay(waSocio?.telefono) || 'Sin teléfono' }}</span>
         </p>
         <div>
           <label class="block text-gray-300 font-medium mb-2">Mensaje</label>
@@ -361,7 +436,15 @@
       </div>
       <template #footer>
         <Button label="Cancelar" text @click="waDialog = false" />
-        <Button label="Enviar" icon="pi pi-send" severity="success" :loading="waEnviando" @click="enviarWA" />
+        <Button
+          label="WhatsApp Web"
+          icon="pi pi-whatsapp"
+          severity="success"
+          outlined
+          @click="abrirWaWeb"
+          :disabled="!waSocio?.telefono"
+        />
+
       </template>
     </Dialog>
   </div>
@@ -374,18 +457,19 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { sociosService, disciplinasService, authService } from '@/services'
 import { planesService } from '@/services/planesService'
-import Button from 'primevue/button'
-import Avatar from 'primevue/avatar'
-import ProgressSpinner from 'primevue/progressspinner'
+import { useMobilePagination } from '@/composables/useMobilePagination'
 import PageHeader from '@/components/mobile/PageHeader.vue'
 import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
 import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
+import { FilterMatchMode } from 'primevue/api'
+import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import InputSwitch from 'primevue/inputswitch'
 import Password from 'primevue/password'
 import Tag from 'primevue/tag'
+import Avatar from 'primevue/avatar'
 import Dropdown from 'primevue/dropdown'
 import RadioButton from 'primevue/radiobutton'
 import Checkbox from 'primevue/checkbox'
@@ -393,7 +477,15 @@ import Calendar from 'primevue/calendar'
 import MultiSelect from 'primevue/multiselect'
 import Message from 'primevue/message'
 import Textarea from 'primevue/textarea'
+import ProgressSpinner from 'primevue/progressspinner'
 import ImageUpload from '@/components/shared/ImageUpload.vue'
+import {
+  toLocalCalendarDate,
+  normalizeReservaFechaForApi,
+  calcularEdadDesdeFechaNacimiento,
+  obtenerCategoriaDesdeFechaNacimiento
+} from '@/utils/reservationDates'
+import { parseTelefonoAR, formatTelefonoStorageAR, formatTelefonoDisplay, openWhatsApp, validarTelefonoAR } from '@/utils/phone'
 
 const router = useRouter()
 const toast = useToast()
@@ -404,27 +496,72 @@ const planesMembresia = ref([])
 const disciplinasDisponibles = ref([])
 const loading = ref(false)
 const socioDialog = ref(false)
-const submitted = ref(false)
+const formErrors = ref({})
+const saveError = ref('')
 const saving = ref(false)
 const isEditing = ref(false)
+const socioPassword = ref('')
+
+const hasFormErrors = computed(() => Object.keys(formErrors.value).length > 0)
+
+const socio = ref({
+  tipoSocio: 'Titular',
+  pagaCuotaElAdherente: false,
+  pagaDisciplinasElAdherente: true,
+  pagaPorMutual: false,
+  // Campos para tracking de cambios
+  planMembresiaIdOriginal: null,
+  tipoSocioOriginal: null,
+  titularIdOriginal: null
+})
+
+function clearFormErrors() {
+  formErrors.value = {}
+  saveError.value = ''
+}
+
+function clearFieldError(key) {
+  if (!formErrors.value[key]) return
+  const next = { ...formErrors.value }
+  delete next[key]
+  formErrors.value = next
+}
+
+function validateForm() {
+  const errors = {}
+
+  if (!socio.value.nombre?.trim()) errors.nombre = 'El nombre es requerido'
+  if (!socio.value.apellido?.trim()) errors.apellido = 'El apellido es requerido'
+  if (!socio.value.email?.trim()) errors.email = 'El email es requerido'
+
+  if (!isEditing.value) {
+    if (!socioPassword.value) errors.password = 'La contraseña es requerida'
+    if (!socio.value.planMembresiaId) errors.planMembresiaId = 'El plan es requerido'
+  }
+
+  if (socio.value.tipoSocio === 'Adherente' && !socio.value.titularId) {
+    errors.titularId = 'Debe seleccionar un titular'
+  }
+
+  formErrors.value = errors
+  return Object.keys(errors).length === 0
+}
+
+watch(() => socio.value.nombre, () => clearFieldError('nombre'))
+watch(() => socio.value.apellido, () => clearFieldError('apellido'))
+watch(() => socio.value.email, () => clearFieldError('email'))
+watch(() => socio.value.planMembresiaId, () => clearFieldError('planMembresiaId'))
+watch(() => socio.value.titularId, () => clearFieldError('titularId'))
+watch(() => socio.value.tipoSocio, () => clearFieldError('titularId'))
+watch(socioPassword, () => clearFieldError('password'))
 
 // Split phone input
 const telefonoAreaAdmin = ref('')
 const telefonoNumeroAdmin = ref('')
 
-function parseTelefonoAdmin(tel) {
-  if (!tel) return { area: '', numero: '' }
-  let num = tel.replace(/\D/g, '')
-  if (num.startsWith('549')) num = num.slice(3)
-  else if (num.startsWith('54')) num = num.slice(2)
-  if (num.startsWith('0')) num = num.slice(1)
-  const m = num.match(/^(\d{2,4})15(\d{6,8})$/) || num.match(/^(\d{2,4})(\d{6,8})$/)
-  if (m) return { area: m[1], numero: m[2] }
-  return { area: '', numero: num }
-}
-
 watch([telefonoAreaAdmin, telefonoNumeroAdmin], () => {
-  socio.value.telefono = `0${telefonoAreaAdmin.value}-15-${telefonoNumeroAdmin.value}`
+  const formatted = formatTelefonoStorageAR(telefonoAreaAdmin.value, telefonoNumeroAdmin.value)
+  if (formatted) socio.value.telefono = formatted
 })
 const filtroEstado = ref('todos')
 
@@ -480,6 +617,18 @@ function openWaDialog(data) {
   waDialog.value = true
 }
 
+function abrirWaWeb() {
+  if (!waSocio.value?.telefono || !waMensaje.value.trim()) return
+  const { valido, error } = validarTelefonoAR(waSocio.value.telefono)
+  if (!valido) {
+    toast.add({ severity: 'warn', summary: 'Teléfono inválido', detail: error, life: 4000 })
+    return
+  }
+  if (!openWhatsApp(waSocio.value.telefono, waMensaje.value)) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo abrir WhatsApp Web', life: 3000 })
+  }
+}
+
 async function enviarWA() {
   if (!waMensaje.value.trim()) return
   waEnviando.value = true
@@ -494,50 +643,44 @@ async function enviarWA() {
     waEnviando.value = false
   }
 }
-const socio = ref({
-  tipoSocio: 'Titular',
-  pagaCuotaElAdherente: true,
-  pagaDisciplinasElAdherente: true,
-  // Campos para tracking de cambios
-  planMembresiaIdOriginal: null,
-  tipoSocioOriginal: null,
-  titularIdOriginal: null
-})
 
 const hasAdherentes = ref(false)
 
-const searchTerm = ref('')
-const currentPage = ref(1)
+const filters = ref({
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+})
 
 // Computed: Contadores de socios
-const sociosPendientes = computed(() => socios.value.filter(s => !s.activo).length)
+const sociosInactivos = computed(() => socios.value.filter(s => !s.activo).length)
 const sociosActivos = computed(() => socios.value.filter(s => s.activo).length)
 
 // Computed: Socios filtrados según el estado seleccionado
 const sociosFiltrados = computed(() => {
-  let list = socios.value
-  if (filtroEstado.value === 'pendientes') {
-    list = list.filter(s => !s.activo)
+  if (filtroEstado.value === 'inactivos') {
+    return socios.value.filter(s => !s.activo)
   } else if (filtroEstado.value === 'activos') {
-    list = list.filter(s => s.activo)
+    return socios.value.filter(s => s.activo)
   }
-  if (searchTerm.value.trim()) {
-    const q = searchTerm.value.toLowerCase()
-    list = list.filter(s =>
-      s.nombre?.toLowerCase().includes(q) ||
-      s.email?.toLowerCase().includes(q) ||
-      s.numeroSocio?.toString().includes(q)
-    )
-  }
-  return list
+  return socios.value
 })
 
-const paginatedSocios = computed(() => {
-  const start = (currentPage.value - 1) * 10
-  return sociosFiltrados.value.slice(start, start + 10)
+const sociosParaMostrar = computed(() => {
+  const search = (filters.value['global']?.value || '').toLowerCase()
+  const base = sociosFiltrados.value
+  if (!search) return base
+  return base.filter(s =>
+    s.nombre?.toLowerCase().includes(search) ||
+    s.apellido?.toLowerCase().includes(search) ||
+    s.email?.toLowerCase().includes(search) ||
+    String(s.numeroSocio).includes(search)
+  )
 })
 
-watch([filtroEstado, searchTerm], () => { currentPage.value = 1 })
+const { page: sociosPage, paginated: paginatedSocios } = useMobilePagination(
+  sociosParaMostrar,
+  10,
+  [() => filters.value.global?.value, filtroEstado]
+)
 
 // Computed: Plan seleccionado
 const selectedPlan = computed(() => {
@@ -576,17 +719,15 @@ const titularDisabled = computed(() => {
   return isEditing.value && socio.value.tipoSocioOriginal === 'Titular' && hasAdherentes.value
 })
 
+const adherenteDisabled = computed(() => selectedPlan.value?.tipoPlan === 'Individual')
+
 // Función para calcular la edad desde la fecha de nacimiento
 function calcularEdad(fechaNacimiento) {
-  if (!fechaNacimiento) return 0
-  const hoy = new Date()
-  const nacimiento = new Date(fechaNacimiento)
-  let edad = hoy.getFullYear() - nacimiento.getFullYear()
-  const mes = hoy.getMonth() - nacimiento.getMonth()
-  if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
-    edad--
-  }
-  return edad
+  return calcularEdadDesdeFechaNacimiento(fechaNacimiento)
+}
+
+function obtenerCategoria(fechaNacimiento) {
+  return obtenerCategoriaDesdeFechaNacimiento(fechaNacimiento)
 }
 
 async function loadSocios() {
@@ -617,9 +758,12 @@ async function loadDisciplinas() {
 }
 
 function onPlanChange() {
-  // Actualizar la cuota del socio según el plan seleccionado
   if (selectedPlan.value) {
     socio.value.cuotaSocio = selectedPlan.value.precioMensual
+    if (selectedPlan.value.tipoPlan === 'Individual' && socio.value.tipoSocio === 'Adherente') {
+      socio.value.tipoSocio = 'Titular'
+      socio.value.titularId = null
+    }
   }
 }
 
@@ -629,15 +773,17 @@ function openNew() {
     activo: true,
     tipoSocio: 'Titular',
     disciplinaIds: [], // FASE 2: Inicializar array de disciplinas
-    pagaCuotaElAdherente: true,
+    pagaCuotaElAdherente: false,
     pagaDisciplinasElAdherente: true,
+    pagaPorMutual: false,
     recibeNotificacionesWhatsApp: true,
     planMembresiaIdOriginal: null,
     tipoSocioOriginal: null,
     titularIdOriginal: null
   }
   hasAdherentes.value = false
-  submitted.value = false
+  clearFormErrors()
+  socioPassword.value = ''
   isEditing.value = false
   telefonoAreaAdmin.value = ''
   telefonoNumeroAdmin.value = ''
@@ -647,14 +793,16 @@ function openNew() {
 function editSocio(data) {
   socio.value = { 
     ...data,
+    fechaNacimiento: toLocalCalendarDate(data.fechaNacimiento),
     // Guardar valores originales para tracking de cambios
     planMembresiaIdOriginal: data.planMembresiaId,
     tipoSocioOriginal: data.tipoSocio || 'Titular',
     titularIdOriginal: data.titularId,
     // Asegurar valores por defecto
     tipoSocio: data.tipoSocio || 'Titular',
-    pagaCuotaElAdherente: data.pagaCuotaElAdherente ?? true,
+    pagaCuotaElAdherente: data.pagaCuotaElAdherente ?? false,
     pagaDisciplinasElAdherente: data.pagaDisciplinasElAdherente ?? true,
+    pagaPorMutual: data.pagaPorMutual ?? false,
     recibeNotificacionesWhatsApp: data.recibeNotificacionesWhatsApp ?? true
   }
   
@@ -666,8 +814,9 @@ function editSocio(data) {
   }
   
   isEditing.value = true
-  submitted.value = false
-  const parsed = parseTelefonoAdmin(data.telefono)
+  clearFormErrors()
+  socioPassword.value = ''
+  const parsed = parseTelefonoAR(data.telefono)
   telefonoAreaAdmin.value = parsed.area
   telefonoNumeroAdmin.value = parsed.numero
   socioDialog.value = true
@@ -679,43 +828,22 @@ function viewSocio(data) {
 
 function hideDialog() {
   socioDialog.value = false
-  submitted.value = false
+  clearFormErrors()
+  socioPassword.value = ''
 }
 
 async function saveSocio() {
-  submitted.value = true
+  saveError.value = ''
 
-  // Validaciones
-  if (!socio.value.nombre || !socio.value.apellido || !socio.value.email) {
-    return
-  }
+  if (!validateForm()) return
 
-  if (!isEditing.value) {
-    if (!socio.value.password) return
-    if (!socio.value.planMembresiaId) return
-    if (socio.value.tipoSocio === 'Adherente' && !socio.value.titularId) return
-  } else {
-    // Validaciones al editar
-    if (socio.value.tipoSocio === 'Adherente' && !socio.value.titularId) {
-      toast.add({ 
-        severity: 'warn', 
-        summary: 'Validación', 
-        detail: 'Debe seleccionar un titular para el adherente', 
-        life: 3000 
-      })
-      return
-    }
-    // No permitir cambiar a Adherente si tiene adherentes propios
+  if (isEditing.value) {
     if (hasAdherentes.value && socio.value.tipoSocio === 'Adherente') {
-      toast.add({ 
-        severity: 'error', 
-        summary: 'Error', 
-        detail: 'Este socio tiene adherentes asociados. No puede cambiarse a adherente.', 
-        life: 3000 
-      })
+      saveError.value = 'Este socio tiene adherentes asociados. No puede cambiarse a adherente.'
       return
     }
   }
+
   saving.value = true
   try {
     if (isEditing.value) {
@@ -726,7 +854,7 @@ async function saveSocio() {
         telefono: socio.value.telefono || '',
         dni: socio.value.dni || '',
         direccion: socio.value.direccion || '',
-        fechaNacimiento: socio.value.fechaNacimiento || null,
+        fechaNacimiento: normalizeReservaFechaForApi(socio.value.fechaNacimiento),
         cuotaSocio: socio.value.cuotaSocio || 0,
         foto: socio.value.foto,
         activo: socio.value.activo,
@@ -736,7 +864,8 @@ async function saveSocio() {
         titularId: socio.value.tipoSocio === 'Adherente' ? socio.value.titularId : null,
         pagaCuotaElAdherente: socio.value.tipoSocio === 'Adherente' ? socio.value.pagaCuotaElAdherente : false,
         pagaDisciplinasElAdherente: socio.value.tipoSocio === 'Adherente' ? socio.value.pagaDisciplinasElAdherente : false,
-        recibeNotificacionesWhatsApp: socio.value.recibeNotificacionesWhatsApp ?? true
+        recibeNotificacionesWhatsApp: socio.value.recibeNotificacionesWhatsApp ?? true,
+        pagaPorMutual: socio.value.pagaPorMutual ?? false
       }
       
       await sociosService.update(socio.value.id, updateData)
@@ -745,28 +874,31 @@ async function saveSocio() {
         nombre: socio.value.nombre,
         apellido: socio.value.apellido,
         email: socio.value.email,
-        password: socio.value.password,
+        password: socioPassword.value,
         telefono: socio.value.telefono || '',
         dni: socio.value.dni || '',
         direccion: socio.value.direccion || '',
-        fechaNacimiento: socio.value.fechaNacimiento || null,
+        fechaNacimiento: normalizeReservaFechaForApi(socio.value.fechaNacimiento),
         cuotaSocio: socio.value.cuotaSocio || 0,
         foto: socio.value.foto,
         planMembresiaId: socio.value.planMembresiaId,
         tipoSocio: socio.value.tipoSocio,
         titularId: socio.value.tipoSocio === 'Adherente' ? socio.value.titularId : null,
         pagaCuotaElAdherente: socio.value.tipoSocio === 'Adherente' ? socio.value.pagaCuotaElAdherente : false,
-        pagaDisciplinasElAdherente: socio.value.tipoSocio === 'Adherente' ? socio.value.pagaDisciplinasElAdherente : false
+        pagaDisciplinasElAdherente: socio.value.tipoSocio === 'Adherente' ? socio.value.pagaDisciplinasElAdherente : false,
+        recibeNotificacionesWhatsApp: socio.value.recibeNotificacionesWhatsApp ?? true,
+        pagaPorMutual: socio.value.pagaPorMutual ?? false
       })
       toast.add({ severity: 'success', summary: 'Éxito', detail: 'Socio creado', life: 3000 })
     }
     hideDialog()
     await loadSocios()
   } catch (error) {
+    saveError.value = error.response?.data?.message || 'Error al guardar el socio'
     toast.add({ 
       severity: 'error', 
       summary: 'Error', 
-      detail: error.response?.data?.message || 'Error al guardar el socio', 
+      detail: saveError.value, 
       life: 3000 
     })
   } finally {
@@ -774,19 +906,21 @@ async function saveSocio() {
   }
 }
 
-function confirmDelete(data) {
+function confirmDesactivar(data) {
   confirm.require({
-    message: `¿Está seguro de eliminar al socio ${data.nombre}?`,
-    header: 'Confirmar eliminación',
-    icon: 'pi pi-exclamation-triangle',
+    message: `¿Desactivar a ${data.nombre} ${data.apellido}? El socio no podrá iniciar sesión pero sus datos se conservarán.`,
+    header: 'Desactivar socio',
+    icon: 'pi pi-ban',
+    acceptLabel: 'Desactivar',
+    rejectLabel: 'Cancelar',
     acceptClass: 'p-button-danger',
     accept: async () => {
       try {
-        await sociosService.delete(data.id)
-        toast.add({ severity: 'success', summary: 'Éxito', detail: 'Socio eliminado', life: 3000 })
+        await sociosService.update(data.id, { ...data, activo: false })
+        toast.add({ severity: 'success', summary: 'Socio desactivado', detail: `${data.nombre} ${data.apellido} fue desactivado`, life: 3000 })
         await loadSocios()
       } catch (error) {
-        toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar el socio', life: 3000 })
+        toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo desactivar el socio', life: 3000 })
       }
     }
   })
@@ -805,7 +939,7 @@ async function aprobarSocio(data) {
         await sociosService.update(data.id, { ...data, activo: true })
         toast.add({ 
           severity: 'success', 
-          summary: 'Socio Aprobado', 
+          summary: 'Socio Activado', 
           detail: `${data.nombre} ${data.apellido} puede iniciar sesión`, 
           life: 3000 
         })
@@ -830,6 +964,37 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+}
+
+.stat-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-icon i { font-size: 1.5rem; color: white; }
+
+.stat-total .stat-icon   { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+.stat-success .stat-icon { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.stat-warning .stat-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.stat-mutual .stat-icon  { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+
+.stat-content { display: flex; flex-direction: column; }
+.stat-value { font-size: 1.75rem; font-weight: 700; color: var(--text-color); }
+.stat-label { font-size: 0.85rem; color: var(--text-color-secondary); }
+
 .avatar-red {
   background-color: #dc2626 !important;
   color: white !important;

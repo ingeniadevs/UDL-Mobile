@@ -112,6 +112,7 @@
             <h3>Ingresos por Categoría</h3>
             <Chart 
               v-if="dashboard.ingresosPorCategoria && dashboard.ingresosPorCategoria.length > 0"
+              :key="`ing-${refreshKey}-${dashboard.totalIngresos}`"
               type="doughnut" 
               :data="chartDataIngresosCategoria" 
               :options="chartOptionsCategorias"
@@ -129,6 +130,7 @@
             <h3>Egresos por Categoría</h3>
             <Chart 
               v-if="dashboard.egresosPorCategoria && dashboard.egresosPorCategoria.length > 0"
+              :key="`egr-${refreshKey}-${dashboard.totalEgresos}`"
               type="doughnut" 
               :data="chartDataEgresosCategoria" 
               :options="chartOptionsCategorias"
@@ -144,6 +146,7 @@
             <h3>Evolución Diaria</h3>
             <Chart 
               v-if="dashboard.evolucionDiaria && dashboard.evolucionDiaria.length > 0"
+              :key="`evo-${refreshKey}-${dashboard.saldo}`"
               type="line" 
               :data="chartDataDiario" 
               :options="chartOptionsDiario"
@@ -154,55 +157,13 @@
             </div>
           </div>
         </div>
-
-        <!-- Tabla de últimos movimientos -->
-        <div class="col-12">
-          <div class="card">
-            <h3>Últimos Movimientos</h3>
-            <DataTable 
-              :value="dashboard.ultimosMovimientos" 
-              :paginator="true"
-              :rows="5"
-              responsiveLayout="scroll"
-            >
-              <Column field="fecha" header="Fecha" sortable>
-                <template #body="slotProps">
-                  {{ formatFecha(slotProps.data.fecha) }}
-                </template>
-              </Column>
-              <Column field="tipo" header="Tipo">
-                <template #body="slotProps">
-                  <Tag 
-                    :severity="slotProps.data.tipo === 'ingreso' ? 'success' : 'danger'"
-                    :value="slotProps.data.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'"
-                  />
-                </template>
-              </Column>
-              <Column field="categoriaLabel" header="Categoría" sortable />
-              <Column field="concepto" header="Concepto" sortable />
-              <Column field="empleadoNombre" header="Empleado">
-                <template #body="slotProps">
-                  <span v-if="slotProps.data.empleadoNombre">{{ slotProps.data.empleadoNombre }}</span>
-                  <span v-else class="text-gray-400">-</span>
-                </template>
-              </Column>
-              <Column field="monto" header="Monto" sortable>
-                <template #body="slotProps">
-                  <span :class="slotProps.data.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'">
-                    {{ slotProps.data.tipo === 'ingreso' ? '+' : '-' }}${{ slotProps.data.monto.toLocaleString('es-AR') }}
-                  </span>
-                </template>
-              </Column>
-            </DataTable>
-          </div>
-        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { movimientosService } from '@/services'
 import Calendar from 'primevue/calendar'
 import Button from 'primevue/button'
@@ -212,7 +173,9 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 
-// Estado
+const props = defineProps({
+  refreshKey: { type: Number, default: 0 }
+})
 const loading = ref(false)
 const error = ref(null)
 const dashboard = ref(null)
@@ -223,10 +186,11 @@ const cargarDatos = async () => {
   try {
     loading.value = true
     error.value = null
-    
+    dashboard.value = null
+
     const anio = fechaSeleccionada.value.getFullYear()
     const mes = fechaSeleccionada.value.getMonth() + 1
-    
+
     dashboard.value = await movimientosService.getDashboardMensual(anio, mes)
   } catch (err) {
     console.error('Error cargando dashboard:', err)
@@ -357,6 +321,10 @@ const chartOptionsDiario = {
 }
 
 onMounted(() => {
+  cargarDatos()
+})
+
+watch(() => props.refreshKey, () => {
   cargarDatos()
 })
 </script>

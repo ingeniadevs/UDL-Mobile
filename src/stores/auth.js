@@ -10,11 +10,13 @@ import {
   clearAuthStorage
 } from '@/platform/storage'
 import { isBiometricEnabled, authenticateWithBiometric } from '@/platform/biometric'
+import { isValidRole } from '@/utils/authRoles'
 
 function parseUser(raw) {
   if (!raw) return null
   try {
     const u = JSON.parse(raw)
+    if (!isValidRole(u.rol)) return null
     if (!Array.isArray(u.permisos)) return null
     return u
   } catch {
@@ -44,12 +46,17 @@ export const useAuthStore = defineStore('auth', () => {
   )
   const isMaster = computed(() => user.value?.rol === 'master')
   const isSocio = computed(() => user.value?.rol === 'socio')
+  const hasSubcomision = computed(() => !!user.value?.subcomisionId)
 
   function hasPermiso(seccion) {
     if (!user.value) return false
     if (user.value.rol === 'master') return true
     const permisos = user.value.permisos || []
     return permisos.includes(seccion)
+  }
+
+  function hasValidSession() {
+    return !!token.value && !!user.value && isValidRole(user.value.rol)
   }
 
   async function hydrate() {
@@ -97,6 +104,8 @@ export const useAuthStore = defineStore('auth', () => {
       rol: data.rol,
       foto: data.foto || null,
       deporte: data.deporte || null,
+      subcomisionId: data.subcomisionId || null,
+      subcomisionNombre: data.subcomisionNombre || null,
       permisos: (() => {
         try {
           return JSON.parse(data.permisos || '[]')
@@ -151,7 +160,9 @@ export const useAuthStore = defineStore('auth', () => {
     isAdmin,
     isMaster,
     isSocio,
+    hasSubcomision,
     hasPermiso,
+    hasValidSession,
     hydrate,
     login,
     loginAdmin,

@@ -2,21 +2,21 @@
 
 Aplicación móvil (Android / iOS) del portal **Unión Deportiva Laspiur**, construida sobre el frontend Vue existente y consumiendo la **API .NET 8** sin modificar el repositorio web.
 
-**Raíz del proyecto:** `C:\Users\juanc\OneDrive\Escritorio\UDL-Mobile`
+ **Raíz del proyecto:** `c:\dev\Personal\Clubes\Mobile\UDL-Mobile`
 
-**Referencia web (solo lectura):** `C:\Users\juanc\OneDrive\Escritorio\UDL\UDL-Frontend`
+**Referencia web (solo lectura):** `c:\dev\Personal\Clubes\UDL\UDL-Frontend`
 
 ## Inicio rápido
 
 ```powershell
 # Opción A: script que abre 3 ventanas (backend + mobile + web)
-C:\Users\juanc\OneDrive\Escritorio\UDL-Mobile\scripts\start-review.ps1
+c:\dev\Personal\Clubes\Mobile\UDL-Mobile\scripts\start-review.ps1
 
 # Opción B: manual
-cd C:\Users\juanc\OneDrive\Escritorio\UDL\UDL-Backend\ClubSocios.Api
+cd c:\dev\Personal\Clubes\UDL\UDL-Backend\ClubSocios.Api
 dotnet run --launch-profile http
 
-cd C:\Users\juanc\OneDrive\Escritorio\UDL-Mobile
+cd c:\dev\Personal\Clubes\Mobile\UDL-Mobile
 npm run dev
 ```
 
@@ -81,4 +81,6 @@ Pendiente operativo: Firebase push, logos en `public/images/`, QA en dispositivo
 .\scripts\sync-from-web.ps1
 ```
 
-Revisa siempre los archivos adaptados en `src/platform/`, `src/services/api.js` y `src/stores/auth.js` antes de sobrescribir.
+Copia `views`, `components`, `services` (excepto `api.js`), `layouts`, `composables` y `utils` desde UDL-Frontend. Preserva capa móvil (`platform/`, `api.js`, `auth.js`, `router/`, branding Ingenia, `LoginView.vue`, etc.).
+
+Después del sync: reaplicar adaptaciones Capacitor en vistas/layouts y cablear rutas nuevas en `src/router/index.js`. El login Ingenia (multitenant plantilla) **no** se sobrescribe.

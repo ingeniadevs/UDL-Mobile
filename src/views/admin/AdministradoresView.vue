@@ -43,6 +43,21 @@
               <span class="record-card__label">Deporte</span>
               <Tag :value="deporteLabel(item.deporte)" severity="info" />
             </div>
+            <div v-if="item.rol !== 'master'" class="record-card__row">
+              <span class="record-card__label">Subcomisión</span>
+              <span class="record-card__value">
+                <Tag v-if="item.subcomisionNombre" :value="item.subcomisionNombre" severity="warning" />
+                <span v-else class="text-sm text-color-secondary">Sin asignar</span>
+              </span>
+            </div>
+            <div v-if="item.rol !== 'master' && item.espaciosAsignados?.length" class="record-card__row">
+              <span class="record-card__label">Espacios</span>
+              <span class="record-card__value text-sm">{{ item.espaciosAsignados.map(e => e.nombre).join(', ') }}</span>
+            </div>
+            <div v-if="item.rol !== 'master' && item.disciplinasAsignadas?.length" class="record-card__row">
+              <span class="record-card__label">Disciplinas</span>
+              <span class="record-card__value text-sm">{{ item.disciplinasAsignadas.map(d => d.nombre).join(', ') }}</span>
+            </div>
             <div class="record-card__row">
               <span class="record-card__label">Creado</span>
               <span class="record-card__value">{{ formatDate(item.createdAt) }}</span>
@@ -50,12 +65,13 @@
           </template>
           <template #actions>
             <Button icon="pi pi-building" text rounded size="small" severity="success" v-tooltip.top="'Asignar espacios'" :disabled="item.rol === 'master'" @click="openAsignarEspacios(item)" />
+            <Button icon="pi pi-bookmark" text rounded size="small" severity="warning" v-tooltip.top="'Asignar disciplinas'" :disabled="item.rol === 'master'" @click="openAsignarDisciplinas(item)" />
             <Button icon="pi pi-pencil" text rounded size="small" severity="info" v-tooltip.top="'Editar'" @click="openEdit(item)" />
             <Button icon="pi pi-trash" text rounded size="small" severity="danger" v-tooltip.top="'Eliminar'" :disabled="item.id === currentUserId" @click="confirmDelete(item)" />
           </template>
         </MobileRecordCard>
       </div>
-      <MobilePaginator v-model:page="currentPage" :rows="10" :total="admins.length" />
+      <MobilePaginator v-model:page="adminsPage" :rows="10" :total="admins.length" />
     </template>
 
     <!-- Dialog crear/editar -->
@@ -63,7 +79,7 @@
       v-model:visible="dialogVisible"
       :header="editMode ? 'Editar Administrador' : 'Nuevo Administrador'"
       :modal="true"
-      :style="{ width: '480px' }"
+      :style="{ width: '580px' }"
       :closable="true"
     >
       <div class="flex flex-column gap-3 pt-2">
@@ -97,6 +113,24 @@
             </small>
           </div>
         </div>        <!-- Permisos granulares (solo para admin/moderador) -->
+        <div v-if="form.rol !== 'master'" class="field">
+          <label class="font-medium block mb-1" style="color: var(--text-color)">Subcomisión (opcional)</label>
+          <Dropdown
+            v-model="form.subcomisionId"
+            :options="subcomisionesOpciones"
+            optionLabel="label"
+            optionValue="value"
+            class="w-full"
+            placeholder="Sin restricción — ve todo el club"
+            showClear
+            :loading="loadingSubcomisiones"
+          />
+          <small style="color: var(--text-color-secondary)">
+            Si se asigna, el admin solo verá disciplinas, pagos y contabilidad de esa subcomisión.
+          </small>
+        </div>
+
+        <!-- Permisos granulares (solo para admin/moderador) -->
         <div v-if="form.rol !== 'master'" class="field">
           <label class="font-medium block mb-1" style="color: var(--text-color)">Deporte / Disciplina</label>
           <Dropdown
@@ -216,6 +250,48 @@
         <Button label="Guardar asignación" icon="pi pi-check" severity="success" :loading="savingEspacios" @click="saveAsignarEspacios" />
       </template>
     </Dialog>
+    <!-- Dialog Asignar Disciplinas -->
+    <Dialog
+      v-model:visible="asignarDisciplinasVisible"
+      :header="`Disciplinas asignadas — ${asignarDisciplinasTarget?.nombre || ''}`"
+      :modal="true"
+      :style="{ width: '520px' }"
+    >
+      <div class="mb-3">
+        <small style="color: var(--text-color-secondary)">
+          <i class="pi pi-info-circle mr-1" />
+          Este admin solo verá las disciplinas seleccionadas. Sin asignación, no verá ninguna.
+        </small>
+      </div>
+      <div v-if="loadingDisciplinas" class="text-center p-3">
+        <i class="pi pi-spin pi-spinner" /> Cargando disciplinas...
+      </div>
+      <div v-else class="espacios-grid">
+        <div
+          v-for="d in todasDisciplinas"
+          :key="d.id"
+          class="espacio-item"
+          :class="{ 'espacio-activo': asignarDisciplinasForm.includes(d.id) }"
+          @click="toggleDisciplina(d.id)"
+        >
+          <div class="flex align-items-center gap-2">
+            <i class="pi pi-bookmark espacio-icon" />
+            <div>
+              <div class="font-medium text-sm">{{ d.nombre }}</div>
+            </div>
+          </div>
+          <i v-if="asignarDisciplinasForm.includes(d.id)" class="pi pi-check-circle text-green-400" />
+        </div>
+      </div>
+      <div class="flex gap-2 mt-3">
+        <Button label="Todas" icon="pi pi-check-square" size="small" text @click="asignarDisciplinasForm = todasDisciplinas.map(d => d.id)" />
+        <Button label="Ninguna" icon="pi pi-stop" size="small" text severity="secondary" @click="asignarDisciplinasForm = []" />
+      </div>
+      <template #footer>
+        <Button label="Cancelar" icon="pi pi-times" text @click="asignarDisciplinasVisible = false" />
+        <Button label="Guardar asignación" icon="pi pi-check" severity="success" :loading="savingDisciplinas" @click="saveAsignarDisciplinas" />
+      </template>
+    </Dialog>
   </div>
 </template>
 
@@ -224,34 +300,29 @@ import { ref, computed, onMounted } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
-import { adminsService, espaciosService } from '@/services'
-import Button from 'primevue/button'
-import Tag from 'primevue/tag'
-import Avatar from 'primevue/avatar'
-import ProgressSpinner from 'primevue/progressspinner'
+import { adminsService, espaciosService, disciplinasService, subcomisionesService } from '@/services'
+import { useMobilePagination } from '@/composables/useMobilePagination'
 import PageHeader from '@/components/mobile/PageHeader.vue'
 import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
 import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
+import Button from 'primevue/button'
+import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
 import Password from 'primevue/password'
 import InputSwitch from 'primevue/inputswitch'
-import ConfirmDialog from 'primevue/confirmdialog'
 import Toast from 'primevue/toast'
+import Avatar from 'primevue/avatar'
+import ProgressSpinner from 'primevue/progressspinner'
 
 const confirm = useConfirm()
 const toast = useToast()
 const authStore = useAuthStore()
 
 const admins = ref([])
-const currentPage = ref(1)
-
-const paginatedAdmins = computed(() => {
-  const start = (currentPage.value - 1) * 10
-  return admins.value.slice(start, start + 10)
-})
 const loading = ref(false)
+const { page: adminsPage, paginated: paginatedAdmins } = useMobilePagination(admins, 10)
 const saving = ref(false)
 const dialogVisible = ref(false)
 const editMode = ref(false)
@@ -265,6 +336,21 @@ const todosEspacios = ref([])
 const loadingEspacios = ref(false)
 const savingEspacios = ref(false)
 
+// Asignar disciplinas
+const asignarDisciplinasVisible = ref(false)
+const asignarDisciplinasTarget = ref(null)
+const asignarDisciplinasForm = ref([])
+const todasDisciplinas = ref([])
+const loadingDisciplinas = ref(false)
+const savingDisciplinas = ref(false)
+
+const loadingSubcomisiones = ref(false)
+const subcomisiones = ref([])
+
+const subcomisionesOpciones = computed(() =>
+  subcomisiones.value.map(s => ({ label: s.nombre, value: s.id }))
+)
+
 const deportesOpciones = [
   { label: '🎾 Pádel', value: 'padel' },
   { label: '⚽ Fútbol', value: 'futbol' },
@@ -272,13 +358,16 @@ const deportesOpciones = [
   { label: '🏀 Básquet', value: 'basquet' },
   { label: '🏊 Natación', value: 'natacion' },
   { label: '🏋️ Gimnasio', value: 'gimnasio' },
+  { label: '� Newcom', value: 'newcom' },
+  { label: '⛸️ Patín', value: 'patin' },
   { label: '🏛️ Salón', value: 'salon' },
   { label: '📦 Otro', value: 'otro' },
 ]
 
 const deporteLabels = {
   padel: 'Pádel', futbol: 'Fútbol', tenis: 'Tenis', basquet: 'Básquet',
-  natacion: 'Natación', gimnasio: 'Gimnasio', salon: 'Salón', otro: 'Otro'
+  natacion: 'Natación', gimnasio: 'Gimnasio', newcom: 'Newcom', patin: 'Patín',
+  salon: 'Salón', otro: 'Otro'
 }
 function deporteLabel(d) { return deporteLabels[d] || d }
 
@@ -326,6 +415,47 @@ async function saveAsignarEspacios() {
 
 const currentUserId = computed(() => authStore.user?.id)
 
+function toggleDisciplina(id) {
+  const idx = asignarDisciplinasForm.value.indexOf(id)
+  if (idx === -1) asignarDisciplinasForm.value.push(id)
+  else asignarDisciplinasForm.value.splice(idx, 1)
+}
+
+async function openAsignarDisciplinas(admin) {
+  asignarDisciplinasTarget.value = admin
+  asignarDisciplinasForm.value = []
+  asignarDisciplinasVisible.value = true
+  loadingDisciplinas.value = true
+  try {
+    const [todas, asignadas] = await Promise.all([
+      disciplinasService.getAll(),
+      adminsService.getDisciplinasAsignadas(admin.id)
+    ])
+    todasDisciplinas.value = todas
+    asignarDisciplinasForm.value = asignadas.map(d => d.id)
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar las disciplinas', life: 3000 })
+  } finally {
+    loadingDisciplinas.value = false
+  }
+}
+
+async function saveAsignarDisciplinas() {
+  savingDisciplinas.value = true
+  try {
+    await adminsService.asignarDisciplinas(asignarDisciplinasTarget.value.id, asignarDisciplinasForm.value)
+    toast.add({ severity: 'success', summary: 'Guardado', detail: 'Disciplinas asignadas correctamente', life: 3000 })
+    asignarDisciplinasVisible.value = false
+    const updated = await adminsService.getDisciplinasAsignadas(asignarDisciplinasTarget.value.id)
+    const idx = admins.value.findIndex(a => a.id === asignarDisciplinasTarget.value.id)
+    if (idx !== -1) admins.value[idx].disciplinasAsignadas = updated
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Error', detail: e.response?.data?.message || 'Error al guardar', life: 3000 })
+  } finally {
+    savingDisciplinas.value = false
+  }
+}
+
 const roles = [
   { label: '🔴 Master (acceso total)', value: 'master' },
   { label: '🟡 Admin (secciones asignadas)', value: 'admin' },
@@ -333,17 +463,21 @@ const roles = [
 ]
 
 const permisosDisponibles = [
-  { value: 'dashboard',    label: 'Dashboard',        icon: 'pi pi-home' },
-  { value: 'socios',       label: 'Socios',            icon: 'pi pi-users' },
-  { value: 'disciplinas',  label: 'Disciplinas',       icon: 'pi pi-bookmark' },
-  { value: 'pagos',        label: 'Pagos',             icon: 'pi pi-dollar' },
-  { value: 'productos',    label: 'Productos',         icon: 'pi pi-shopping-bag' },
-  { value: 'pedidos',      label: 'Pedidos',           icon: 'pi pi-shopping-cart' },
-  { value: 'empleados',    label: 'Empleados',         icon: 'pi pi-id-card' },
-  { value: 'espacios',     label: 'Espacios',          icon: 'pi pi-building' },
-  { value: 'reservas',     label: 'Reservas',          icon: 'pi pi-calendar' },
-  { value: 'movimientos',  label: 'Ingresos/Egresos',  icon: 'pi pi-chart-bar' },
-  { value: 'eventos',      label: 'Eventos',           icon: 'pi pi-star' },
+  { value: 'dashboard',      label: 'Dashboard',                  icon: 'pi pi-home' },
+  { value: 'socios',         label: 'Socios',                     icon: 'pi pi-users' },
+  { value: 'disciplinas',    label: 'Disciplinas',                icon: 'pi pi-bookmark' },
+  { value: 'pagos',          label: 'Pago de Cuotas',             icon: 'pi pi-dollar' },
+  { value: 'productos',      label: 'Productos',                  icon: 'pi pi-shopping-bag' },
+  { value: 'pedidos',        label: 'Pedidos',                    icon: 'pi pi-shopping-cart' },
+  { value: 'empleados',      label: 'Empleados',                  icon: 'pi pi-id-card' },
+  { value: 'espacios',       label: 'Espacios',                   icon: 'pi pi-building' },
+  { value: 'reservas',       label: 'Reservas',                   icon: 'pi pi-calendar' },
+  { value: 'movimientos',    label: 'Ingresos/Egresos',               icon: 'pi pi-chart-bar' },
+  { value: 'contabilidad',   label: 'Contabilidad por Disciplina',  icon: 'pi pi-calculator' },
+  { value: 'eventos',        label: 'Eventos',                    icon: 'pi pi-star' },
+  { value: 'inventario',     label: 'Inventario',                 icon: 'pi pi-box' },
+  { value: 'planes-membresia', label: 'Planes de Membresía',      icon: 'pi pi-credit-card' },
+  { value: 'notificaciones', label: 'Envío de Notificaciones',    icon: 'pi pi-send' },
 ]
 
 function togglePermiso(valor) {
@@ -371,7 +505,8 @@ const defaultForm = () => ({
   password: '',
   activo: true,
   permisos: [],
-  deporte: null
+  deporte: null,
+  subcomisionId: null
 })
 
 const form = ref(defaultForm())
@@ -391,19 +526,34 @@ function formatDate(date) {
   return new Date(date).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
+async function loadSubcomisiones() {
+  loadingSubcomisiones.value = true
+  try {
+    subcomisiones.value = await subcomisionesService.getAll(true)
+  } catch {
+    subcomisiones.value = []
+  } finally {
+    loadingSubcomisiones.value = false
+  }
+}
+
 async function loadAdmins() {
   loading.value = true
   try {
     const lista = await adminsService.getAll()
-    // Cargar espacios asignados de cada admin (no-master) en paralelo
+    // Cargar espacios y disciplinas asignadas de cada admin (no-master) en paralelo
     await Promise.all(
       lista.map(async a => {
         if (a.rol !== 'master') {
-          try {
-            a.espaciosAsignados = await adminsService.getEspaciosAsignados(a.id)
-          } catch { a.espaciosAsignados = [] }
+          const [espacios, disciplinas] = await Promise.allSettled([
+            adminsService.getEspaciosAsignados(a.id),
+            adminsService.getDisciplinasAsignadas(a.id)
+          ])
+          a.espaciosAsignados = espacios.status === 'fulfilled' ? espacios.value : []
+          a.disciplinasAsignadas = disciplinas.status === 'fulfilled' ? disciplinas.value : []
         } else {
           a.espaciosAsignados = []
+          a.disciplinasAsignadas = []
         }
       })
     )
@@ -433,6 +583,7 @@ function openEdit(admin) {
     password: '',
     activo: admin.activo,
     deporte: admin.deporte || null,
+    subcomisionId: admin.subcomisionId || null,
     permisos: (() => {
       try { return JSON.parse(admin.permisos || '[]') } catch { return [] }
     })()
@@ -460,7 +611,8 @@ async function saveAdmin() {
         permisos: permisosJson,
         activo: form.value.activo,
         nuevaPassword: form.value.password || null,
-        deporte: form.value.deporte || null
+        deporte: form.value.deporte || null,
+        subcomisionId: form.value.subcomisionId || null
       })
       toast.add({ severity: 'success', summary: 'Actualizado', detail: 'Administrador actualizado correctamente', life: 3000 })
     } else {      await adminsService.create({
@@ -470,7 +622,8 @@ async function saveAdmin() {
         password: form.value.password,
         rol: form.value.rol,
         permisos: permisosJson,
-        deporte: form.value.deporte || null
+        deporte: form.value.deporte || null,
+        subcomisionId: form.value.subcomisionId || null
       })
       toast.add({ severity: 'success', summary: 'Creado', detail: 'Administrador creado correctamente', life: 3000 })
     }
@@ -505,15 +658,13 @@ async function deleteAdmin(admin) {
   }
 }
 
-onMounted(loadAdmins)
+onMounted(() => {
+  loadSubcomisiones()
+  loadAdmins()
+})
 </script>
 
 <style scoped>
-.avatar-red {
-  background-color: #dc2626 !important;
-  color: white !important;
-}
-
 .page-title {
   color: var(--text-color);
 }
@@ -521,7 +672,7 @@ onMounted(loadAdmins)
 /* Grid de permisos */
 .permisos-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 0.5rem;
 }
 
@@ -559,9 +710,9 @@ onMounted(loadAdmins)
 
 .permiso-label {
   flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.2;
 }
 
 .permiso-check {

@@ -188,6 +188,7 @@ import Dropdown from 'primevue/dropdown';
 import InputSwitch from 'primevue/inputswitch';
 import Checkbox from 'primevue/checkbox';
 import Tag from 'primevue/tag';
+import { PLAN_TYPES, getPlanTypeSeverity } from '@/utils/planTypes';
 
 const toast = useToast();
 
@@ -216,11 +217,7 @@ const planForm = ref({
 
 const planToDelete = ref(null);
 
-const tiposPlan = [
-  { label: 'Individual', value: 'Individual' },
-  { label: 'Familiar', value: 'Familiar' },
-  { label: 'Jubilado', value: 'Jubilado' }
-];
+const tiposPlan = PLAN_TYPES;
 
 const loadPlanes = async () => {
   try {
@@ -373,14 +370,7 @@ const togglePlanActivo = async (plan) => {
   }
 };
 
-const getPlanSeverity = (tipoPlan) => {
-  const severityMap = {
-    'Individual': 'info',
-    'Familiar': 'success',
-    'Jubilado': 'warning'
-  };
-  return severityMap[tipoPlan] || 'info';
-};
+const getPlanSeverity = getPlanTypeSeverity;
 
 const formatPrice = (price) => {
   return new Intl.NumberFormat('es-AR', {

@@ -50,7 +50,7 @@
           <div class="espacio-image-container relative">
             <img 
               v-if="esp.imagen" 
-              :src="assetUrl(esp.imagen)" 
+              :src="esp.imagen" 
               :alt="esp.nombre"
               class="espacio-image"
             />
@@ -155,7 +155,9 @@
       :header="isEditing ? 'Editar Espacio' : 'Nuevo Espacio'" 
       :modal="true"
       :draggable="false"
-      :style="{ width: '600px' }"
+      :style="{ width: '600px', maxWidth: '95vw' }"
+      :breakpoints="{ '640px': '95vw' }"
+      :contentStyle="{ overflowX: 'hidden' }"
     >
       <div class="flex flex-column gap-4 pt-3">        <div class="grid">
           <div class="col-12 md:col-6">
@@ -224,32 +226,32 @@
         </div>
 
         <!-- Precio por hora (solo PorHora) -->
-        <div v-if="espacio.tipoReserva !== 'PorTurno'" class="grid">
-          <div class="col-12 md:col-6">
+        <div v-if="espacio.tipoReserva !== 'PorTurno'" class="grid" style="margin: 0">
+          <div class="col-12 md:col-6" style="min-width:0">
             <label for="precio" class="font-medium text-gray-300">Precio por Hora *</label>
-            <InputNumber id="precio" v-model="espacio.precioPorHora" mode="currency" currency="ARS" locale="es-AR" class="w-full mt-2" />
+            <InputNumber id="precio" v-model="espacio.precioPorHora" mode="currency" currency="ARS" locale="es-AR" class="w-full mt-2" inputClass="w-full" />
           </div>
-          <div class="col-12 md:col-6">
+          <div class="col-12 md:col-6" style="min-width:0">
             <label for="capacidad" class="font-medium text-gray-300">Capacidad</label>
-            <InputNumber id="capacidad" v-model="espacio.capacidad" class="w-full mt-2" />
+            <InputNumber id="capacidad" v-model="espacio.capacidad" class="w-full mt-2" inputClass="w-full" />
           </div>
         </div>
 
         <!-- Precios por turno (solo PorTurno - salones) -->
         <div v-if="espacio.tipoReserva === 'PorTurno'" class="field">
           <label class="font-medium text-gray-300 block mb-2">Precios por Turno</label>
-          <div class="grid">
-            <div class="col-12 md:col-4">
+          <div class="grid" style="margin: 0">
+            <div class="col-12 md:col-4" style="min-width:0">
               <label class="text-gray-400 text-sm block mb-1">☀️ Turno Mañana (08:00 - 13:00)</label>
-              <InputNumber v-model="espacio.precioTurnoManana" mode="currency" currency="ARS" locale="es-AR" class="w-full" />
+              <InputNumber v-model="espacio.precioTurnoManana" mode="currency" currency="ARS" locale="es-AR" class="w-full" inputClass="w-full" />
             </div>
-            <div class="col-12 md:col-4">
+            <div class="col-12 md:col-4" style="min-width:0">
               <label class="text-gray-400 text-sm block mb-1">🌙 Turno Noche (19:00 - 23:59)</label>
-              <InputNumber v-model="espacio.precioTurnoNoche" mode="currency" currency="ARS" locale="es-AR" class="w-full" />
+              <InputNumber v-model="espacio.precioTurnoNoche" mode="currency" currency="ARS" locale="es-AR" class="w-full" inputClass="w-full" />
             </div>
-            <div class="col-12 md:col-4">
+            <div class="col-12 md:col-4" style="min-width:0">
               <label class="text-gray-400 text-sm block mb-1">📅 Todo el Día (08:00 - 23:59)</label>
-              <InputNumber v-model="espacio.precioTodoDia" mode="currency" currency="ARS" locale="es-AR" class="w-full" />
+              <InputNumber v-model="espacio.precioTodoDia" mode="currency" currency="ARS" locale="es-AR" class="w-full" inputClass="w-full" />
             </div>
           </div>
           <div class="mt-2">
@@ -259,18 +261,18 @@
         </div>
 
         <!-- Horarios (solo PorHora) -->
-        <div v-if="espacio.tipoReserva !== 'PorTurno'" class="grid">
-          <div class="col-12 md:col-4">
+        <div v-if="espacio.tipoReserva !== 'PorTurno'" class="grid" style="margin: 0">
+          <div class="col-12 md:col-4" style="min-width:0">
             <label for="horaApertura" class="font-medium text-gray-300">Hora Apertura</label>
             <InputText id="horaApertura" v-model="espacio.horaApertura" class="w-full mt-2" placeholder="08:00" />
           </div>
-          <div class="col-12 md:col-4">
+          <div class="col-12 md:col-4" style="min-width:0">
             <label for="horaCierre" class="font-medium text-gray-300">Hora Cierre</label>
             <InputText id="horaCierre" v-model="espacio.horaCierre" class="w-full mt-2" placeholder="22:00" />
           </div>
-          <div class="col-12 md:col-4">
+          <div class="col-12 md:col-4" style="min-width:0">
             <label for="duracion" class="font-medium text-gray-300">Duración Turno (min)</label>
-            <InputNumber id="duracion" v-model="espacio.duracionTurno" class="w-full mt-2" :min="15" :step="15" />
+            <InputNumber id="duracion" v-model="espacio.duracionTurno" class="w-full mt-2" inputClass="w-full" :min="15" :step="15" />
           </div>
         </div>        <div class="grid">
           <div class="col-12 md:col-6" v-if="isEditing">
@@ -322,9 +324,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { espaciosService, adminsService } from '@/services'
-import { useAssetUrl } from '@/composables/useAssetUrl'
-
-const assetUrl = useAssetUrl()
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
