@@ -130,7 +130,7 @@
   >
     <!-- PASO 1: Datos personales y plan -->
     <div v-if="pasoRegistro === 1" class="flex flex-column gap-3">
-      <div class="flex gap-3">
+      <div class="flex gap-3 reg-name-row">
         <div class="flex-1">
           <label class="block text-gray-300 font-medium mb-1">Nombre *</label>
           <InputText v-model="reg.nombre" class="w-full" placeholder="Juan" :class="{ 'p-invalid': regErrors.nombre }" />
@@ -920,16 +920,14 @@ async function handleResetearPassword() {
 
 .app-icon-wrap {
   width: auto;
-  max-width: 220px;
   margin: 0 auto 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.65rem 0.85rem;
-  border-radius: 16px;
-  background: #ffffff;
-  border: 1px solid rgba(134, 59, 255, 0.15);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
 }
 
 .app-title {
@@ -1132,6 +1130,16 @@ async function handleResetearPassword() {
 }
 
 /* Dialog */
+.reg-name-row {
+  flex-direction: column;
+}
+
+@media (min-width: 480px) {
+  .reg-name-row {
+    flex-direction: row;
+  }
+}
+
 :deep(.dialog-dark .p-dialog) {
   background: var(--surface-card);
   border: 1px solid var(--surface-border);

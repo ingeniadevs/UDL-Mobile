@@ -113,17 +113,19 @@
             </div>
           </div>
 
-          <div class="editor-footer">
+          <div class="editor-footer template-actions">
             <Button
               label="Descartar cambios"
               icon="pi pi-times"
               text
+              class="w-full"
               :disabled="!isDirty(tipoActivo)"
               @click="descartar"
             />
             <Button
               label="Guardar esta plantilla"
               icon="pi pi-save"
+              class="w-full"
               :loading="saving === tipoActivo"
               :disabled="!isDirty(tipoActivo)"
               @click="guardarUna"
@@ -132,6 +134,7 @@
               label="Guardar todas"
               icon="pi pi-check-circle"
               outlined
+              class="w-full"
               :loading="savingAll"
               :disabled="!hayAlgunCambio"
               @click="guardarTodas"
@@ -495,10 +498,16 @@ async function guardarTodas() {
 
 .editor-footer {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  flex-wrap: nowrap;
   gap: 0.5rem;
-  justify-content: flex-end;
+  justify-content: stretch;
   margin-top: 1rem;
   padding-top: 0.5rem;
+}
+
+.editor-footer .p-button {
+  width: 100%;
+  justify-content: center;
 }
 </style>

@@ -1,5 +1,6 @@
 <template>
   <div class="disciplina-contabilidad-view">
+    <BlockUI :blocked="blockUi" fullScreen />
     <PageHeader
       title="Contabilidad por Disciplina"
       subtitle="Libro independiente de ingresos y egresos por disciplina."
@@ -31,27 +32,27 @@
           <div class="stat-card">
             <span class="block stat-label mb-2">Saldo acumulado</span>
             <div class="font-bold text-3xl" :class="saldoAcumulado >= 0 ? 'text-green-400' : 'text-red-400'">
-              {{ saldoAcumulado >= 0 ? '+' : '' }}${{ saldoAcumulado.toLocaleString('es-AR') }}
+              {{ saldoAcumulado >= 0 ? '+' : '' }}{{ formatCompactMoney(saldoAcumulado) }}
             </div>
           </div>
         </div>
         <div class="col-12 md:col-3">
           <div class="stat-card">
             <span class="block stat-label mb-2">Total Ingresos</span>
-            <div class="stat-value text-green-400 font-bold text-3xl">${{ resumen.totalIngresos?.toLocaleString('es-AR') ?? '0' }}</div>
+            <div class="stat-value text-green-400 font-bold text-3xl">{{ formatCompactMoney(resumen.totalIngresos) }}</div>
           </div>
         </div>
         <div class="col-12 md:col-3">
           <div class="stat-card">
             <span class="block stat-label mb-2">Total Egresos</span>
-            <div class="stat-value text-red-400 font-bold text-3xl">${{ resumen.totalEgresos?.toLocaleString('es-AR') ?? '0' }}</div>
+            <div class="stat-value text-red-400 font-bold text-3xl">{{ formatCompactMoney(resumen.totalEgresos) }}</div>
           </div>
         </div>
         <div class="col-12 md:col-3">
           <div class="stat-card">
             <span class="block stat-label mb-2">Saldo del período</span>
             <div class="font-bold text-3xl" :class="saldo >= 0 ? 'text-green-400' : 'text-red-400'">
-              {{ saldo >= 0 ? '+' : '' }}${{ saldo.toLocaleString('es-AR') }}
+              {{ saldo >= 0 ? '+' : '' }}{{ formatCompactMoney(saldo) }}
             </div>
           </div>
         </div>
@@ -60,7 +61,7 @@
       <TabView>
         <TabPanel header="Movimientos" leftIcon="pi pi-list">
           <div class="card mb-4">
-            <div class="grid align-items-end">
+            <div class="grid align-items-end mobile-filters-grid">
               <div class="col-12 md:col-3">
                 <label class="block text-sm mb-2">Desde</label>
                 <Calendar v-model="filtros.fechaDesde" dateFormat="dd/mm/yy" showIcon class="w-full" />
@@ -74,7 +75,7 @@
                 <Dropdown v-model="filtros.tipo" :options="tiposMovimiento" optionLabel="label" optionValue="value" placeholder="Todos" showClear class="w-full" />
               </div>
               <div class="col-12 md:col-3">
-                <Button label="Limpiar filtros" icon="pi pi-filter-slash" outlined severity="secondary" class="w-full" @click="limpiarFiltros" />
+                <Button label="Limpiar filtros" icon="pi pi-filter-slash" outlined severity="secondary" class="w-full" size="small" @click="limpiarFiltros" />
               </div>
             </div>
           </div>
@@ -130,94 +131,148 @@
           </div>
         </TabPanel>
         <TabPanel header="Reportes" leftIcon="pi pi-chart-bar">
-          <div class="flex flex-column gap-4 mt-2">
+          <div class="reportes-tab">
             <!-- Reporte Mensual -->
-            <div class="card">
-              <h3 class="m-0 mb-3 text-lg">Reporte Mensual</h3>
-              <div class="flex gap-3 align-items-end flex-wrap">
-                <div class="flex flex-column gap-1">
-                  <label class="text-sm text-gray-400">Mes</label>
-                  <Dropdown v-model="reporteMes" :options="mesesOpciones" optionLabel="label" optionValue="value" class="w-10rem" />
-                </div>
-                <div class="flex flex-column gap-1">
-                  <label class="text-sm text-gray-400">Año</label>
-                  <InputNumber v-model="reporteAnioMensual" :useGrouping="false" :min="2020" :max="2099" class="w-8rem" />
-                </div>
-                <Button label="Generar" icon="pi pi-refresh" :loading="loadingReporteMensual" @click="generarReporteMensual" />
+            <div class="card reporte-card">
+              <div class="reporte-card__header">
+                <h3 class="reporte-card__title">Reporte Mensual</h3>
+                <Button
+                  v-if="reporteMensualData"
+                  label="Imprimir"
+                  icon="pi pi-print"
+                  outlined
+                  size="small"
+                  @click="imprimirReporte(reporteMensualData, 'mensual')"
+                />
               </div>
-              <div v-if="reporteMensualData" class="mt-4">
-                <div class="flex gap-3 mb-3 flex-wrap">
-                  <div class="stat-card flex-1" style="min-width:130px">
-                    <span class="block text-gray-400 text-sm mb-1">Ingresos</span>
-                    <span class="text-green-400 font-bold text-xl">${{ reporteMensualData.resumen.totalIngresos?.toLocaleString('es-AR') }}</span>
+              <div class="reporte-filters">
+                <div class="reporte-field">
+                  <label>Mes</label>
+                  <Dropdown v-model="reporteMes" :options="mesesOpciones" optionLabel="label" optionValue="value" class="w-full" />
+                </div>
+                <div class="reporte-field">
+                  <label>Año</label>
+                  <InputNumber v-model="reporteAnioMensual" :useGrouping="false" :min="2020" :max="2099" class="w-full" inputClass="w-full" />
+                </div>
+                <Button
+                  label="Generar"
+                  icon="pi pi-refresh"
+                  class="w-full"
+                  size="small"
+                  :loading="loadingReporteMensual"
+                  @click="generarReporteMensual"
+                />
+              </div>
+              <div v-if="reporteMensualData" class="reporte-result">
+                <div class="reporte-stats">
+                  <div class="stat-card">
+                    <span class="stat-label">Ingresos</span>
+                    <span class="stat-value text-green-400">{{ formatCompactMoney(reporteMensualData.resumen.totalIngresos) }}</span>
                   </div>
-                  <div class="stat-card flex-1" style="min-width:130px">
-                    <span class="block text-gray-400 text-sm mb-1">Egresos</span>
-                    <span class="text-red-400 font-bold text-xl">${{ reporteMensualData.resumen.totalEgresos?.toLocaleString('es-AR') }}</span>
+                  <div class="stat-card">
+                    <span class="stat-label">Egresos</span>
+                    <span class="stat-value text-red-400">{{ formatCompactMoney(reporteMensualData.resumen.totalEgresos) }}</span>
                   </div>
-                  <div class="stat-card flex-1" style="min-width:130px">
-                    <span class="block text-gray-400 text-sm mb-1">Saldo</span>
-                    <span class="font-bold text-xl" :class="reporteMensualData.resumen.saldo >= 0 ? 'text-green-400' : 'text-red-400'">
-                      ${{ reporteMensualData.resumen.saldo?.toLocaleString('es-AR') }}
+                  <div class="stat-card reporte-stats__saldo">
+                    <span class="stat-label">Saldo</span>
+                    <span class="stat-value" :class="reporteMensualData.resumen.saldo >= 0 ? 'text-green-400' : 'text-red-400'">
+                      {{ formatCompactMoney(reporteMensualData.resumen.saldo) }}
                     </span>
                   </div>
-                  <div class="flex align-items-end">
-                    <Button label="Imprimir" icon="pi pi-print" outlined size="small" @click="imprimirReporte(reporteMensualData, 'mensual')" />
-                  </div>
                 </div>
-                <DataTable :value="reporteMensualData.movimientos" class="p-datatable-sm" :rows="50" paginator>
-                  <Column header="Fecha"><template #body="{ data }">{{ formatFecha(data.fecha) }}</template></Column>
-                  <Column field="concepto" header="Concepto" />
-                  <Column field="tipo" header="Tipo">
-                    <template #body="{ data }">
-                      <Tag :value="data.tipo" :severity="data.tipo === 'ingreso' ? 'success' : 'danger'" />
+                <div v-if="!reporteMensualData.movimientos?.length" class="text-center py-3 text-gray-400 text-sm">
+                  Sin movimientos en el período
+                </div>
+                <div v-else class="mobile-card-list">
+                  <MobileRecordCard
+                    v-for="(mov, idx) in reporteMensualData.movimientos"
+                    :key="`m-${idx}-${mov.id || mov.fecha}`"
+                    :title="mov.concepto"
+                    :subtitle="formatFecha(mov.fecha)"
+                  >
+                    <template #tags>
+                      <Tag :value="mov.tipo" :severity="mov.tipo === 'ingreso' ? 'success' : 'danger'" />
                     </template>
-                  </Column>
-                  <Column header="Monto"><template #body="{ data }">${{ data.monto?.toLocaleString('es-AR') }}</template></Column>
-                </DataTable>
+                    <template #body>
+                      <div class="record-card__row">
+                        <span class="record-card__label">Monto</span>
+                        <span class="record-card__value font-bold" :class="mov.tipo === 'ingreso' ? 'text-green-400' : 'text-red-400'">
+                          {{ mov.tipo === 'ingreso' ? '+' : '-' }}{{ formatCompactMoney(mov.monto) }}
+                        </span>
+                      </div>
+                    </template>
+                  </MobileRecordCard>
+                </div>
               </div>
             </div>
 
             <!-- Reporte Anual -->
-            <div class="card">
-              <h3 class="m-0 mb-3 text-lg">Reporte Anual</h3>
-              <div class="flex gap-3 align-items-end flex-wrap">
-                <div class="flex flex-column gap-1">
-                  <label class="text-sm text-gray-400">Año</label>
-                  <InputNumber v-model="reporteAnioAnual" :useGrouping="false" :min="2020" :max="2099" class="w-8rem" />
-                </div>
-                <Button label="Generar" icon="pi pi-refresh" :loading="loadingReporteAnual" @click="generarReporteAnual" />
+            <div class="card reporte-card">
+              <div class="reporte-card__header">
+                <h3 class="reporte-card__title">Reporte Anual</h3>
+                <Button
+                  v-if="reporteAnualData"
+                  label="Imprimir"
+                  icon="pi pi-print"
+                  outlined
+                  size="small"
+                  @click="imprimirReporte(reporteAnualData, 'anual')"
+                />
               </div>
-              <div v-if="reporteAnualData" class="mt-4">
-                <div class="flex gap-3 mb-3 flex-wrap">
-                  <div class="stat-card flex-1" style="min-width:130px">
-                    <span class="block text-gray-400 text-sm mb-1">Ingresos</span>
-                    <span class="text-green-400 font-bold text-xl">${{ reporteAnualData.resumen.totalIngresos?.toLocaleString('es-AR') }}</span>
+              <div class="reporte-filters">
+                <div class="reporte-field">
+                  <label>Año</label>
+                  <InputNumber v-model="reporteAnioAnual" :useGrouping="false" :min="2020" :max="2099" class="w-full" inputClass="w-full" />
+                </div>
+                <Button
+                  label="Generar"
+                  icon="pi pi-refresh"
+                  class="w-full"
+                  size="small"
+                  :loading="loadingReporteAnual"
+                  @click="generarReporteAnual"
+                />
+              </div>
+              <div v-if="reporteAnualData" class="reporte-result">
+                <div class="reporte-stats">
+                  <div class="stat-card">
+                    <span class="stat-label">Ingresos</span>
+                    <span class="stat-value text-green-400">{{ formatCompactMoney(reporteAnualData.resumen.totalIngresos) }}</span>
                   </div>
-                  <div class="stat-card flex-1" style="min-width:130px">
-                    <span class="block text-gray-400 text-sm mb-1">Egresos</span>
-                    <span class="text-red-400 font-bold text-xl">${{ reporteAnualData.resumen.totalEgresos?.toLocaleString('es-AR') }}</span>
+                  <div class="stat-card">
+                    <span class="stat-label">Egresos</span>
+                    <span class="stat-value text-red-400">{{ formatCompactMoney(reporteAnualData.resumen.totalEgresos) }}</span>
                   </div>
-                  <div class="stat-card flex-1" style="min-width:130px">
-                    <span class="block text-gray-400 text-sm mb-1">Saldo</span>
-                    <span class="font-bold text-xl" :class="reporteAnualData.resumen.saldo >= 0 ? 'text-green-400' : 'text-red-400'">
-                      ${{ reporteAnualData.resumen.saldo?.toLocaleString('es-AR') }}
+                  <div class="stat-card reporte-stats__saldo">
+                    <span class="stat-label">Saldo</span>
+                    <span class="stat-value" :class="reporteAnualData.resumen.saldo >= 0 ? 'text-green-400' : 'text-red-400'">
+                      {{ formatCompactMoney(reporteAnualData.resumen.saldo) }}
                     </span>
                   </div>
-                  <div class="flex align-items-end">
-                    <Button label="Imprimir" icon="pi pi-print" outlined size="small" @click="imprimirReporte(reporteAnualData, 'anual')" />
-                  </div>
                 </div>
-                <DataTable :value="reporteAnualData.movimientos" class="p-datatable-sm" :rows="50" paginator>
-                  <Column header="Fecha"><template #body="{ data }">{{ formatFecha(data.fecha) }}</template></Column>
-                  <Column field="concepto" header="Concepto" />
-                  <Column field="tipo" header="Tipo">
-                    <template #body="{ data }">
-                      <Tag :value="data.tipo" :severity="data.tipo === 'ingreso' ? 'success' : 'danger'" />
+                <div v-if="!reporteAnualData.movimientos?.length" class="text-center py-3 text-gray-400 text-sm">
+                  Sin movimientos en el período
+                </div>
+                <div v-else class="mobile-card-list">
+                  <MobileRecordCard
+                    v-for="(mov, idx) in reporteAnualData.movimientos"
+                    :key="`a-${idx}-${mov.id || mov.fecha}`"
+                    :title="mov.concepto"
+                    :subtitle="formatFecha(mov.fecha)"
+                  >
+                    <template #tags>
+                      <Tag :value="mov.tipo" :severity="mov.tipo === 'ingreso' ? 'success' : 'danger'" />
                     </template>
-                  </Column>
-                  <Column header="Monto"><template #body="{ data }">${{ data.monto?.toLocaleString('es-AR') }}</template></Column>
-                </DataTable>
+                    <template #body>
+                      <div class="record-card__row">
+                        <span class="record-card__label">Monto</span>
+                        <span class="record-card__value font-bold" :class="mov.tipo === 'ingreso' ? 'text-green-400' : 'text-red-400'">
+                          {{ mov.tipo === 'ingreso' ? '+' : '-' }}{{ formatCompactMoney(mov.monto) }}
+                        </span>
+                      </div>
+                    </template>
+                  </MobileRecordCard>
+                </div>
               </div>
             </div>
           </div>
@@ -283,8 +338,6 @@ import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
 import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 import Button from 'primevue/button'
 import Dropdown from 'primevue/dropdown'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Calendar from 'primevue/calendar'
 import Dialog from 'primevue/dialog'
@@ -295,6 +348,8 @@ import SelectButton from 'primevue/selectbutton'
 import Message from 'primevue/message'
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
+import BlockUI from 'primevue/blockui'
+import { formatCompactMoney } from '@/utils/formatMoney'
 
 const route = useRoute()
 const toast = useToast()
@@ -332,6 +387,14 @@ const loadingReporteMensual = ref(false)
 const loadingReporteAnual = ref(false)
 const reporteMensualData = ref(null)
 const reporteAnualData = ref(null)
+
+const blockUi = computed(() =>
+  loading.value ||
+  loadingDisciplinas.value ||
+  guardando.value ||
+  loadingReporteMensual.value ||
+  loadingReporteAnual.value
+)
 
 const mesesOpciones = [
   { label: 'Enero', value: 1 }, { label: 'Febrero', value: 2 }, { label: 'Marzo', value: 3 },
@@ -578,13 +641,78 @@ function imprimirReporte(data, tipo) {
 </script>
 
 <style scoped>
-.disciplina-contabilidad-view { padding: 1rem; }
+.disciplina-contabilidad-view { padding: 0; }
 .page-title { color: var(--text-color); }
 .stat-card, .card {
   background: var(--surface-card);
   border: 1px solid var(--surface-border);
   border-radius: 12px;
-  padding: 1.25rem;
+  padding: 1rem;
 }
 .stat-label { color: var(--text-color-secondary); }
+
+.reportes-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.reporte-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.reporte-card__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.reporte-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.reporte-field label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-color-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.reporte-result {
+  margin-top: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.reporte-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.reporte-stats .stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.7rem 0.75rem;
+  min-width: 0;
+}
+
+.reporte-stats__saldo {
+  grid-column: 1 / -1;
+}
+
+.reporte-stats .stat-value {
+  font-size: 1.05rem !important;
+  font-weight: 700;
+}
 </style>

@@ -19,7 +19,7 @@
     "android:run": "npm run cap:sync && npx cap run android",
     "ios:run": "npm run cap:sync && npx cap run ios",
     "lint:mobile": "node scripts/check-mobile-env.js",
-    "icons:generate": "node scripts/generate-app-icons.mjs && npx capacitor-assets generate --assetPath assets"
+    "icons:generate": "node scripts/generate-app-icons.mjs && npx capacitor-assets generate --assetPath assets && node scripts/fix-android-adaptive-icon.mjs"
   },
   "dependencies": {
     "@aparajita/capacitor-biometric-auth": "^10.0.0",

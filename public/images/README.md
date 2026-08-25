@@ -1,12 +1,10 @@
 # Assets de imagen
 
 ## App (Ingenia Club)
-- `/images/ingenia-club-icon.svg` — icono de la app y login (Ingenia Labs)
-- `/favicon.svg` — alias del mismo icono
+- `/images/foco-ingenia.png` — logo foco Ingenia (login + favicon)
+- `/images/ingenia-club-icon.png` — icono cuadrado generado para launcher
 
 ## Club por defecto (UDL)
 - `logo-udl.png` — logo del club conectado
 
-Origen de referencia UDL (copiar manualmente si no está en git):
-
-`C:\Users\juanc\OneDrive\Escritorio\UDL\UDL-Frontend\public\images\`
+Fuente: `assets/foco-ingenia.png` → `npm run icons:generate`

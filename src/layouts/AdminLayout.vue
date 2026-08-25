@@ -38,7 +38,6 @@
           :severity="authStore.user?.rol === 'master' ? 'danger' : 'info'"
           class="text-xs hidden md:inline-flex"
         />
-        <Avatar :label="avatarLabel" shape="circle" class="avatar-red" />
         <Button 
           :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'" 
           text 
@@ -141,7 +140,7 @@
       </div>
 
       <!-- Content -->
-      <div class="flex-1 p-4 overflow-auto content-area">
+      <div class="flex-1 overflow-auto content-area">
         <router-view />
       </div>
     </div>
@@ -159,7 +158,6 @@ import { authService } from '@/services'
 import Sidebar from 'primevue/sidebar'
 import Menu from 'primevue/menu'
 import Button from 'primevue/button'
-import Avatar from 'primevue/avatar'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -204,8 +202,9 @@ onUnmounted(() => {
   }
 })
 
-// Auto-colapsar al navegar
+// Cerrar drawer mobile y colapsar sidebar al navegar
 watch(() => route.path, () => {
+  mobileSidebarVisible.value = false
   desktopSidebarVisible.value = false
 })
 
@@ -261,10 +260,6 @@ async function changeAdminPassword() {
     savingAdminPw.value = false
   }
 }
-
-const avatarLabel = computed(() => {
-  return authStore.user?.nombre?.charAt(0).toUpperCase() || 'A'
-})
 
 const menuItems = computed(() => {
   const isMaster = authStore.user?.rol === 'master'
@@ -435,11 +430,6 @@ function handleLogout() {
   align-items: center;
   justify-content: center;
   color: white;
-}
-
-.avatar-red {
-  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%) !important;
-  color: white !important;
 }
 
 .btn-menu {
