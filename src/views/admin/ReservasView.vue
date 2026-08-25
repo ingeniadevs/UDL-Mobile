@@ -28,7 +28,7 @@
           <div class="stat-content">
             <span class="stat-value">{{ resumenFiltrado.reservasPagadas }}</span>
             <span class="stat-label">Pagadas</span>
-            <small class="stat-amount">${{ resumenFiltrado.montoTotalPagado.toLocaleString() }}</small>
+            <small class="stat-amount">{{ formatCompactMoney(resumenFiltrado.montoTotalPagado) }}</small>
           </div>
         </div>      </div>
       <div class="col-6 md:col-2">
@@ -39,7 +39,7 @@
           <div class="stat-content">
             <span class="stat-value">{{ resumenFiltrado.reservasPendientes }}</span>
             <span class="stat-label">Pendientes</span>
-            <small class="stat-amount">${{ resumenFiltrado.montoTotalPendiente.toLocaleString() }}</small>
+            <small class="stat-amount">{{ formatCompactMoney(resumenFiltrado.montoTotalPendiente) }}</small>
           </div>
         </div>
       </div>      <div class="col-6 md:col-3">
@@ -80,7 +80,7 @@
       </div>
     </div><!-- Filtros -->
     <div class="card mb-4">
-      <div class="grid">
+      <div class="grid mobile-filters-grid">
         <div class="col-12 md:col-2">
           <label class="font-medium text-gray-300 block mb-2">Socio</label>
           <Dropdown 
@@ -791,6 +791,7 @@ import autoTable from 'jspdf-autotable'
 import { savePdfDocument, downloadTextFile } from '@/platform/files'
 import { useMobilePagination } from '@/composables/useMobilePagination'
 import PageHeader from '@/components/mobile/PageHeader.vue'
+import { formatCompactMoney } from '@/utils/formatMoney'
 import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
 import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 import DataTable from 'primevue/datatable'

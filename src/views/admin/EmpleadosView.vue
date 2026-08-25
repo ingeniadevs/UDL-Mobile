@@ -39,7 +39,7 @@
         <div class="stat-card stat-warning">
           <div class="stat-icon"><i class="pi pi-dollar"></i></div>
           <div class="stat-content">
-            <span class="stat-value">${{ empleados.filter(e => e.activo).reduce((s, e) => s + (e.salario || 0), 0).toLocaleString() }}</span>
+            <span class="stat-value">{{ formatCompactMoney(empleados.filter(e => e.activo).reduce((s, e) => s + (e.salario || 0), 0)) }}</span>
             <span class="stat-label">Masa Salarial</span>
           </div>
         </div>
@@ -49,7 +49,7 @@
     <!-- Filtros -->
     <div class="card mb-4">
       <div class="flex flex-wrap align-items-center gap-3">
-        <span class="p-input-icon-left flex-1" style="min-width: 200px">
+        <span class="p-input-icon-left flex-1 w-full">
           <i class="pi pi-search" />
           <InputText v-model="filters.global.value" placeholder="Buscar por nombre, email o puesto..." class="w-full" />
         </span>
@@ -140,7 +140,7 @@
         </div>
         <div class="col-12 md:col-6">
           <label class="block text-gray-300 mb-2">Fecha Ingreso</label>
-          <Calendar v-model="form.fechaIngreso" dateFormat="dd/mm/yy" class="w-full" />
+          <Calendar v-model="form.fechaIngreso" dateFormat="dd/mm/yy" class="w-full" showIcon />
         </div>
         <div class="col-12" v-if="isEditing">
           <div class="flex align-items-center gap-2">
@@ -218,6 +218,7 @@ import Dialog from 'primevue/dialog'
 import Tag from 'primevue/tag'
 import Avatar from 'primevue/avatar'
 import ProgressSpinner from 'primevue/progressspinner'
+import { formatCompactMoney } from '@/utils/formatMoney'
 
 const toast = useToast()
 const confirm = useConfirm()

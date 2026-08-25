@@ -9,7 +9,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import ingeniaLogo from '@/assets/ingenia.jpeg'
+import ingeniaLogo from '@/assets/foco-ingenia.png'
 
 const props = defineProps({
   size: {
@@ -31,29 +31,26 @@ const sizeClass = computed(() => `ingenia-club-icon--${props.size}`)
   display: block;
   flex-shrink: 0;
   object-fit: contain;
+  background: transparent;
 }
 
 .ingenia-club-icon--sm {
-  height: 24px;
+  height: 28px;
   width: auto;
-  max-width: 72px;
 }
 
 .ingenia-club-icon--md {
-  height: 36px;
+  height: 40px;
   width: auto;
-  max-width: 108px;
 }
 
 .ingenia-club-icon--lg {
   height: 72px;
   width: auto;
-  max-width: 180px;
 }
 
 .ingenia-club-icon--xl {
-  height: 96px;
+  height: 120px;
   width: auto;
-  max-width: 220px;
 }
 </style>

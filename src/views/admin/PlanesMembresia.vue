@@ -1,12 +1,11 @@
 <template>
   <div class="planes-membresia-container">
-    <div class="header">
-      <div>
-        <h1>Planes de Membresía</h1>
-        <p class="subtitle">Gestión de planes y cuotas del club</p>
-      </div>
-      <Button label="+ Nuevo Plan" @click="openCreateDialog" severity="danger" />
-    </div>
+    <BlockUI :blocked="blockUi" fullScreen />
+    <PageHeader title="Planes de Membresía" subtitle="Gestión de planes y cuotas del club">
+      <template #actions>
+        <Button label="Nuevo Plan" icon="pi pi-plus" size="small" severity="danger" @click="openCreateDialog" />
+      </template>
+    </PageHeader>
 
     <!-- Estadísticas -->
     <div class="stats-grid">
@@ -29,7 +28,7 @@
       <Card class="stat-card highlight">
         <template #content>
           <div class="stat-content">
-            <div class="stat-number">{{ formatCurrency(estadisticas.ingresoMensualEstimado) }}</div>
+            <div class="stat-number">{{ formatCompactMoney(estadisticas.ingresoMensualEstimado) }}</div>
             <div class="stat-label">Ingreso mensual estimado</div>
           </div>
         </template>
@@ -175,9 +174,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { planesService } from '@/services/planesService';
+import { formatCompactMoney } from '@/utils/formatMoney';
+import PageHeader from '@/components/mobile/PageHeader.vue';
 import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Dialog from 'primevue/dialog';
@@ -188,6 +189,7 @@ import Dropdown from 'primevue/dropdown';
 import InputSwitch from 'primevue/inputswitch';
 import Checkbox from 'primevue/checkbox';
 import Tag from 'primevue/tag';
+import BlockUI from 'primevue/blockui';
 import { PLAN_TYPES, getPlanTypeSeverity } from '@/utils/planTypes';
 
 const toast = useToast();
@@ -204,6 +206,9 @@ const deleteDialogVisible = ref(false);
 const isEditing = ref(false);
 const saving = ref(false);
 const deleting = ref(false);
+const loading = ref(false);
+
+const blockUi = computed(() => loading.value || saving.value || deleting.value);
 
 const planForm = ref({
   nombre: '',
@@ -237,6 +242,15 @@ const loadEstadisticas = async () => {
     estadisticas.value = await planesService.getEstadisticas();
   } catch (error) {
     console.error('Error cargando estadísticas:', error);
+  }
+};
+
+const refreshAll = async () => {
+  loading.value = true;
+  try {
+    await Promise.all([loadPlanes(), loadEstadisticas()]);
+  } finally {
+    loading.value = false;
   }
 };
 
@@ -302,8 +316,7 @@ const savePlan = async () => {
     }
 
     dialogVisible.value = false;
-    await loadPlanes();
-    await loadEstadisticas();
+    await refreshAll();
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -334,8 +347,7 @@ const deletePlan = async () => {
     });
 
     deleteDialogVisible.value = false;
-    await loadPlanes();
-    await loadEstadisticas();
+    await refreshAll();
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -349,6 +361,7 @@ const deletePlan = async () => {
 };
 
 const togglePlanActivo = async (plan) => {
+  loading.value = true;
   try {
     await planesService.update(plan.id, { activo: plan.activo });
     toast.add({
@@ -367,6 +380,8 @@ const togglePlanActivo = async (plan) => {
       detail: 'Error al cambiar el estado del plan',
       life: 3000
     });
+  } finally {
+    loading.value = false;
   }
 };
 
@@ -379,24 +394,14 @@ const formatPrice = (price) => {
   }).format(price);
 };
 
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(amount);
-};
-
 onMounted(() => {
-  loadPlanes();
-  loadEstadisticas();
+  refreshAll();
 });
 </script>
 
 <style scoped>
 .planes-membresia-container {
-  padding: 2rem;
+  padding: 0;
   max-width: 1400px;
   margin: 0 auto;
 }

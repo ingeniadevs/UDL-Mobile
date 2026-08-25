@@ -49,15 +49,15 @@
 
     <!-- Filtros -->
     <div class="card mb-4">
-      <div class="flex flex-wrap align-items-center gap-3">
-        <span class="p-input-icon-left flex-1" style="min-width: 200px">
+      <div class="flex flex-wrap align-items-center gap-3 mobile-filters">
+        <span class="p-input-icon-left flex-1 w-full">
           <i class="pi pi-search" />
           <InputText v-model="filters['global'].value" placeholder="Buscar por nombre, email o número..." class="w-full" />
         </span>
-        <div class="flex gap-2 flex-wrap">
-          <Button :label="`Todos (${socios.length})`" :outlined="filtroEstado !== 'todos'" size="small" @click="filtroEstado = 'todos'" />
-          <Button :label="`Inactivos (${sociosInactivos})`" :outlined="filtroEstado !== 'inactivos'" :severity="sociosInactivos > 0 ? 'warning' : undefined" size="small" @click="filtroEstado = 'inactivos'" />
-          <Button :label="`Activos (${sociosActivos})`" :outlined="filtroEstado !== 'activos'" severity="success" size="small" @click="filtroEstado = 'activos'" />
+        <div class="flex gap-2 flex-wrap w-full filter-chip-row">
+          <Button :label="`Todos (${socios.length})`" :outlined="filtroEstado !== 'todos'" size="small" class="flex-1" @click="filtroEstado = 'todos'" />
+          <Button :label="`Inactivos (${sociosInactivos})`" :outlined="filtroEstado !== 'inactivos'" :severity="sociosInactivos > 0 ? 'warning' : undefined" size="small" class="flex-1" @click="filtroEstado = 'inactivos'" />
+          <Button :label="`Activos (${sociosActivos})`" :outlined="filtroEstado !== 'activos'" severity="success" size="small" class="flex-1" @click="filtroEstado = 'activos'" />
         </div>
       </div>
     </div>

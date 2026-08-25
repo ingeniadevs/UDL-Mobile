@@ -1,4 +1,4 @@
-import { Capacitor } from '@capacitor/core'
+import { Capacitor, SystemBars, SystemBarsStyle } from '@capacitor/core'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import { SplashScreen } from '@capacitor/splash-screen'
 import { Keyboard } from '@capacitor/keyboard'
@@ -14,11 +14,15 @@ export function setNetworkToastHandler(handler) {
 export async function syncStatusBar(isDark) {
   if (!Capacitor.isNativePlatform()) return
   try {
+    /* Capacitor 8+: SystemBars (edge-to-edge). StatusBar legacy en iOS / Android < 15. */
+    await SystemBars.setStyle({
+      style: isDark ? SystemBarsStyle.Dark : SystemBarsStyle.Light,
+    })
     await StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light })
     await StatusBar.setBackgroundColor({ color: isDark ? '#0f0f0f' : '#ffffff' })
-    await StatusBar.setOverlaysWebView({ overlay: false })
+    await StatusBar.setOverlaysWebView({ overlay: true })
   } catch {
-    /* iOS puede ignorar algunas opciones */
+    /* iOS / Android pueden ignorar algunas opciones */
   }
 }
 

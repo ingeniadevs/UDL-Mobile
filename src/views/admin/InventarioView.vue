@@ -149,10 +149,10 @@
 
       <!-- ═══ ARTÍCULOS ═══ -->
       <TabPanel header="Artículos" leftIcon="pi pi-box">
-        <div class="flex gap-2 mb-3 flex-wrap">
-          <InputText v-model="filtros.busqueda" placeholder="Buscar..." class="w-15rem" @input="buscarArticulos" />
-          <Dropdown v-model="filtros.categoria" :options="categorias" optionLabel="label" optionValue="value" placeholder="Categoría" class="w-12rem" @change="buscarArticulos" showClear />
-          <Dropdown v-model="filtros.ubicacionId" :options="ubicaciones" optionLabel="nombre" optionValue="id" placeholder="Ubicación" class="w-12rem" @change="buscarArticulos" showClear />
+        <div class="flex gap-2 mb-3 flex-wrap mobile-filters">
+          <InputText v-model="filtros.busqueda" placeholder="Buscar..." class="w-full" @input="buscarArticulos" />
+          <Dropdown v-model="filtros.categoria" :options="categorias" optionLabel="label" optionValue="value" placeholder="Categoría" class="w-full" @change="buscarArticulos" showClear />
+          <Dropdown v-model="filtros.ubicacionId" :options="ubicaciones" optionLabel="nombre" optionValue="id" placeholder="Ubicación" class="w-full" @change="buscarArticulos" showClear />
         </div>
         <div v-if="loadingArticulos" class="flex justify-content-center py-5"><ProgressSpinner /></div>
         <div v-else-if="articulosFiltrados.length === 0" class="text-center py-4 text-color-secondary">No se encontraron artículos</div>
@@ -191,7 +191,7 @@
       <!-- ═══ MOVIMIENTOS ═══ -->
       <TabPanel header="Movimientos" leftIcon="pi pi-history">
         <div class="flex gap-2 mb-3 flex-wrap">
-          <Dropdown v-model="filtrosMovs.tipo" :options="tiposMovimiento" optionLabel="label" optionValue="value" placeholder="Tipo" class="w-12rem" @change="cargarMovimientos" showClear />
+          <Dropdown v-model="filtrosMovs.tipo" :options="tiposMovimiento" optionLabel="label" optionValue="value" placeholder="Tipo" class="w-full" @change="cargarMovimientos" showClear />
           <Calendar v-model="filtrosMovs.desde" placeholder="Desde" dateFormat="dd/mm/yy" class="w-10rem" @date-select="cargarMovimientos" showButtonBar />
           <Calendar v-model="filtrosMovs.hasta" placeholder="Hasta" dateFormat="dd/mm/yy" class="w-10rem" @date-select="cargarMovimientos" showButtonBar />
           <Button icon="pi pi-refresh" text rounded @click="cargarMovimientos" v-tooltip="'Actualizar'" />

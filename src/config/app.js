@@ -1,4 +1,4 @@
-import ingeniaClubIcon from '@/assets/ingenia.jpeg'
+import ingeniaClubIcon from '@/assets/foco-ingenia.png'
 
 /**
  * Branding de la app genérica Ingenia Club.

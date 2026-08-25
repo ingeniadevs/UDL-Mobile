@@ -72,7 +72,7 @@
           <div class="stat-content">
             <span class="stat-value">{{ estadisticas.cantidadPagadas }}</span>
             <span class="stat-label">Cuotas Pagadas</span>
-            <small class="stat-amount">${{ estadisticas.totalPagado.toLocaleString() }}</small>
+            <small class="stat-amount">{{ formatCompactMoney(estadisticas.totalPagado) }}</small>
           </div>
         </div>
       </div>
@@ -82,7 +82,7 @@
           <div class="stat-content">
             <span class="stat-value">{{ estadisticas.cantidadPendientes }}</span>
             <span class="stat-label">Pendientes</span>
-            <small class="stat-amount">${{ estadisticas.totalPendiente.toLocaleString() }}</small>
+            <small class="stat-amount">{{ formatCompactMoney(estadisticas.totalPendiente) }}</small>
           </div>
         </div>
       </div>
@@ -92,7 +92,7 @@
           <div class="stat-content">
             <span class="stat-value">{{ estadisticas.cantidadVencidas }}</span>
             <span class="stat-label">Vencidas</span>
-            <small class="stat-amount">${{ estadisticas.totalVencido.toLocaleString() }}</small>
+            <small class="stat-amount">{{ formatCompactMoney(estadisticas.totalVencido) }}</small>
           </div>
         </div>
       </div>
@@ -102,7 +102,7 @@
           <div class="stat-content">
             <span class="stat-value">{{ estadisticas.cantidadMutual }}</span>
             <span class="stat-label">Pago Mutual</span>
-            <small class="stat-amount">${{ estadisticas.totalMutual.toLocaleString() }}</small>
+            <small class="stat-amount">{{ formatCompactMoney(estadisticas.totalMutual) }}</small>
           </div>
         </div>
       </div>
@@ -110,8 +110,8 @@
 
     <!-- Filtros -->
     <div class="card mb-4">
-      <div class="flex flex-wrap align-items-center gap-3">
-        <span class="p-input-icon-left flex-1" style="min-width: 200px">
+      <div class="flex flex-wrap align-items-center gap-3 mobile-filters">
+        <span class="p-input-icon-left flex-1">
           <i class="pi pi-search" />
           <InputText v-model="filters['global'].value" placeholder="Buscar por socio o concepto..." class="w-full" />
         </span>
@@ -121,7 +121,7 @@
           optionLabel="nombre" 
           optionValue="id"
           placeholder="Filtrar por socio"
-          class="w-15rem"
+          class="w-full"
           showClear
           filter
         />
@@ -131,7 +131,7 @@
           optionLabel="label" 
           optionValue="value"
           placeholder="Filtrar por estado"
-          class="w-12rem"
+          class="w-full"
           showClear
         />
       </div>
@@ -713,6 +713,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import { pagosService, sociosService } from '@/services'
 import { notificacionesService } from '@/services/notificacionesService'
 import { validarTelefonoAR } from '@/utils/phone'
+import { formatCompactMoney } from '@/utils/formatMoney'
 import { FilterMatchMode } from 'primevue/api'
 import { useMobilePagination } from '@/composables/useMobilePagination'
 import PageHeader from '@/components/mobile/PageHeader.vue'

@@ -21,7 +21,6 @@
       </div>
         <div class="flex align-items-center gap-3">
         <span class="topbar-username hidden md:block">{{ authStore.user?.nombre }}</span>
-        <Avatar :image="authStore.user?.foto || undefined" :label="authStore.user?.foto ? undefined : avatarLabel" shape="circle" class="avatar-red" />
         <Button 
           :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'" 
           text 
@@ -76,7 +75,7 @@
       </div>
 
       <!-- Content -->
-      <div class="flex-1 p-4 overflow-auto content-area">
+      <div class="flex-1 overflow-auto content-area">
         <router-view />
       </div>
     </div>
@@ -84,7 +83,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
@@ -92,7 +91,6 @@ import { setSidebarCloseHandler } from '@/platform/navigation'
 import Sidebar from 'primevue/sidebar'
 import Menu from 'primevue/menu'
 import Button from 'primevue/button'
-import Avatar from 'primevue/avatar'
 import { Capacitor } from '@capacitor/core'
 
 const router = useRouter()
@@ -131,13 +129,10 @@ onUnmounted(() => {
   }
 })
 
-// Auto-colapsar al navegar
+// Cerrar drawer mobile y colapsar sidebar al navegar
 watch(() => route.path, () => {
+  mobileSidebarVisible.value = false
   desktopSidebarVisible.value = false
-})
-
-const avatarLabel = computed(() => {
-  return authStore.user?.nombre?.charAt(0).toUpperCase() || 'S'
 })
 
 const menuItems = ref([
@@ -312,15 +307,6 @@ function handleLogout() {
   align-items: center;
   justify-content: center;
   color: white;
-}
-
-.avatar-red {
-  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%) !important;
-  color: white !important;
-}
-
-.avatar-red:has(img) {
-  background: transparent !important;
 }
 
 .btn-menu {
