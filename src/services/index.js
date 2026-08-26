@@ -7,6 +7,10 @@ export const authService = {
     const response = await api.post('/auth/login', { identificador, password })
     return response.data
   },
+  async selectClub(clubId) {
+    const response = await api.post('/auth/select-club', { clubId })
+    return response.data
+  },
   async registrarSocio(data) {
     const response = await api.post('/auth/registro', data)
     return response.data

@@ -67,6 +67,17 @@ export const useAuthStore = defineStore('auth', () => {
       await clearAuthStorage()
       token.value = null
       user.value = null
+      try {
+        const { useTenantStore } = await import('@/stores/tenant')
+        const tenantStore = useTenantStore()
+        if (!tenantStore.isWhiteLabel) {
+          await tenantStore.clear()
+          const { useClubBranding } = await import('@/composables/useClubBranding')
+          useClubBranding().setClubId(null)
+        }
+      } catch {
+        /* pinia */
+      }
     } else {
       token.value = storedToken
       user.value = storedUser
@@ -119,9 +130,22 @@ export const useAuthStore = defineStore('auth', () => {
     sessionUnlocked.value = true
   }
 
+  async function applyClubSession(data) {
+    await setAuth(data)
+    return data
+  }
+
   async function logout() {
     clearSession()
     await clearAuthStorage()
+    try {
+      const { useTenantStore } = await import('@/stores/tenant')
+      await useTenantStore().clear()
+      const { useClubBranding } = await import('@/composables/useClubBranding')
+      useClubBranding().setClubId(null)
+    } catch {
+      /* pinia */
+    }
   }
 
   function clearSession() {
@@ -167,6 +191,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     loginAdmin,
     loginSocio,
+    applyClubSession,
     updateFoto,
     logout,
     clearSession,

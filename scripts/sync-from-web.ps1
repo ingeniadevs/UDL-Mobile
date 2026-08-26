@@ -18,6 +18,7 @@ $preserve = @(
   "platform",
   "services\api.js",
   "stores\auth.js",
+  "stores\tenant.js",
   "router\index.js",
   "main.js",
   "assets\mobile.css",

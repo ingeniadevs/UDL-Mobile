@@ -1,5 +1,6 @@
 import axios from 'axios'
-import { getToken, clearAuthStorage } from '@/platform/storage'
+import { getToken } from '@/platform/storage'
+import { TENANT_HEADER } from '@/config/tenancy'
 
 const baseURL = import.meta.env.VITE_API_URL || '/api'
 
@@ -15,7 +16,8 @@ const PUBLIC_ROUTES = [
   '/auth/login',
   '/auth/registro',
   '/auth/solicitar-recuperacion',
-  '/auth/resetear-password'
+  '/auth/resetear-password',
+  '/clubs'
 ]
 
 api.interceptors.request.use(
@@ -27,6 +29,17 @@ api.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`
       }
     }
+
+    try {
+      const { useTenantStore } = await import('@/stores/tenant')
+      const tenantId = useTenantStore().clubId
+      if (tenantId) {
+        config.headers[TENANT_HEADER] = tenantId
+      }
+    } catch {
+      /* pinia aún no listo */
+    }
+
     return config
   },
   (error) => Promise.reject(error)
@@ -39,10 +52,9 @@ api.interceptors.response.use(
       error.config?.url?.includes(route)
     )
     if (error.response?.status === 401 && !isPublic) {
-      await clearAuthStorage()
       const { useAuthStore } = await import('@/stores/auth')
       const authStore = useAuthStore()
-      authStore.clearSession()
+      await authStore.logout()
       const { default: router } = await import('@/router')
       if (router.currentRoute.value.path !== '/login') {
         router.push('/login')

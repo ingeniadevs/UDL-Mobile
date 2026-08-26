@@ -4,6 +4,7 @@ import { SecureStoragePlugin } from 'capacitor-secure-storage-plugin'
 
 const TOKEN_KEY = 'udl_auth_token'
 const USER_KEY = 'udl_auth_user'
+const TENANT_KEY = 'ingenia_tenant'
 
 const isNative = () => Capacitor.isNativePlatform()
 
@@ -63,6 +64,17 @@ export async function setUserJson(json) {
   if (isNative()) return prefSet(USER_KEY, json)
   if (json) localStorage.setItem('user', json)
   else localStorage.removeItem('user')
+}
+
+export async function getTenantJson() {
+  if (isNative()) return prefGet(TENANT_KEY)
+  return localStorage.getItem('tenant')
+}
+
+export async function setTenantJson(json) {
+  if (isNative()) return prefSet(TENANT_KEY, json)
+  if (json) localStorage.setItem('tenant', json)
+  else localStorage.removeItem('tenant')
 }
 
 export async function clearAuthStorage() {

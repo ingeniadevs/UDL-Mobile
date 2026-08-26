@@ -13,19 +13,59 @@
         <p class="app-tagline">{{ app.tagline }}</p>
       </div>
 
-      <!-- Club activo (plantilla UDL por defecto) -->
-      <div class="club-context">
+      <!-- Club activo: solo con tenant resuelto (membresía o build white-label) -->
+      <div v-if="showClubContext && loginStep === 'credentials'" class="club-context">
         <div class="club-context__logo">
-          <img v-if="!clubLogoFailed" :src="club.logo" :alt="club.logoAlt" @error="onClubLogoError" />
+          <img v-if="!clubLogoFailed && club.logo" :src="club.logo" :alt="club.logoAlt" @error="onClubLogoError" />
           <span v-else class="club-context__fallback">{{ club.shortName }}</span>
         </div>
         <div class="club-context__info">
           <span class="club-context__label">Club conectado</span>
           <span class="club-context__name">{{ club.name }}</span>
         </div>
+        <button
+          v-if="canSwitchClub"
+          type="button"
+          class="club-context__switch"
+          @click="clearClubContext"
+        >
+          Cambiar
+        </button>
       </div>
 
-      <div v-if="showBiometricUnlock" class="mb-4">
+      <p v-else-if="loginStep === 'credentials'" class="community-hint">
+        Ingresá con tu usuario. El club se conecta según tu membresía.
+      </p>
+
+      <div v-if="loginStep === 'club'" class="club-picker">
+        <p class="club-picker__label">Elegí tu club</p>
+        <button
+          v-for="item in pendingClubs"
+          :key="item.id"
+          type="button"
+          class="club-picker__item"
+          :disabled="selectingClub"
+          @click="handleSelectClub(item)"
+        >
+          <span class="club-picker__logo">
+            <img v-if="item.logo" :src="item.logo" :alt="item.shortName" />
+            <span v-else>{{ item.shortName }}</span>
+          </span>
+          <span class="club-picker__name">{{ item.name }}</span>
+        </button>
+        <Message v-if="errorMessage" severity="error" :closable="false">
+          {{ errorMessage }}
+        </Message>
+        <Button
+          label="Volver"
+          icon="pi pi-arrow-left"
+          text
+          class="w-full mt-2 text-gray-400"
+          @click="loginStep = 'credentials'"
+        />
+      </div>
+
+      <div v-if="showBiometricUnlock && loginStep === 'credentials'" class="mb-4">
         <Button
           :label="`Desbloquear con ${biometricLabel}`"
           :icon="biometricIcon"
@@ -40,7 +80,7 @@
         </div>
       </div>
 
-      <form @submit.prevent="handleLogin">
+      <form v-if="loginStep === 'credentials'" @submit.prevent="handleLogin">
         <div class="mb-4">
           <label for="identificador" class="login-label block font-medium mb-2">Usuario</label>
           <InputText
@@ -88,18 +128,19 @@
         />
       </form>
 
-      <div class="divider my-4 flex align-items-center gap-2">
+      <div v-if="loginStep === 'credentials'" class="divider my-4 flex align-items-center gap-2">
         <div class="divider-line flex-1"></div>
         <span class="login-muted text-sm">¿Sos nuevo?</span>
         <div class="divider-line flex-1"></div>
       </div>
 
       <Button
+        v-if="loginStep === 'credentials'"
         label="Quiero ser Socio"
         icon="pi pi-user-plus"
         outlined
         class="w-full btn-registro p-button-sm"
-        @click="mostrarRegistro = true"
+        @click="abrirRegistro"
       />
     </div>
 
@@ -476,8 +517,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useClubBranding } from '@/composables/useClubBranding'
+import { useClubBranding, hydrateClubBranding } from '@/composables/useClubBranding'
 import { useAppBranding } from '@/composables/useAppBranding'
+import { useTenantStore } from '@/stores/tenant'
 import IngeniaClubIcon from '@/components/brand/IngeniaClubIcon.vue'
 import { authService } from '@/services'
 import { Capacitor } from '@capacitor/core'
@@ -503,13 +545,42 @@ import { homeRouteForRole } from '@/utils/authRoles'
 const router = useRouter()
 const authStore = useAuthStore()
 const toast = useToast()
-const { branding: club } = useClubBranding()
+const { branding: club, setClubId } = useClubBranding()
 const { app } = useAppBranding()
+const tenantStore = useTenantStore()
+
+const showClubContext = computed(() => tenantStore.hasTenant)
+const canSwitchClub = computed(() => tenantStore.hasTenant && !tenantStore.isWhiteLabel)
+const loginStep = ref('credentials')
+const pendingClubs = ref([])
+const selectingClub = ref(false)
+const pendingRegistro = ref(false)
 
 const clubLogoFailed = ref(false)
 function onClubLogoError(e) {
   clubLogoFailed.value = true
   e.target.style.display = 'none'
+}
+
+async function syncBranding() {
+  clubLogoFailed.value = false
+  setClubId(tenantStore.clubId)
+  await hydrateClubBranding()
+}
+
+async function clearClubContext() {
+  await tenantStore.clear()
+  await syncBranding()
+}
+
+async function goHome() {
+  await maybeOfferBiometric()
+  const home = homeRouteForRole(authStore.user?.rol)
+  if (home.startsWith('/admin') && import.meta.env.VITE_ENABLE_ADMIN !== 'true') {
+    router.push('/socio/inicio')
+  } else {
+    router.push(home)
+  }
 }
 
 const showBiometricUnlock = ref(false)
@@ -540,18 +611,48 @@ async function handleLogin() {
   loading.value = true
   errorMessage.value = ''
   try {
-    await authStore.login(identificador.value.trim(), password.value)
-    await maybeOfferBiometric()
-    const home = homeRouteForRole(authStore.user?.rol)
-    if (home.startsWith('/admin') && import.meta.env.VITE_ENABLE_ADMIN !== 'true') {
-      router.push('/socio/inicio')
-    } else {
-      router.push(home)
+    const response = await authStore.login(identificador.value.trim(), password.value)
+    const clubs = await tenantStore.applyFromLogin(response)
+    await syncBranding()
+
+    if (clubs.length > 1 && !tenantStore.isWhiteLabel) {
+      pendingClubs.value = clubs
+      loginStep.value = 'club'
+      return
     }
+
+    await goHome()
   } catch (error) {
     errorMessage.value = error.response?.data?.message || 'Credenciales inválidas'
   } finally {
     loading.value = false
+  }
+}
+
+async function handleSelectClub(item) {
+  selectingClub.value = true
+  errorMessage.value = ''
+  try {
+    await tenantStore.selectClub(item)
+    try {
+      const data = await authService.selectClub(item.id)
+      await authStore.applyClubSession(data)
+    } catch {
+      /* backend aún sin select-club: el tenant local alcanza */
+    }
+    await syncBranding()
+    if (pendingRegistro.value) {
+      pendingRegistro.value = false
+      loginStep.value = 'credentials'
+      mostrarRegistro.value = true
+      await cargarPlanes()
+      return
+    }
+    await goHome()
+  } catch (error) {
+    errorMessage.value = error.response?.data?.message || 'No se pudo conectar el club'
+  } finally {
+    selectingClub.value = false
   }
 }
 
@@ -620,9 +721,34 @@ const reg = ref({
 
 // Cargar planes al montar el componente
 onMounted(async () => {
-  await cargarPlanes()
+  if (tenantStore.hasTenant) {
+    await cargarPlanes()
+  }
 
   if (Capacitor.isNativePlatform() && authStore.isAuthenticated && !authStore.sessionUnlocked) {
+    const { available, biometryType } = await isBiometricAvailable()
+    if (available && (await isBiometricEnabled())) {
+      biometricLabel.value = getBiometricLabel(biometryType)
+      showBiometricUnlock.value = true
+    }
+  }
+})
+
+async function abrirRegistro() {
+  if (!tenantStore.hasTenant) {
+    const clubs = await tenantStore.fetchCatalogFallback()
+    if (clubs.length > 1) {
+      pendingClubs.value = clubs
+      pendingRegistro.value = true
+      loginStep.value = 'club'
+      return
+    }
+    if (clubs[0]) await tenantStore.selectClub(clubs[0])
+    await syncBranding()
+  }
+  mostrarRegistro.value = true
+  await cargarPlanes()
+}
     const { available, biometryType } = await isBiometricAvailable()
     if (available && (await isBiometricEnabled())) {
       biometricLabel.value = getBiometricLabel(biometryType)
@@ -985,6 +1111,7 @@ async function handleResetearPassword() {
   flex-direction: column;
   gap: 0.1rem;
   min-width: 0;
+  flex: 1;
 }
 
 .club-context__label {
@@ -1001,6 +1128,90 @@ async function handleResetearPassword() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.club-context__switch {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: #a78bfa;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.25rem 0.4rem;
+}
+
+.club-context__switch:hover {
+  color: #c4b5fd;
+}
+
+.community-hint {
+  margin: 0 0 1.5rem;
+  text-align: center;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: rgba(237, 230, 255, 0.55);
+}
+
+.club-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-bottom: 0.5rem;
+}
+
+.club-picker__label {
+  margin: 0 0 0.25rem;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(237, 230, 255, 0.45);
+}
+
+.club-picker__item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: #ede6ff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.club-picker__item:hover,
+.club-picker__item:focus {
+  border-color: rgba(134, 59, 255, 0.45);
+  background: rgba(134, 59, 255, 0.12);
+}
+
+.club-picker__logo {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #c4b5fd;
+}
+
+.club-picker__logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.club-picker__name {
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .login-label {

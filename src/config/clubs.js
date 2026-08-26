@@ -1,10 +1,13 @@
 /**
  * Plantillas de club (multitenant).
- * UDL es el club por defecto mientras avanzamos con ese cliente.
+ * En la app compartida Ingenia Club no hay club por defecto:
+ * el tenant se resuelve después del login comunitario.
+ * VITE_CLUB_ID fuerza un build white-label (un solo club).
  */
 export const CLUB_PRESETS = {
   udl: {
     id: 'udl',
+    slug: 'udl',
     name: 'Unión Deportiva Laspiur',
     shortName: 'UDL',
     portalTitle: 'Mi Portal',
@@ -18,12 +21,17 @@ export const CLUB_PRESETS = {
   }
 }
 
-const DEFAULT_CLUB_ID = import.meta.env.VITE_CLUB_ID || 'udl'
-
-export function getClubPreset(clubId = DEFAULT_CLUB_ID) {
-  return CLUB_PRESETS[clubId] || CLUB_PRESETS.udl
+export function getWhiteLabelClubId() {
+  const id = import.meta.env.VITE_CLUB_ID
+  return id && String(id).trim() ? String(id).trim() : null
 }
 
+export function getClubPreset(clubId) {
+  if (!clubId) return null
+  return CLUB_PRESETS[clubId] || null
+}
+
+/** @deprecated Usar getWhiteLabelClubId(). Null = login comunitario. */
 export function getDefaultClubId() {
-  return DEFAULT_CLUB_ID
+  return getWhiteLabelClubId()
 }

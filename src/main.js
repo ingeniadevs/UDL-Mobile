@@ -10,8 +10,9 @@ import router from './router'
 import { initPlatform } from '@/platform'
 import { initNavigationGuards } from '@/platform/navigation'
 import { hydrateTheme } from '@/composables/useTheme'
-import { hydrateClubBranding } from '@/composables/useClubBranding'
+import { hydrateClubBranding, useClubBranding } from '@/composables/useClubBranding'
 import { useAuthStore } from '@/stores/auth'
+import { useTenantStore } from '@/stores/tenant'
 
 import 'primevue/resources/primevue.min.css'
 import 'primeicons/primeicons.css'
@@ -31,10 +32,16 @@ async function bootstrap() {
   app.directive('tooltip', Tooltip)
 
   await hydrateTheme()
-  await hydrateClubBranding()
+
+  const tenantStore = useTenantStore()
+  await tenantStore.hydrate()
 
   const authStore = useAuthStore()
   await authStore.hydrate()
+
+  const { setClubId } = useClubBranding()
+  setClubId(tenantStore.clubId)
+  await hydrateClubBranding()
 
   await initPlatform()
   initNavigationGuards(router)
