@@ -11,8 +11,8 @@
         <!-- Anverso -->
         <div class="carnet-front">
           <div class="carnet-header">
-            <img src="/images/logo-udl.png" alt="UDL" class="carnet-logo" />
-            <h3>UNIÓN DEPORTIVA LASPIUR</h3>
+            <img :src="clubLogo" :alt="clubLogoAlt" class="carnet-logo" />
+            <h3>{{ clubHeaderName }}</h3>
             <p class="subtitle">CARNET DE SOCIO</p>
           </div>
           
@@ -76,9 +76,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { sociosService } from '@/services'
+import { useClubBranding } from '@/composables/useClubBranding'
+import { resolveAssetUrl } from '@/utils/assetUrl'
 import PageHeader from '@/components/mobile/PageHeader.vue'
 import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
@@ -90,6 +92,10 @@ import { shareDataUrl } from '@/platform/files'
 import { copyToClipboard } from '@/platform/clipboard'
 
 const toast = useToast()
+const { branding, clubName } = useClubBranding()
+const clubLogo = computed(() => resolveAssetUrl(branding.value.logo))
+const clubLogoAlt = computed(() => branding.value.logoAlt || branding.value.shortName || 'Club')
+const clubHeaderName = computed(() => (branding.value.name || clubName.value || 'Club').toUpperCase())
 
 const carnet = ref(null)
 const loading = ref(true)
@@ -162,7 +168,7 @@ async function compartirCarnet() {
     const text = `Socio N° ${carnet.value.numeroSocio} - ${carnet.value.nombreCompleto}`
     if (Capacitor.isNativePlatform()) {
       await Share.share({
-        title: 'Mi Carnet - UDL',
+        title: `Mi Carnet - ${clubName.value || 'Club'}`,
         text,
         dialogTitle: 'Compartir carnet'
       })
@@ -170,7 +176,7 @@ async function compartirCarnet() {
     }
     if (navigator.share) {
       await navigator.share({
-        title: 'Mi Carnet - Unión Deportiva Laspiur',
+        title: `Mi Carnet - ${clubName.value || 'Club'}`,
         text,
         url: window.location.href
       })

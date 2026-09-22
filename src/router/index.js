@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { Capacitor } from '@capacitor/core'
 import { useAuthStore } from '@/stores/auth'
+import { useTenantStore } from '@/stores/tenant'
 import { isBiometricEnabled } from '@/platform/biometric'
 import {
   homeRouteForRole,
@@ -212,8 +213,13 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
+  const tenantStore = useTenantStore()
+
   if (!authStore.hydrated) {
     await authStore.hydrate()
+  }
+  if (!tenantStore.hydrated) {
+    await tenantStore.hydrate()
   }
 
   if (!enableAdmin && to.path.startsWith('/admin')) {
@@ -232,6 +238,10 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (to.meta.public && to.name === 'Login' && authStore.hasValidSession()) {
+    if (!tenantStore.isWhiteLabel && !tenantStore.hasTenant) {
+      next()
+      return
+    }
     const needsBiometric =
       Capacitor.isNativePlatform() &&
       !authStore.sessionUnlocked &&
@@ -259,6 +269,13 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (to.meta.requiresAuth && !authStore.hasValidSession()) {
+    next('/login')
+  } else if (
+    to.meta.requiresAuth &&
+    authStore.hasValidSession() &&
+    !tenantStore.isWhiteLabel &&
+    !tenantStore.hasTenant
+  ) {
     next('/login')
   } else if (
     to.meta.requiresAuth &&

@@ -17,7 +17,10 @@ const PUBLIC_ROUTES = [
   '/auth/registro',
   '/auth/solicitar-recuperacion',
   '/auth/resetear-password',
-  '/clubs'
+  '/clubs',
+  '/club/branding',
+  '/clubs/branding',
+  '/clubs/settings'
 ]
 
 api.interceptors.request.use(

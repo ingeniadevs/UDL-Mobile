@@ -17,7 +17,8 @@
           @click="desktopSidebarVisible = !desktopSidebarVisible"
           class="hidden lg:flex btn-menu"
         />
-        <img src="/images/logo-udl.png" alt="UDL" class="topbar-logo hidden lg:block" />        <span class="text-xl font-semibold topbar-title">UDL - Mi Portal</span>
+        <img :src="clubLogo" :alt="clubLogoAlt" class="topbar-logo hidden lg:block" />
+        <span class="text-xl font-semibold topbar-title">{{ portalTitle }}</span>
       </div>
         <div class="flex align-items-center gap-3">
         <span class="topbar-username hidden md:block">{{ authStore.user?.nombre }}</span>
@@ -43,8 +44,8 @@
     <Sidebar v-model:visible="mobileSidebarVisible" class="sidebar-dark w-18rem">
       <template #header>
         <div class="flex align-items-center gap-2">
-          <img src="/images/logo-udl.png" alt="UDL" class="sidebar-logo" />
-          <span class="font-bold text-xl sidebar-title">UDL</span>
+          <img :src="clubLogo" :alt="clubLogoAlt" class="sidebar-logo" />
+          <span class="font-bold text-xl sidebar-title">{{ sidebarTitle }}</span>
         </div>
       </template>
       <Menu :model="menuItems" class="w-full border-none menu-dark" />
@@ -83,10 +84,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
+import { useClubBranding, hydrateClubBranding } from '@/composables/useClubBranding'
+import { useTenantStore } from '@/stores/tenant'
+import { getClubPreset } from '@/config/clubs'
+import { resolveAssetUrl } from '@/utils/assetUrl'
 import { setSidebarCloseHandler } from '@/platform/navigation'
 import Sidebar from 'primevue/sidebar'
 import Menu from 'primevue/menu'
@@ -96,7 +101,24 @@ import { Capacitor } from '@capacitor/core'
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const tenantStore = useTenantStore()
+const { branding, setClubId } = useClubBranding()
 const { isDark, toggleTheme } = useTheme()
+
+const clubLogo = computed(() => resolveAssetUrl(branding.value.logo))
+const clubLogoAlt = computed(() => branding.value.logoAlt || branding.value.shortName || 'Club')
+const sidebarTitle = computed(() => branding.value.shortName || branding.value.name || 'Club')
+const portalTitle = computed(() => {
+  const preset = getClubPreset(tenantStore.clubId)
+  const suffix = preset?.portalTitle || 'Mi Portal'
+  const label = branding.value.shortName || branding.value.name || 'Club'
+  return `${label} - ${suffix}`
+})
+
+async function syncBranding() {
+  setClubId(tenantStore.clubId)
+  await hydrateClubBranding()
+}
 
 const mobileSidebarVisible = ref(false)
 const desktopSidebarVisible = ref(true)
@@ -107,6 +129,7 @@ function handleResize() {
 }
 
 onMounted(() => {
+  syncBranding()
   setSidebarCloseHandler(() => {
     if (mobileSidebarVisible.value) {
       mobileSidebarVisible.value = false
@@ -128,6 +151,8 @@ onUnmounted(() => {
     window.removeEventListener('resize', handleResize)
   }
 })
+
+watch(() => tenantStore.clubId, syncBranding)
 
 // Cerrar drawer mobile y colapsar sidebar al navegar
 watch(() => route.path, () => {

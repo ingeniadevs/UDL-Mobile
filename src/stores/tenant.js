@@ -78,8 +78,12 @@ export const useTenantStore = defineStore('tenant', () => {
     } catch {
       /* backend viejo o sin catálogo */
     }
-    const preset = getClubPreset('udl')
-    return preset ? [normalizeClub(preset)] : []
+    const whiteLabelId = getWhiteLabelClubId()
+    if (whiteLabelId) {
+      const preset = getClubPreset(whiteLabelId)
+      return preset ? [normalizeClub(preset)] : []
+    }
+    return []
   }
 
   async function clear() {

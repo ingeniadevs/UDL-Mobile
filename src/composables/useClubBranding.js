@@ -1,6 +1,8 @@
 import { ref, computed, watch } from 'vue'
 import { getClubPreset } from '@/config/clubs'
 import { APP_BRANDING } from '@/config/app'
+import { DEFAULT_CLUB_LOGO } from '@/config/tenancy'
+import { resolveAssetUrl } from '@/utils/assetUrl'
 import { useTenantStore } from '@/stores/tenant'
 
 const clubId = ref(null)
@@ -12,7 +14,7 @@ const communityBranding = {
   slug: null,
   name: '',
   shortName: '',
-  logo: '',
+  logo: DEFAULT_CLUB_LOGO,
   logoAlt: '',
   primaryColor: APP_BRANDING.primaryColor,
   primaryDark: APP_BRANDING.primaryDark,
@@ -32,9 +34,14 @@ function applyCommunityTheme() {
   applyCssVariables(communityBranding)
 }
 
+function resolveLogo(branding) {
+  const raw = branding?.logo || branding?.logoUrl || ''
+  return resolveAssetUrl(raw) || DEFAULT_CLUB_LOGO
+}
+
 /**
  * Hidrata branding desde API cuando el tenant ya está resuelto.
- * GET /api/club/branding?tenant={id}
+ * GET /api/clubs/branding?tenant={id}
  */
 export async function hydrateClubBranding() {
   if (!clubId.value) {
@@ -54,13 +61,14 @@ export async function hydrateClubBranding() {
   }
 
   try {
-    const res = await fetch(`${apiUrl}/club/branding?tenant=${clubId.value}`)
+    const res = await fetch(`${apiUrl}/clubs/branding?tenant=${clubId.value}`)
     if (res.ok) {
       const data = await res.json()
+      const logo = (data.logoUrl || data.logo || preset?.logo || '').trim()
       remoteBranding.value = {
         ...(preset || {}),
         ...data,
-        logo: data.logoUrl || data.logo || preset?.logo
+        logo: logo || DEFAULT_CLUB_LOGO
       }
       applyCssVariables(remoteBranding.value)
     }
@@ -90,6 +98,14 @@ const branding = computed(() => {
 
 watch(branding, (b) => applyCssVariables(b), { immediate: true })
 
+/** Handler @error en `<img>` de logos de club. */
+export function onClubLogoError(event) {
+  const img = event?.target
+  if (!img || img.dataset.defaultLogoApplied === '1') return
+  img.dataset.defaultLogoApplied = '1'
+  img.src = DEFAULT_CLUB_LOGO
+}
+
 export function useClubBranding() {
   function setClubId(id) {
     clubId.value = id || null
@@ -107,8 +123,9 @@ export function useClubBranding() {
     branding,
     loaded,
     setClubId,
-    logoUrl: computed(() => branding.value.logo),
+    logoUrl: computed(() => resolveLogo(branding.value)),
     clubName: computed(() => branding.value.name),
-    shortName: computed(() => branding.value.shortName)
+    shortName: computed(() => branding.value.shortName),
+    onClubLogoError
   }
 }

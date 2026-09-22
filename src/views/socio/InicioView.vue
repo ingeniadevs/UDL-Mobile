@@ -2,9 +2,9 @@
   <div class="inicio-container">
     <div class="inicio-content">
       <div class="logo-wrapper">
-        <img src="/images/logo-udl.png" alt="Club UDL" class="club-logo" />
+        <img :src="clubLogo" :alt="clubLogoAlt" class="club-logo" />
       </div>
-      <h1 class="club-nombre">Club Unión Deportiva Laspiur</h1>
+      <h1 class="club-nombre">{{ clubName }}</h1>
       <p class="bienvenida">
         ¡Hola, <span class="nombre-socio">{{ authStore.user?.nombre }}</span>!
       </p>
@@ -49,12 +49,17 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useClubBranding } from '@/composables/useClubBranding'
+import { resolveAssetUrl } from '@/utils/assetUrl'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Checkbox from 'primevue/checkbox'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { branding, clubName } = useClubBranding()
+const clubLogo = computed(() => resolveAssetUrl(branding.value.logo))
+const clubLogoAlt = computed(() => branding.value.logoAlt || branding.value.shortName || 'Club')
 
 const ALL_TILES = [
   { id: 'dashboard',   label: 'Dashboard',        icono: 'pi-chart-bar',     ruta: '/socio/dashboard' },

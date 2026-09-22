@@ -392,26 +392,26 @@
         <div v-if="metodoPagoSeleccionado === 'Transferencia'" class="transferencia-info">
           <div class="transferencia-dato">
             <span class="transferencia-label">CBU</span>
-            <span class="transferencia-valor">0110332640033213198558</span>
+            <span class="transferencia-valor">{{ bankTransfer.cbu }}</span>
           </div>
           <div class="transferencia-dato">
             <span class="transferencia-label">ALIAS</span>
-            <span class="transferencia-valor">UDL.NACION</span>
+            <span class="transferencia-valor">{{ bankTransfer.alias }}</span>
           </div>
-          <div class="transferencia-dato">
+          <div v-if="bankTransfer.cuit" class="transferencia-dato">
             <span class="transferencia-label">CUIT</span>
-            <span class="transferencia-valor">30-70706271-8</span>
+            <span class="transferencia-valor">{{ bankTransfer.cuit }}</span>
           </div>
           <div class="transferencia-dato">
             <span class="transferencia-label">Titular</span>
-            <span class="transferencia-valor">Unión Deportiva Laspiur</span>
+            <span class="transferencia-valor">{{ bankTransfer.titular }}</span>
           </div>
           <Divider class="my-2" />
-          <div class="flex align-items-start gap-2" style="color: #f59e0b">
+          <div v-if="bankTransfer.whatsapp" class="flex align-items-start gap-2" style="color: #f59e0b">
             <i class="pi pi-whatsapp mt-1" style="font-size: 1.1rem"></i>
             <small>
               Una vez realizada la transferencia, enviá el comprobante al WhatsApp
-              <strong>+54 9 3533 68-0908</strong> indicando tu nombre y la fecha de la reserva.
+              <strong>{{ bankTransfer.whatsapp }}</strong> indicando tu nombre y la fecha de la reserva.
               La reserva quedará pendiente hasta confirmar la acreditación.
             </small>
           </div>
@@ -444,6 +444,7 @@ import {
   startOfTodayLocal
 } from '@/utils/reservationDates'
 import { useMobilePagination } from '@/composables/useMobilePagination'
+import { useTenantSettings } from '@/composables/useTenantSettings'
 import PageHeader from '@/components/mobile/PageHeader.vue'
 import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
 import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
@@ -459,6 +460,7 @@ import { openMercadoPagoCheckout } from '@/platform/mercadopago'
 
 const toast = useToast()
 const confirm = useConfirm()
+const { bankTransfer } = useTenantSettings()
 
 const espacios = ref([])
 const selectedEspacio = ref(null)

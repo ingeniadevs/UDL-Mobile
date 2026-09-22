@@ -38,7 +38,9 @@
       </p>
 
       <div v-if="loginStep === 'club'" class="club-picker">
-        <p class="club-picker__label">Elegí tu club</p>
+        <p class="club-picker__label">
+          {{ pendingRegistro ? 'Elegí el club donde querés registrarte' : 'Elegí tu club' }}
+        </p>
         <button
           v-for="item in pendingClubs"
           :key="item.id"
@@ -51,7 +53,10 @@
             <img v-if="item.logo" :src="item.logo" :alt="item.shortName" />
             <span v-else>{{ item.shortName }}</span>
           </span>
-          <span class="club-picker__name">{{ item.name }}</span>
+          <span class="club-picker__text">
+            <span class="club-picker__name">{{ item.name }}</span>
+            <span class="club-picker__code">Código: {{ item.slug || item.id }}</span>
+          </span>
         </button>
         <Message v-if="errorMessage" severity="error" :closable="false">
           {{ errorMessage }}
@@ -732,6 +737,19 @@ onMounted(async () => {
       showBiometricUnlock.value = true
     }
   }
+
+  if (authStore.isAuthenticated && !tenantStore.isWhiteLabel && !tenantStore.hasTenant) {
+    const clubs = tenantStore.memberships.length
+      ? tenantStore.memberships
+      : await tenantStore.fetchCatalogFallback()
+    if (clubs.length > 1) {
+      pendingClubs.value = clubs
+      loginStep.value = 'club'
+    } else if (clubs.length === 1) {
+      await tenantStore.selectClub(clubs[0])
+      await syncBranding()
+    }
+  }
 })
 
 async function abrirRegistro() {
@@ -743,19 +761,22 @@ async function abrirRegistro() {
       loginStep.value = 'club'
       return
     }
-    if (clubs[0]) await tenantStore.selectClub(clubs[0])
-    await syncBranding()
+    if (clubs.length === 1) {
+      await tenantStore.selectClub(clubs[0])
+      await syncBranding()
+    } else {
+      toast.add({
+        severity: 'warn',
+        summary: 'Sin clubes',
+        detail: 'No hay clubes disponibles para registrarse. Intentá más tarde.',
+        life: 4000
+      })
+      return
+    }
   }
   mostrarRegistro.value = true
   await cargarPlanes()
 }
-    const { available, biometryType } = await isBiometricAvailable()
-    if (available && (await isBiometricEnabled())) {
-      biometricLabel.value = getBiometricLabel(biometryType)
-      showBiometricUnlock.value = true
-    }
-  }
-})
 
 async function cargarPlanes() {
   try {
@@ -1212,6 +1233,22 @@ async function handleResetearPassword() {
 .club-picker__name {
   font-size: 0.9rem;
   font-weight: 600;
+}
+
+.club-picker__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.club-picker__code {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: rgba(237, 230, 255, 0.45);
+  font-family: monospace;
+  letter-spacing: 0.03em;
 }
 
 .login-label {

@@ -1,5 +1,6 @@
 /**
  * Resuelve URLs de assets del backend (/uploads) cuando la API es remota (Railway).
+ * Rutas estáticas del frontend (/images/...) se dejan relativas al host del SPA.
  */
 export function getApiOrigin() {
   const apiUrl = (import.meta.env.VITE_API_URL || '').trim()
@@ -11,6 +12,8 @@ export function resolveAssetUrl(path) {
   if (!path) return ''
   if (path.startsWith('http://') || path.startsWith('https://')) return path
   if (path.startsWith('data:') || path.startsWith('blob:')) return path
+
+  if (path.startsWith('/images/')) return path
 
   const origin = getApiOrigin()
   if (path.startsWith('/')) {

@@ -2,9 +2,9 @@
   <div class="inicio-container">
     <div class="inicio-content">
       <div class="logo-wrapper">
-        <img src="/images/logo-udl.png" alt="Club UDL" class="club-logo" />
+        <img :src="clubLogo" :alt="clubLogoAlt" class="club-logo" />
       </div>
-      <h1 class="club-nombre">Club Unión Deportiva Laspiur</h1>
+      <h1 class="club-nombre">{{ clubName }}</h1>
       <p class="bienvenida">Bienvenido, <span class="nombre-admin">{{ authStore.user?.nombre }}</span></p>
       <Tag
         :value="authStore.user?.rol === 'master' ? 'Master' : 'Administrador'"
@@ -52,6 +52,8 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useClubBranding } from '@/composables/useClubBranding'
+import { resolveAssetUrl } from '@/utils/assetUrl'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
@@ -59,6 +61,9 @@ import Checkbox from 'primevue/checkbox'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { branding, clubName } = useClubBranding()
+const clubLogo = computed(() => resolveAssetUrl(branding.value.logo))
+const clubLogoAlt = computed(() => branding.value.logoAlt || branding.value.shortName || 'Club')
 
 const isMaster = computed(() => authStore.user?.rol === 'master')
 const hp = (s) => isMaster.value || authStore.hasPermiso(s)

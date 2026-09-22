@@ -17,7 +17,14 @@ export const CLUB_PRESETS = {
     primaryColor: '#dc2626',
     primaryDark: '#991b1b',
     appScheme: 'udlclub',
-    welcomeText: 'Tu club deportivo'
+    welcomeText: 'Tu club deportivo',
+    bankTransfer: {
+      cbu: '0110332640033213198558',
+      alias: 'UDL.NACION',
+      cuit: '30-70706271-8',
+      titular: 'Unión Deportiva Laspiur',
+      whatsapp: '+54 9 3533 68-0908'
+    }
   }
 }
 

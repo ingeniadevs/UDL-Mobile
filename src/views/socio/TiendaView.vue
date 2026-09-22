@@ -138,7 +138,7 @@
           <div class="col-12 md:col-6">
             <Tag :value="selectedProduct.categoria" severity="secondary" class="mb-3" />
             
-            <p class="detail-description">{{ selectedProduct.descripcion || 'Producto oficial del club Unión Deportiva Laspiur.' }}</p>
+            <p class="detail-description">{{ selectedProduct.descripcion || `Producto oficial del club ${clubName}.` }}</p>
             
             <!-- Selección de Talla -->
             <div v-if="selectedProduct.tallas" class="detail-sizes mb-3">
@@ -376,23 +376,23 @@
           <div v-if="metodoPago === 'transferencia'" class="transferencia-info mt-3">
             <div class="transferencia-dato">
               <span class="transferencia-label">CBU</span>
-              <span class="transferencia-valor">0110332640033213198558</span>
+              <span class="transferencia-valor">{{ bankTransfer.cbu }}</span>
             </div>
             <div class="transferencia-dato">
               <span class="transferencia-label">ALIAS</span>
-              <span class="transferencia-valor">UDL.NACION</span>
+              <span class="transferencia-valor">{{ bankTransfer.alias }}</span>
             </div>
-            <div class="transferencia-dato">
+            <div v-if="bankTransfer.cuit" class="transferencia-dato">
               <span class="transferencia-label">CUIT</span>
-              <span class="transferencia-valor">30-70706271-8</span>
+              <span class="transferencia-valor">{{ bankTransfer.cuit }}</span>
             </div>
             <div class="transferencia-dato">
               <span class="transferencia-label">Titular</span>
-              <span class="transferencia-valor">Unión Deportiva Laspiur</span>
+              <span class="transferencia-valor">{{ bankTransfer.titular }}</span>
             </div>
-            <div class="flex align-items-start gap-2 mt-2" style="color: #f59e0b">
+            <div v-if="bankTransfer.whatsapp" class="flex align-items-start gap-2 mt-2" style="color: #f59e0b">
               <i class="pi pi-whatsapp mt-1" style="font-size:1rem"></i>
-              <small>Una vez transferido, enviá el comprobante al <strong>+54 9 3533 68-0908</strong> indicando tu nombre y número de pedido.</small>
+              <small>Una vez transferido, enviá el comprobante al <strong>{{ bankTransfer.whatsapp }}</strong> indicando tu nombre y número de pedido.</small>
             </div>
           </div>
         </div>
@@ -441,6 +441,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
+import { useClubBranding } from '@/composables/useClubBranding'
+import { useTenantSettings } from '@/composables/useTenantSettings'
 import { productosService, pedidosService } from '@/services'
 import { getPreference, setPreference } from '@/platform/storage'
 import { openMercadoPagoCheckout } from '@/platform/mercadopago'
@@ -458,6 +460,8 @@ import ProgressSpinner from 'primevue/progressspinner'
 
 const toast = useToast()
 const authStore = useAuthStore()
+const { clubName } = useClubBranding()
+const { bankTransfer } = useTenantSettings()
 
 const productos = ref([])
 const loading = ref(false)
