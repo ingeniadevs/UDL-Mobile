@@ -1,10 +1,9 @@
 <template>
   <div>
-    <PageHeader title="Empleados">
-      <template #actions>
-        <Button label="Nuevo Empleado" icon="pi pi-plus" size="small" @click="openNewDialog" />
-      </template>
-    </PageHeader>
+    <div class="flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <h1 class="text-3xl font-bold" style="color: var(--text-color)">Empleados</h1>
+      <Button label="Nuevo Empleado" icon="pi pi-plus" @click="openNewDialog" />
+    </div>
 
     <!-- Stat cards -->
     <div class="grid mb-4">
@@ -39,7 +38,7 @@
         <div class="stat-card stat-warning">
           <div class="stat-icon"><i class="pi pi-dollar"></i></div>
           <div class="stat-content">
-            <span class="stat-value">{{ formatCompactMoney(empleados.filter(e => e.activo).reduce((s, e) => s + (e.salario || 0), 0)) }}</span>
+            <span class="stat-value">${{ empleados.filter(e => e.activo).reduce((s, e) => s + (e.salario || 0), 0).toLocaleString() }}</span>
             <span class="stat-label">Masa Salarial</span>
           </div>
         </div>
@@ -49,56 +48,111 @@
     <!-- Filtros -->
     <div class="card mb-4">
       <div class="flex flex-wrap align-items-center gap-3">
-        <span class="p-input-icon-left flex-1 w-full">
+        <span class="p-input-icon-left flex-1" style="min-width: 200px">
           <i class="pi pi-search" />
           <InputText v-model="filters.global.value" placeholder="Buscar por nombre, email o puesto..." class="w-full" />
         </span>
       </div>
     </div>
 
-    <div v-if="loading" class="flex justify-content-center py-5">
-      <ProgressSpinner />
+    <!-- Listado -->
+    <div class="card">
+      <div class="flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h3 class="m-0">Listado de Empleados</h3>
+        <Button :icon="vistaGrid ? 'pi pi-table' : 'pi pi-th-large'" text rounded size="small"
+          v-tooltip.top="vistaGrid ? 'Vista tabla' : 'Vista cards'"
+          @click="vistaGrid = !vistaGrid" />
+      </div>
+
+      <!-- Vista cards -->
+      <div v-if="vistaGrid">
+        <div v-if="empleadosFiltrados.length === 0" class="text-center py-6">
+          <i class="pi pi-users text-5xl text-gray-600 mb-3 block"></i>
+          <p class="text-gray-400 text-lg">No se encontraron empleados</p>
+        </div>
+        <div v-else class="grid">
+          <div v-for="emp in empleadosFiltrados" :key="emp.id" class="col-12 sm:col-6 md:col-4 lg:col-3">
+            <div class="empleado-card" :class="{ 'empleado-card--inactivo': !emp.activo }">
+              <div class="empleado-card__header">
+                <div class="emp-avatar" :style="{ background: getEmpColor(emp.nombre) }">
+                  <span>{{ getEmpInitials(emp.nombre, emp.apellido) }}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="font-bold text-base truncate" style="color: var(--text-color)">{{ emp.nombre }} {{ emp.apellido }}</div>
+                  <div class="text-gray-400 text-xs truncate">{{ emp.email }}</div>
+                </div>
+                <Tag :severity="emp.activo ? 'success' : 'danger'" :value="emp.activo ? 'Activo' : 'Inactivo'" class="flex-shrink-0" />
+              </div>
+              <div class="empleado-card__body">
+                <div class="flex justify-content-between align-items-center mb-2">
+                  <Tag :value="emp.puesto" severity="info" class="text-xs" />
+                  <span class="text-green-400 font-bold text-sm">${{ emp.salario?.toLocaleString() }}</span>
+                </div>
+                <div class="text-gray-500 text-xs">Ingreso: {{ formatDate(emp.fechaIngreso) }}</div>
+              </div>
+              <div class="empleado-card__footer">
+                <Button icon="pi pi-dollar" text rounded size="small" severity="success" v-tooltip.top="'Pagar sueldo'" @click="openPagarSueldoDialog(emp)" :disabled="!emp.activo" />
+                <Button icon="pi pi-pencil" text rounded size="small" severity="info" v-tooltip.top="'Editar'" @click="openEditDialog(emp)" />
+                <Button icon="pi pi-trash" text rounded size="small" severity="danger" v-tooltip.top="'Eliminar'" @click="confirmDelete(emp)" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vista tabla -->
+      <DataTable v-else
+        :value="empleados"
+        :loading="loading"
+        :paginator="true"
+        :rows="10"
+        :rowsPerPageOptions="[5, 10, 20, 50]"
+        dataKey="id"
+        :globalFilterFields="['nombre', 'apellido', 'email', 'puesto']"
+        v-model:filters="filters"
+        responsiveLayout="scroll"
+        stripedRows
+      >
+        <template #empty>
+          <div class="text-center py-4 text-gray-400">No se encontraron empleados</div>
+        </template>
+
+        <Column field="nombre" header="Nombre" sortable>
+          <template #body="{ data }">
+            <div class="flex align-items-center gap-2">
+              <Avatar :label="(data.nombre?.charAt(0) + data.apellido?.charAt(0)).toUpperCase()" shape="circle" class="avatar-red" />
+              <span class="font-medium" style="color: var(--text-color)">{{ data.nombre }} {{ data.apellido }}</span>
+            </div>
+          </template>
+        </Column>
+        <Column field="email" header="Email" sortable>
+          <template #body="{ data }"><span class="text-gray-300">{{ data.email }}</span></template>
+        </Column>
+        <Column field="puesto" header="Puesto" sortable>
+          <template #body="{ data }"><Tag :value="data.puesto" severity="info" /></template>
+        </Column>
+        <Column field="salario" header="Salario" sortable>
+          <template #body="{ data }"><span class="text-green-400 font-semibold">${{ data.salario?.toLocaleString() }}</span></template>
+        </Column>
+        <Column field="fechaIngreso" header="Fecha Ingreso" sortable>
+          <template #body="{ data }"><span class="text-gray-300">{{ formatDate(data.fechaIngreso) }}</span></template>
+        </Column>
+        <Column field="activo" header="Estado" sortable>
+          <template #body="{ data }">
+            <Tag :severity="data.activo ? 'success' : 'danger'" :value="data.activo ? 'Activo' : 'Inactivo'" />
+          </template>
+        </Column>
+        <Column header="Acciones" style="width: 180px">
+          <template #body="{ data }">
+            <div class="flex gap-2">
+              <Button icon="pi pi-dollar" severity="success" text rounded v-tooltip.top="'Pagar sueldo'" @click="openPagarSueldoDialog(data)" :disabled="!data.activo" />
+              <Button icon="pi pi-pencil" severity="info" text rounded @click="openEditDialog(data)" />
+              <Button icon="pi pi-trash" severity="danger" text rounded @click="confirmDelete(data)" />
+            </div>
+          </template>
+        </Column>
+      </DataTable>
     </div>
-    <template v-else>
-      <div v-if="empleadosFiltrados.length === 0" class="card text-center py-5 text-gray-400">
-        No se encontraron empleados
-      </div>
-      <div v-else class="mobile-card-list">
-        <MobileRecordCard
-          v-for="item in paginatedEmpleados"
-          :key="item.id"
-          :title="`${item.nombre} ${item.apellido}`"
-          :subtitle="item.email"
-        >
-          <template #leading>
-            <Avatar :label="(item.nombre?.charAt(0) + item.apellido?.charAt(0)).toUpperCase()" shape="circle" class="avatar-red" />
-          </template>
-          <template #tags>
-            <Tag :severity="item.activo ? 'success' : 'danger'" :value="item.activo ? 'Activo' : 'Inactivo'" />
-          </template>
-          <template #body>
-            <div class="record-card__row">
-              <span class="record-card__label">Puesto</span>
-              <Tag :value="item.puesto" severity="info" />
-            </div>
-            <div class="record-card__row">
-              <span class="record-card__label">Salario</span>
-              <span class="record-card__value text-green-400">${{ item.salario?.toLocaleString() }}</span>
-            </div>
-            <div class="record-card__row">
-              <span class="record-card__label">Ingreso</span>
-              <span class="record-card__value">{{ formatDate(item.fechaIngreso) }}</span>
-            </div>
-          </template>
-          <template #actions>
-            <Button icon="pi pi-dollar" severity="success" text rounded size="small" v-tooltip.top="'Pagar sueldo'" @click="openPagarSueldoDialog(item)" :disabled="!item.activo" />
-            <Button icon="pi pi-pencil" severity="info" text rounded size="small" @click="openEditDialog(item)" />
-            <Button icon="pi pi-trash" severity="danger" text rounded size="small" @click="confirmDelete(item)" />
-          </template>
-        </MobileRecordCard>
-      </div>
-      <MobilePaginator v-model:page="empleadosPage" :rows="10" :total="empleadosFiltrados.length" />
-    </template>
 
     <!-- Dialog Crear/Editar -->
     <Dialog 
@@ -140,7 +194,7 @@
         </div>
         <div class="col-12 md:col-6">
           <label class="block text-gray-300 mb-2">Fecha Ingreso</label>
-          <Calendar v-model="form.fechaIngreso" dateFormat="dd/mm/yy" class="w-full" showIcon />
+          <Calendar v-model="form.fechaIngreso" dateFormat="dd/mm/yy" class="w-full" />
         </div>
         <div class="col-12" v-if="isEditing">
           <div class="flex align-items-center gap-2">
@@ -204,10 +258,8 @@ import { ref, onMounted, computed } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { empleadosService } from '@/services'
-import { useMobilePagination } from '@/composables/useMobilePagination'
-import PageHeader from '@/components/mobile/PageHeader.vue'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
-import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
@@ -217,8 +269,8 @@ import Checkbox from 'primevue/checkbox'
 import Dialog from 'primevue/dialog'
 import Tag from 'primevue/tag'
 import Avatar from 'primevue/avatar'
-import ProgressSpinner from 'primevue/progressspinner'
-import { formatCompactMoney } from '@/utils/formatMoney'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 
 const toast = useToast()
 const confirm = useConfirm()
@@ -239,6 +291,15 @@ const pagarSueldoForm = ref({ monto: 0, fecha: new Date(), descripcion: '' })
 const filters = ref({
   global: { value: null, matchMode: 'contains' }
 })
+const vistaGrid = ref(false)
+
+const EMP_COLORES = ['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981','#3b82f6','#ef4444','#14b8a6','#f97316','#06b6d4']
+function getEmpColor(nombre = '') {
+  return EMP_COLORES[(nombre.charCodeAt(0) || 0) % EMP_COLORES.length]
+}
+function getEmpInitials(nombre = '', apellido = '') {
+  return ((nombre[0] || '') + (apellido[0] || '')).toUpperCase()
+}
 const empleadosFiltrados = computed(() => {
   const search = (filters.value.global?.value || '').toLowerCase()
   if (!search) return empleados.value
@@ -249,11 +310,6 @@ const empleadosFiltrados = computed(() => {
     e.puesto?.toLowerCase().includes(search)
   )
 })
-const { page: empleadosPage, paginated: paginatedEmpleados } = useMobilePagination(
-  empleadosFiltrados,
-  10,
-  [() => filters.value.global?.value]
-)
 
 const puestos = ref([
   'Entrenador',
@@ -420,14 +476,14 @@ onMounted(() => {
 .stat-icon i { font-size: 1.5rem; color: white; }
 .stat-total .stat-icon   { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
 .stat-success .stat-icon { background: linear-gradient(135deg, #22c55e, #16a34a); }
-.stat-danger .stat-icon  { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.stat-danger .stat-icon  { background: linear-gradient(135deg, #ef4444, var(--primary-color)); }
 .stat-warning .stat-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
 .stat-content { display: flex; flex-direction: column; }
 .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--text-color); }
 .stat-label { font-size: 0.85rem; color: var(--text-color-secondary); }
 
 .avatar-red {
-  background-color: #dc2626 !important;
+  background-color: var(--primary-color) !important;
   color: white !important;
 }
 .empleado-card {

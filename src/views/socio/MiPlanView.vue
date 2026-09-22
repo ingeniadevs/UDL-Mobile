@@ -811,7 +811,7 @@ onMounted(() => {
 
 .sin-plan-content i {
   font-size: 4rem;
-  color: #dc2626;
+  color: var(--primary-color);
   margin-bottom: 1rem;
 }
 
@@ -834,7 +834,7 @@ onMounted(() => {
 .plan-actual-card {
   grid-column: 1 / -1;
   background: var(--surface-card);
-  border: 1px solid #dc2626;
+  border: 1px solid var(--primary-color);
 }
 
 .plan-header {
@@ -863,14 +863,14 @@ onMounted(() => {
 
 .precio-simbolo {
   font-size: 1.5rem;
-  color: #dc2626;
+  color: var(--primary-color);
   vertical-align: super;
 }
 
 .precio-monto {
   font-size: 3.5rem;
   font-weight: bold;
-  color: #dc2626;
+  color: var(--primary-color);
 }
 
 .precio-periodo {
@@ -904,7 +904,7 @@ onMounted(() => {
   padding: 0.75rem;
   background: var(--surface-hover);
   border-radius: 6px;
-  border-left: 3px solid #dc2626;
+  border-left: 3px solid var(--primary-color);
 }
 
 .desglose-label {
@@ -916,7 +916,7 @@ onMounted(() => {
 }
 
 .desglose-label i {
-  color: #dc2626;
+  color: var(--primary-color);
 }
 
 .desglose-valor {
@@ -929,9 +929,9 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  background: rgba(220, 38, 38, 0.1);
+  background: var(--udl-red-hover);
   border-radius: 8px;
-  border: 2px solid #dc2626;
+  border: 2px solid var(--primary-color);
 }
 
 .total-label {
@@ -941,7 +941,7 @@ onMounted(() => {
 }
 
 .total-valor {
-  color: #dc2626;
+  color: var(--primary-color);
   font-weight: bold;
   font-size: 1.8rem;
 }
@@ -975,7 +975,7 @@ onMounted(() => {
 }
 
 .capacidad-label i {
-  color: #dc2626;
+  color: var(--primary-color);
 }
 
 .capacidad-valor {
@@ -984,7 +984,7 @@ onMounted(() => {
 }
 
 .capacidad-valor .usado {
-  color: #dc2626;
+  color: var(--primary-color);
 }
 
 .capacidad-valor .separador {
@@ -1049,7 +1049,7 @@ onMounted(() => {
 }
 
 .adherente-item:hover {
-  border-color: #dc2626;
+  border-color: var(--primary-color);
   background: var(--surface-hover);
 }
 
@@ -1083,11 +1083,11 @@ onMounted(() => {
 }
 
 .detalle-item i {
-  color: #dc2626;
+  color: var(--primary-color);
 }
 
 .avatar-red {
-  background-color: #dc2626 !important;
+  background-color: var(--primary-color) !important;
 }
 
 /* Planes Disponibles */
@@ -1111,9 +1111,9 @@ onMounted(() => {
 }
 
 .plan-disponible:hover {
-  border-color: #dc2626;
+  border-color: var(--primary-color);
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.2);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--primary-color) 20%, transparent);
 }
 
 .plan-disponible.recomendado {
@@ -1146,7 +1146,7 @@ onMounted(() => {
 .plan-precio-small {
   font-size: 1.5rem;
   font-weight: bold;
-  color: #dc2626;
+  color: var(--primary-color);
   margin: 1rem 0;
 }
 
@@ -1166,7 +1166,7 @@ onMounted(() => {
 }
 
 .plan-cupos i {
-  color: #dc2626;
+  color: var(--primary-color);
 }
 
 .btn-seleccionar {
@@ -1216,7 +1216,7 @@ onMounted(() => {
 .plan-box .precio {
   font-size: 1.8rem;
   font-weight: bold;
-  color: #dc2626;
+  color: var(--primary-color);
   margin-bottom: 0.5rem;
 }
 
@@ -1228,7 +1228,7 @@ onMounted(() => {
 
 .arrow-icon {
   font-size: 2rem;
-  color: #dc2626;
+  color: var(--primary-color);
 }
 
 .cambio-info {

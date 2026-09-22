@@ -1,6 +1,8 @@
 <template>
   <div>
-    <PageHeader title="Disciplinas" />
+    <div class="flex align-items-center justify-content-between mb-4">
+      <h1 class="text-3xl font-bold page-title m-0">Disciplinas</h1>
+    </div>
 
     <!-- Mis Inscripciones -->
     <div class="mb-4">
@@ -83,7 +85,6 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { disciplinasService, inscripcionesService, sociosService } from '@/services'
 import { useAuthStore } from '@/stores/auth'
-import PageHeader from '@/components/mobile/PageHeader.vue'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -212,8 +213,8 @@ onMounted(() => {
   width: 3rem;
   height: 3rem;
   border-radius: 10px;
-  background: rgba(220, 38, 38, 0.2);
-  color: #dc2626;
+  background: color-mix(in srgb, var(--primary-color) 20%, transparent);
+  color: var(--primary-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -252,11 +253,11 @@ onMounted(() => {
 }
 
 .disciplina-card:hover {
-  border-color: #dc2626;
+  border-color: var(--primary-color);
   transform: translateY(-2px);
 }
 
 .text-primary {
-  color: #dc2626 !important;
+  color: var(--primary-color) !important;
 }
 </style>

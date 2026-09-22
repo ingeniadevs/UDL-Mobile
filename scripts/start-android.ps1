@@ -1,4 +1,5 @@
 # Build Android contra Railway + abrir Android Studio (sin backend local).
+# Perfil Docker: .\scripts\start-android-local.ps1
 # Uso: .\scripts\start-android.ps1
 #      .\scripts\start-android.ps1 -OpenStudio
 
@@ -17,9 +18,9 @@ Write-Host ""
 Set-Location $mobileRoot
 
 if ($OpenStudio) {
-    npm run cap:android
+    npm run cap:android:railway
 } else {
-    npm run cap:sync:android
+    npm run cap:sync:railway
 }
 
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

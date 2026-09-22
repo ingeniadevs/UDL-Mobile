@@ -1,52 +1,38 @@
 import { ref, computed, watch } from 'vue'
-import { getClubPreset } from '@/config/clubs'
 import { useTenantStore } from '@/stores/tenant'
 
-/**
- * Datos bancarios públicos del tenant.
- *
- * Orden de resolución:
- * 1. GET /api/clubs/settings?tenant={id} (Fase 4 backend — preferido)
- * 2. GET /api/clubs/branding?tenant={id} si incluye cbu/alias/titular
- * 3. Preset local en config/clubs.js (white-label / fallback UDL)
- *
- * Depende de TenantSettings en backend; hasta entonces el preset mantiene UDL prod.
- */
 const settingsByTenant = ref({})
 const loadingTenants = new Set()
 
-function normalizeSettings(raw, preset) {
-  const bank = preset?.bankTransfer || {}
+function normalizeSettings(raw) {
   const source = raw || {}
   return {
-    cbu: source.cbu || source.Cbu || bank.cbu || '',
-    alias: source.alias || source.cbuAlias || source.CbuAlias || bank.alias || '',
-    cuit: source.cuit || source.Cuit || bank.cuit || '',
+    cbu: source.cbu || source.Cbu || '',
+    alias: source.alias || source.cbuAlias || source.CbuAlias || '',
+    cuit: source.cuit || source.Cuit || '',
     titular:
       source.titular ||
       source.accountHolder ||
       source.commercialName ||
       source.CommercialName ||
       source.name ||
-      bank.titular ||
-      preset?.name ||
       '',
-    whatsapp: source.whatsapp || source.phone || source.Phone || bank.whatsapp || '',
-    phone: source.phone || source.Phone || bank.phone || ''
+    whatsapp: source.whatsapp || source.phone || source.Phone || '',
+    phone: source.phone || source.Phone || '',
+    address: source.address || source.Address || ''
   }
 }
 
 export async function fetchTenantSettings(tenantId) {
-  const preset = getClubPreset(tenantId)
-  if (!tenantId) return normalizeSettings({}, preset)
+  if (!tenantId) return normalizeSettings({})
 
   try {
     const { default: api } = await import('@/services/api')
     const { data } = await api.get('/clubs/settings', { params: { tenant: tenantId } })
-    if (data) return normalizeSettings(data, preset)
+    if (data) return normalizeSettings(data)
   } catch (error) {
     if (error.response?.status !== 404) {
-      /* endpoint aún no desplegado */
+      /* endpoint no disponible */
     }
   }
 
@@ -54,13 +40,13 @@ export async function fetchTenantSettings(tenantId) {
     const { default: api } = await import('@/services/api')
     const { data } = await api.get('/clubs/branding', { params: { tenant: tenantId } })
     if (data?.cbu || data?.alias || data?.Cbu || data?.CbuAlias) {
-      return normalizeSettings(data, preset)
+      return normalizeSettings(data)
     }
   } catch {
     /* branding sin datos bancarios */
   }
 
-  return normalizeSettings({}, preset)
+  return normalizeSettings({})
 }
 
 export function useTenantSettings() {
@@ -69,9 +55,13 @@ export function useTenantSettings() {
 
   const settings = computed(() => {
     const id = tenantId.value
-    if (!id) return normalizeSettings({}, null)
-    if (settingsByTenant.value[id]) return settingsByTenant.value[id]
-    return normalizeSettings({}, getClubPreset(id))
+    const clubName = tenantStore.club?.name || ''
+    if (!id) return normalizeSettings({})
+    const raw = settingsByTenant.value[id]
+      ? { ...settingsByTenant.value[id] }
+      : normalizeSettings({})
+    if (!raw.titular && clubName) raw.titular = clubName
+    return raw
   })
 
   async function load(force = false) {

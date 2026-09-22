@@ -1,10 +1,10 @@
 <template>
   <div>
-    <PageHeader title="Eventos">
-      <template #actions>
-        <Button label="Nuevo Evento" icon="pi pi-plus" size="small" @click="openNuevoEvento" />
-      </template>
-    </PageHeader>    <!-- Tabs: Activos / Cerrados -->
+    <!-- Header -->
+    <div class="flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+      <h1 class="text-3xl font-bold page-title m-0">Eventos</h1>
+      <Button label="Nuevo Evento" icon="pi pi-plus" @click="openNuevoEvento" />
+    </div>    <!-- Tabs: Activos / Cerrados -->
     <TabView v-model:activeIndex="tabActivo" class="tabview-dark mb-4">
       <TabPanel header="Eventos Activos">
         <div v-if="loadingEventos" class="flex justify-content-center py-6">
@@ -188,36 +188,34 @@
                 @click="openMovimiento('ingreso')"
               />
             </div>
-            <div v-if="movimientosIngreso.length === 0" class="text-gray-500 text-center py-3">Sin ingresos cargados</div>
-            <template v-else>
-              <div class="mobile-card-list">
-                <MobileRecordCard
-                  v-for="mov in paginatedIngresos"
-                  :key="mov.id"
-                  :title="mov.concepto"
-                  :subtitle="formatDate(mov.fecha)"
-                >
-                  <template #body>
-                    <div v-if="mov.descripcion" class="record-card__row">
-                      <span class="record-card__label">Detalle</span>
-                      <span class="record-card__value">{{ mov.descripcion }}</span>
-                    </div>
-                    <div class="record-card__row">
-                      <span class="record-card__label">Categoría</span>
-                      <span class="record-card__value">{{ labelCategoria(mov.categoria) }}</span>
-                    </div>
-                    <div class="record-card__row">
-                      <span class="record-card__label">Monto</span>
-                      <span class="record-card__value text-green-400 font-bold">${{ mov.monto?.toLocaleString('es-AR') }}</span>
-                    </div>
-                  </template>
-                  <template v-if="eventoActual.estado === 'activo'" #actions>
-                    <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="eliminarMovEvento(mov)" />
-                  </template>
-                </MobileRecordCard>
-              </div>
-              <MobilePaginator v-model:page="ingresosPage" :rows="8" :total="movimientosIngreso.length" />
-            </template>
+            <DataTable :value="movimientosIngreso" class="p-datatable-sm" :rows="8" paginator>
+              <template #empty><span class="text-gray-500">Sin ingresos cargados</span></template>
+              <Column field="fecha" header="Fecha" style="width:110px">
+                <template #body="{ data }"><span class="text-gray-300 text-sm">{{ formatDate(data.fecha) }}</span></template>
+              </Column>
+              <Column field="concepto" header="Concepto">
+                <template #body="{ data }">
+                  <div>                    <div class="text-sm" style="color: var(--text-color)">{{ data.concepto }}</div>
+                    <div v-if="data.descripcion" class="text-gray-500 text-xs">{{ data.descripcion }}</div>
+                  </div>
+                </template>
+              </Column>
+              <Column field="categoria" header="Categoría" style="width:140px">
+                <template #body="{ data }">
+                  <span class="text-gray-300 text-sm">{{ labelCategoria(data.categoria) }}</span>
+                </template>
+              </Column>
+              <Column field="monto" header="Monto" style="width:120px">
+                <template #body="{ data }">
+                  <span class="text-green-400 font-bold">${{ data.monto?.toLocaleString('es-AR') }}</span>
+                </template>
+              </Column>
+              <Column style="width:80px" v-if="eventoActual.estado === 'activo'">
+                <template #body="{ data }">
+                  <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="eliminarMovEvento(data)" />
+                </template>
+              </Column>
+            </DataTable>
           </TabPanel>
 
           <TabPanel>
@@ -239,57 +237,53 @@
                 @click="openMovimiento('egreso')"
               />
             </div>
-            <div v-if="movimientosEgreso.length === 0" class="text-gray-500 text-center py-3">Sin gastos cargados</div>
-            <template v-else>
-              <div class="mobile-card-list">
-                <MobileRecordCard
-                  v-for="mov in paginatedEgresos"
-                  :key="mov.id"
-                  :title="mov.concepto"
-                  :subtitle="formatDate(mov.fecha)"
-                >
-                  <template #tags>
-                    <Tag :value="mov.pagado ? 'Pagado' : 'Pendiente'" :severity="mov.pagado ? 'success' : 'warning'" />
-                  </template>
-                  <template #body>
-                    <div v-if="mov.descripcion" class="record-card__row">
-                      <span class="record-card__label">Detalle</span>
-                      <span class="record-card__value">{{ mov.descripcion }}</span>
-                    </div>
-                    <div class="record-card__row">
-                      <span class="record-card__label">Categoría</span>
-                      <span class="record-card__value">{{ labelCategoria(mov.categoria) }}</span>
-                    </div>
-                    <div class="record-card__row">
-                      <span class="record-card__label">Monto</span>
-                      <span class="record-card__value text-red-400 font-bold">${{ mov.monto?.toLocaleString('es-AR') }}</span>
-                    </div>
-                  </template>
-                  <template #actions>
-                    <Button
-                      :icon="mov.pagado ? 'pi pi-check' : 'pi pi-clock'"
-                      :severity="mov.pagado ? 'success' : 'warning'"
+            <DataTable :value="movimientosEgreso" class="p-datatable-sm" :rows="8" paginator>
+              <template #empty><span class="text-gray-500">Sin gastos cargados</span></template>
+              <Column field="fecha" header="Fecha" style="width:110px">
+                <template #body="{ data }"><span class="text-gray-300 text-sm">{{ formatDate(data.fecha) }}</span></template>
+              </Column>
+              <Column field="concepto" header="Concepto">
+                <template #body="{ data }">
+                  <div>                    <div class="text-sm" style="color: var(--text-color)">{{ data.concepto }}</div>
+                    <div v-if="data.descripcion" class="text-gray-500 text-xs">{{ data.descripcion }}</div>
+                  </div>
+                </template>
+              </Column>
+              <Column field="categoria" header="Categoría" style="width:140px">
+                <template #body="{ data }">
+                  <span class="text-gray-300 text-sm">{{ labelCategoria(data.categoria) }}</span>
+                </template>
+              </Column>              <Column field="monto" header="Monto" style="width:120px">
+                <template #body="{ data }">
+                  <span class="text-red-400 font-bold">${{ data.monto?.toLocaleString('es-AR') }}</span>
+                </template>
+              </Column>
+              <Column field="pagado" header="Pago" style="width:100px">
+                <template #body="{ data }">
+                  <div class="flex align-items-center gap-2">
+                    <Button 
+                      :icon="data.pagado ? 'pi pi-check' : 'pi pi-clock'"
+                      :class="data.pagado ? 'p-button-text p-button-success' : 'p-button-text p-button-warning'"
+                      :severity="data.pagado ? 'success' : 'warning'"
                       size="small"
                       text
                       rounded
                       :disabled="eventoActual.estado !== 'activo'"
-                      @click="togglePagoMovimiento(mov)"
-                      :title="mov.pagado ? 'Pagado' : 'Pendiente'"
+                      @click="togglePagoMovimiento(data)"
+                      :title="data.pagado ? 'Pagado' : 'Pendiente'"
                     />
-                    <Button
-                      v-if="eventoActual.estado === 'activo'"
-                      icon="pi pi-trash"
-                      text
-                      rounded
-                      size="small"
-                      severity="danger"
-                      @click="eliminarMovEvento(mov)"
-                    />
-                  </template>
-                </MobileRecordCard>
-              </div>
-              <MobilePaginator v-model:page="egresosPage" :rows="8" :total="movimientosEgreso.length" />
-            </template>
+                    <span class="text-xs" :class="data.pagado ? 'text-green-400' : 'text-yellow-400'">
+                      {{ data.pagado ? 'Pagado' : 'Pendiente' }}
+                    </span>
+                  </div>
+                </template>
+              </Column>
+              <Column style="width:80px" v-if="eventoActual.estado === 'activo'">
+                <template #body="{ data }">
+                  <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="eliminarMovEvento(data)" />
+                </template>
+              </Column>
+            </DataTable>
           </TabPanel>
         </TabView>        <!-- Botón cerrar evento -->
         <div v-if="eventoActual.estado === 'activo'" class="mt-4 p-3 border-round cierre-box">
@@ -510,12 +504,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { eventosService } from '@/services'
-import { useMobilePagination } from '@/composables/useMobilePagination'
-import PageHeader from '@/components/mobile/PageHeader.vue'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
-import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
@@ -550,16 +542,6 @@ const cerrandoEvento = ref(false)
 
 const movimientosIngreso = computed(() => movimientos.value.filter(m => m.tipo === 'ingreso'))
 const movimientosEgreso  = computed(() => movimientos.value.filter(m => m.tipo === 'egreso'))
-const { page: ingresosPage, paginated: paginatedIngresos } = useMobilePagination(
-  movimientosIngreso,
-  8,
-  [() => eventoActual.value?.id]
-)
-const { page: egresosPage, paginated: paginatedEgresos } = useMobilePagination(
-  movimientosEgreso,
-  8,
-  [() => eventoActual.value?.id]
-)
 
 const totalesEvento = computed(() => {
   const ingresos = movimientosIngreso.value.reduce((a, m) => a + (m.monto ?? 0), 0)
@@ -833,7 +815,7 @@ onMounted(cargarEventos)
   transition: border-color 0.2s, transform 0.1s;
   height: 100%;
 }
-.evento-card:hover { border-color: #dc2626; transform: translateY(-2px); }
+.evento-card:hover { border-color: var(--primary-color); transform: translateY(-2px); }
 .evento-cerrado { opacity: 0.7; }
 .evento-cerrado:hover { border-color: var(--surface-400); }
 
@@ -846,16 +828,16 @@ onMounted(cargarEventos)
 }
 
 .ver-btn {
-  background: rgba(220,38,38,0.1);
-  border: 1px solid rgba(220,38,38,0.3);
-  color: #dc2626;
+  background: var(--udl-red-hover);
+  border: 1px solid color-mix(in srgb, var(--primary-color) 30%, transparent);
+  color: var(--primary-color);
   border-radius: 6px;
   padding: 0.4rem 0.75rem;
   font-size: 0.85rem;
   cursor: pointer;
   transition: background 0.2s;
 }
-.ver-btn:hover { background: rgba(220,38,38,0.2); }
+.ver-btn:hover { background: color-mix(in srgb, var(--primary-color) 20%, transparent); }
 
 .cerrar-btn {
   background: rgba(234,179,8,0.1);
@@ -907,6 +889,6 @@ onMounted(cargarEventos)
 /* ── TabView adaptable al tema ── */
 :deep(.tabview-dark .p-tabview-nav)             { background: transparent; border-bottom: 1px solid var(--surface-border); }
 :deep(.tabview-dark .p-tabview-nav-link)        { background: transparent !important; color: var(--text-color-secondary) !important; border-color: transparent !important; }
-:deep(.tabview-dark .p-tabview-nav li.p-highlight .p-tabview-nav-link) { color: #dc2626 !important; border-bottom: 2px solid #dc2626 !important; }
+:deep(.tabview-dark .p-tabview-nav li.p-highlight .p-tabview-nav-link) { color: var(--primary-color) !important; border-bottom: 2px solid var(--primary-color) !important; }
 :deep(.tabview-dark .p-tabview-panels)          { background: transparent; padding: 1rem 0 0; }
 </style>

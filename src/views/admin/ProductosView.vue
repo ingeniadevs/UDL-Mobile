@@ -1,11 +1,12 @@
 <template>
   <div>
-    <PageHeader title="Productos">
-      <template #actions>
-        <Button label="Reporte de Stock" icon="pi pi-chart-bar" outlined size="small" @click="abrirReporteStock" />
-        <Button label="Nuevo Producto" icon="pi pi-plus" size="small" @click="openNew" />
-      </template>
-    </PageHeader>
+    <div class="flex align-items-center justify-content-between mb-4">
+      <h1 class="text-3xl font-bold page-title m-0">Productos</h1>
+      <div class="flex gap-2">
+        <Button label="Reporte de Stock" icon="pi pi-chart-bar" outlined @click="abrirReporteStock" />
+        <Button label="Nuevo Producto" icon="pi pi-plus" @click="openNew" />
+      </div>
+    </div>
 
     <!-- Stat cards -->
     <div class="grid mb-4">
@@ -88,89 +89,92 @@
       <Button label="Crear primer producto" icon="pi pi-plus" @click="openNew" />
     </div>
 
-    <div v-else class="mobile-card-list">
-      <MobileRecordCard
-        v-for="prod in paginatedProductos"
-        :key="prod.id"
-        :title="prod.nombre"
-        :subtitle="prod.descripcion || 'Sin descripción'"
-        :class="{ 'product-card-inactive': !prod.activo }"
-      >
-        <template #leading>
-          <div class="product-thumb">
-            <img
-              v-if="prod.imagenes?.length || prod.imagen"
-              :src="prod.imagenes?.[0] ?? prod.imagen"
+    <div v-else class="grid">
+      <div v-for="prod in filteredProducts" :key="prod.id" class="col-12 sm:col-6 lg:col-4 xl:col-3">
+        <div class="product-card h-full flex flex-column" :class="{ 'inactive': !prod.activo }">
+          <!-- Product Image -->
+          <div class="product-image-container relative">
+            <img 
+              v-if="prod.imagenes?.length || prod.imagen" 
+              :src="prod.imagenes?.[0] ?? prod.imagen" 
               :alt="prod.nombre"
+              class="product-image"
             />
-            <div v-else class="product-thumb-placeholder">
+            <div v-else class="product-placeholder">
               <i class="pi pi-image"></i>
             </div>
-            <span v-if="(prod.imagenes?.length || 0) > 1" class="product-thumb-count">
-              {{ prod.imagenes.length }}
-            </span>
+            
+            <!-- Badges -->
+            <div class="product-badges">
+              <Tag v-if="prod.destacado" severity="warning" value="★ Destacado" />
+              <Tag v-if="!prod.activo" severity="danger" value="Inactivo" />
+            </div>
+
+            <!-- Quick Actions Overlay -->
+            <div class="product-actions-overlay">
+              <Button 
+                icon="pi pi-pencil" 
+                class="p-button-rounded p-button-success"
+                @click="editProducto(prod)"
+                v-tooltip.top="'Editar'"
+              />
+              <Button 
+                icon="pi pi-trash" 
+                class="p-button-rounded p-button-danger"
+                @click="confirmDelete(prod)"
+                v-tooltip.top="'Eliminar'"
+              />
+            </div>
           </div>
-        </template>
-        <template #tags>
-          <Tag v-if="prod.destacado" severity="warning" value="★ Destacado" />
-          <Tag v-if="!prod.activo" severity="danger" value="Inactivo" />
-        </template>
-        <template #body>
-          <div class="record-card__row">
-            <span class="record-card__label">Categoría</span>
-            <Tag severity="secondary" :value="prod.categoria" />
-          </div>
-          <div class="record-card__row">
-            <span class="record-card__label">Stock</span>
-            <Tag
-              :severity="prod.stock > 10 ? 'success' : prod.stock > 0 ? 'warning' : 'danger'"
-              :value="String(prod.stock)"
+
+          <!-- Product Info -->
+          <div class="product-body flex-1 flex flex-column">
+            <div class="flex align-items-center justify-content-between mb-2">
+              <Tag severity="secondary" :value="prod.categoria" />
+              <Tag 
+                :severity="prod.stock > 10 ? 'success' : prod.stock > 0 ? 'warning' : 'danger'"
+                :value="'Stock: ' + prod.stock"
+              />
+            </div>
+            
+            <h4 class="product-title">{{ prod.nombre }}</h4>
+            <p class="product-description flex-1">{{ prod.descripcion || 'Sin descripción' }}</p>
+            
+            <div v-if="prod.tallas" class="product-sizes mb-2">
+              <i class="pi pi-tag mr-1"></i>
+              <span>{{ prod.tallas }}</span>
+            </div>
+
+            <!-- Price -->
+            <div class="product-price">
+              ${{ prod.precio?.toLocaleString() }}
+            </div>
+          </div>          <!-- Card Footer Actions -->
+          <div class="product-footer">
+            <Button 
+              label="Stock" 
+              icon="pi pi-chart-bar" 
+              class="p-button-sm p-button-outlined p-button-info"
+              @click="openStockDialog(prod)"
+              v-tooltip.top="'Gestionar stock por talle'"
+            />
+            <Button 
+              label="Editar" 
+              icon="pi pi-pencil" 
+              class="p-button-sm p-button-outlined flex-1"
+              @click="editProducto(prod)"
+            />
+            <Button 
+              :icon="prod.activo ? 'pi pi-eye-slash' : 'pi pi-eye'" 
+              class="p-button-sm p-button-outlined"
+              :class="prod.activo ? 'p-button-warning' : 'p-button-success'"
+              @click="toggleActivo(prod)"
+              v-tooltip.top="prod.activo ? 'Desactivar' : 'Activar'"
             />
           </div>
-          <div v-if="prod.tallas" class="record-card__row">
-            <span class="record-card__label">Tallas</span>
-            <span class="record-card__value">{{ prod.tallas }}</span>
-          </div>
-          <div v-if="prod.entregaDomicilio" class="record-card__row">
-            <span class="record-card__label">Entrega</span>
-            <span class="record-card__value">A domicilio</span>
-          </div>
-          <div class="record-card__row">
-            <span class="record-card__label">Precio</span>
-            <span class="record-card__value product-price-value">${{ prod.precio?.toLocaleString() }}</span>
-          </div>
-        </template>
-        <template #actions>
-          <Button
-            label="Stock"
-            icon="pi pi-chart-bar"
-            class="p-button-sm p-button-outlined p-button-info"
-            @click="openStockDialog(prod)"
-            v-tooltip.top="'Gestionar stock por talle'"
-          />
-          <Button
-            label="Editar"
-            icon="pi pi-pencil"
-            class="p-button-sm p-button-outlined"
-            @click="editProducto(prod)"
-          />
-          <Button
-            :icon="prod.activo ? 'pi pi-eye-slash' : 'pi pi-eye'"
-            class="p-button-sm p-button-outlined"
-            :class="prod.activo ? 'p-button-warning' : 'p-button-success'"
-            @click="toggleActivo(prod)"
-            v-tooltip.top="prod.activo ? 'Desactivar' : 'Activar'"
-          />
-          <Button
-            icon="pi pi-trash"
-            class="p-button-sm p-button-outlined p-button-danger"
-            @click="confirmDelete(prod)"
-            v-tooltip.top="'Eliminar'"
-          />
-        </template>
-      </MobileRecordCard>
+        </div>
+      </div>
     </div>
-    <MobilePaginator v-if="filteredProducts.length" v-model:page="productosPage" :rows="10" :total="filteredProducts.length" />
 
     <!-- Create/Edit Dialog -->
     <Dialog 
@@ -382,32 +386,34 @@
         <Button label="Exportar Excel" icon="pi pi-file-excel" outlined @click="exportarReporteExcel" />
       </div>
 
-      <div v-if="loadingReporte" class="flex justify-content-center py-4">
-        <ProgressSpinner />
-      </div>
-      <div v-else class="mobile-card-list">
-        <MobileRecordCard
-          v-for="item in reporteStockData"
-          :key="item.id || item.nombre"
-          :title="item.nombre"
-          :subtitle="item.categoria"
-        >
-          <template #tags>
+      <DataTable :value="reporteStockData" :loading="loadingReporte" class="p-datatable-sm" :sortField="'nombre'" :sortOrder="1">
+        <Column field="nombre" header="Producto" sortable style="min-width: 180px">
+          <template #body="{ data }">
+            <div class="font-medium">{{ data.nombre }}</div>
+            <div class="text-xs text-gray-400">{{ data.categoria }}</div>
+          </template>
+        </Column>
+        <Column field="stockTotal" header="Stock Total" sortable style="min-width: 110px">
+          <template #body="{ data }">
             <Tag
-              :severity="item.stockTotal > 10 ? 'success' : item.stockTotal > 0 ? 'warning' : 'danger'"
-              :value="`Stock: ${item.stockTotal}`"
+              :severity="data.stockTotal > 10 ? 'success' : data.stockTotal > 0 ? 'warning' : 'danger'"
+              :value="String(data.stockTotal)"
             />
           </template>
-          <template #body>
-            <div v-for="talle in tallesReporte" :key="talle" class="record-card__row">
-              <span class="record-card__label">{{ talle }}</span>
-              <span class="record-card__value" :class="(item.talles[talle] ?? 0) === 0 ? 'text-gray-400' : ''">
-                {{ item.talles[talle] ?? 0 }}
-              </span>
-            </div>
+        </Column>
+        <Column
+          v-for="talle in tallesReporte"
+          :key="talle"
+          :header="talle"
+          style="min-width: 80px; text-align: center"
+        >
+          <template #body="{ data }">
+            <span :class="(data.talles[talle] ?? 0) === 0 ? 'text-gray-400' : ''">
+              {{ data.talles[talle] ?? 0 }}
+            </span>
           </template>
-        </MobileRecordCard>
-      </div>
+        </Column>
+      </DataTable>
     </Dialog>
   </div>
 </template>
@@ -417,10 +423,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { productosService } from '@/services'
-import { useMobilePagination } from '@/composables/useMobilePagination'
-import PageHeader from '@/components/mobile/PageHeader.vue'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
-import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -484,12 +486,6 @@ const filteredProducts = computed(() => {
     return true
   })
 })
-
-const { page: productosPage, paginated: paginatedProductos } = useMobilePagination(
-  filteredProducts,
-  10,
-  [searchTerm, selectedCategory, selectedStatus, soloDestacados]
-)
 
 async function loadProductos() {
   loading.value = true
@@ -816,61 +812,138 @@ onMounted(() => {
 .stat-icon i { font-size: 1.5rem; color: white; }
 .stat-total .stat-icon   { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
 .stat-success .stat-icon { background: linear-gradient(135deg, #22c55e, #16a34a); }
-.stat-danger .stat-icon  { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.stat-danger .stat-icon  { background: linear-gradient(135deg, #ef4444, var(--primary-color)); }
 .stat-warning .stat-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
 .stat-content { display: flex; flex-direction: column; }
 .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--text-color); }
 .stat-label { font-size: 0.85rem; color: var(--text-color-secondary); }
 
-.product-thumb {
+.product-card {
+  background: var(--surface-card);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--surface-border);
+  transition: all 0.3s ease;
+}
+
+.product-card:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px var(--udl-red-active);
+}
+
+.product-card.inactive {
+  opacity: 0.7;
+}
+
+.product-card.inactive:hover {
+  opacity: 1;
+}
+
+.product-image-container {
   position: relative;
-  width: 56px;
-  height: 56px;
-  border-radius: 10px;
+  height: 220px;
   overflow: hidden;
   background: var(--surface-ground);
-  flex-shrink: 0;
-}
-
-.product-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.product-thumb-placeholder {
-  width: 100%;
-  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.product-thumb-placeholder i {
-  font-size: 1.25rem;
-  color: #dc2626;
-  opacity: 0.6;
+.product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  transition: transform 0.3s ease;
 }
 
-.product-thumb-count {
+.product-card:hover .product-image {
+  transform: scale(1.02);
+}
+
+.product-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-ground);
+}
+
+.product-placeholder i {
+  font-size: 3rem;
+  color: var(--primary-color);
+  opacity: 0.5;
+}
+
+.product-badges {
   position: absolute;
-  right: 2px;
-  bottom: 2px;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.product-actions-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  font-size: 0.65rem;
-  font-weight: 700;
-  border-radius: 6px;
-  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.product-card:hover .product-actions-overlay {
+  opacity: 1;
+}
+
+.product-body {
+  padding: 1rem;
+}
+
+.product-title {
+  color: var(--text-color);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0.5rem 0;
+  line-height: 1.3;
+}
+
+.product-description {
+  color: var(--text-color-secondary);
+  font-size: 0.85rem;
   line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0 0 0.75rem 0;
 }
 
-.product-card-inactive {
-  opacity: 0.75;
+.product-sizes {
+  font-size: 0.8rem;
+  color: var(--text-color-secondary);
 }
 
-.product-price-value {
-  color: #dc2626;
+.product-price {
+  font-size: 1.5rem;
   font-weight: 700;
+  color: var(--primary-color);
+  margin-top: auto;
+}
+
+.product-footer {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--surface-border);
+  display: flex;
+  gap: 0.5rem;
 }
 </style>

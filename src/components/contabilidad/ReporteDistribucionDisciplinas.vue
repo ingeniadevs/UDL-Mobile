@@ -33,32 +33,16 @@
             <small class="text-gray-400">{{ rep.cantidadSocios }} socios · {{ rep.cantidadCobros }} cobros</small>
           </div>
         </div>
-        <div class="mobile-card-list">
-          <MobileRecordCard
-            v-for="(row, idx) in detallePaginado(rep)"
-            :key="`${rep.disciplinaId}-${idx}`"
-            :title="row.socioNombre"
-            :subtitle="formatFecha(row.fecha)"
-          >
-            <template #body>
-              <div class="record-card__row">
-                <span class="record-card__label">Concepto</span>
-                <span class="record-card__value">{{ row.concepto }}</span>
-              </div>
-              <div class="record-card__row">
-                <span class="record-card__label">Monto</span>
-                <span class="record-card__value">${{ row.monto?.toLocaleString('es-AR') }}</span>
-              </div>
-            </template>
-          </MobileRecordCard>
-        </div>
-        <MobilePaginator
-          v-if="(rep.detalle?.length || 0) > 10"
-          :page="detallePage(rep.disciplinaId)"
-          :rows="10"
-          :total="rep.detalle?.length || 0"
-          @update:page="(p) => setDetallePage(rep.disciplinaId, p)"
-        />
+        <DataTable :value="rep.detalle" class="p-datatable-sm" paginator :rows="10">
+          <Column header="Fecha">
+            <template #body="{ data }">{{ formatFecha(data.fecha) }}</template>
+          </Column>
+          <Column field="socioNombre" header="Socio" />
+          <Column field="concepto" header="Concepto" />
+          <Column header="Monto">
+            <template #body="{ data }">${{ data.monto?.toLocaleString('es-AR') }}</template>
+          </Column>
+        </DataTable>
       </div>
     </div>
   </div>
@@ -67,10 +51,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { reportesService } from '@/services'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
-import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 import Button from 'primevue/button'
 import Calendar from 'primevue/calendar'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 import ProgressSpinner from 'primevue/progressspinner'
 
 const props = defineProps({
@@ -80,21 +64,6 @@ const props = defineProps({
 const reportes = ref([])
 const loading = ref(false)
 const filtros = ref({ fechaDesde: null, fechaHasta: null })
-const detallePages = ref({})
-
-function detallePage(id) {
-  return detallePages.value[id] || 1
-}
-
-function setDetallePage(id, page) {
-  detallePages.value = { ...detallePages.value, [id]: page }
-}
-
-function detallePaginado(rep) {
-  const page = detallePage(rep.disciplinaId)
-  const start = (page - 1) * 10
-  return (rep.detalle || []).slice(start, start + 10)
-}
 
 function formatFecha(f) {
   return new Date(f).toLocaleDateString('es-AR')
@@ -108,7 +77,6 @@ async function cargar() {
     if (filtros.value.fechaHasta) params.fechaHasta = filtros.value.fechaHasta.toISOString()
     if (props.disciplinaId) params.disciplinaId = props.disciplinaId
     reportes.value = await reportesService.getDistribucionDisciplinas(params)
-    detallePages.value = {}
   } finally {
     loading.value = false
   }

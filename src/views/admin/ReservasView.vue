@@ -1,14 +1,12 @@
 <template>
-  <div>
-    <PageHeader title="Reservas">
-      <template #actions>
+  <div>    <div class="flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+      <h1 class="text-3xl font-bold m-0">Reservas</h1>
+      <div class="flex gap-2 flex-wrap">
         <Button label="Agenda" icon="pi pi-calendar" severity="warning" size="small" @click="agendaDialog = true" />
         <Button label="Informes" icon="pi pi-chart-bar" severity="secondary" size="small" @click="openInformeDialog" />
         <Button label="Nueva Reserva" icon="pi pi-plus" size="small" @click="openNew" />
-      </template>
-    </PageHeader>
-
-    <!-- Resumen de Pagos -->
+      </div>
+    </div><!-- Resumen de Pagos -->
     <div class="grid mb-4">
       <div class="col-6 md:col-2">
         <div class="stat-card stat-total">
@@ -28,7 +26,7 @@
           <div class="stat-content">
             <span class="stat-value">{{ resumenFiltrado.reservasPagadas }}</span>
             <span class="stat-label">Pagadas</span>
-            <small class="stat-amount">{{ formatCompactMoney(resumenFiltrado.montoTotalPagado) }}</small>
+            <small class="stat-amount">${{ resumenFiltrado.montoTotalPagado.toLocaleString() }}</small>
           </div>
         </div>      </div>
       <div class="col-6 md:col-2">
@@ -39,7 +37,7 @@
           <div class="stat-content">
             <span class="stat-value">{{ resumenFiltrado.reservasPendientes }}</span>
             <span class="stat-label">Pendientes</span>
-            <small class="stat-amount">{{ formatCompactMoney(resumenFiltrado.montoTotalPendiente) }}</small>
+            <small class="stat-amount">${{ resumenFiltrado.montoTotalPendiente.toLocaleString() }}</small>
           </div>
         </div>
       </div>      <div class="col-6 md:col-3">
@@ -80,7 +78,7 @@
       </div>
     </div><!-- Filtros -->
     <div class="card mb-4">
-      <div class="grid mobile-filters-grid">
+      <div class="grid">
         <div class="col-12 md:col-2">
           <label class="font-medium text-gray-300 block mb-2">Socio</label>
           <Dropdown 
@@ -147,53 +145,168 @@
     </div>
 
     <div class="card">
-      <h3 class="m-0 mb-3">Listado de Reservas</h3>
-
-      <div v-if="loading" class="flex justify-content-center py-5">
-        <ProgressSpinner />
+      <div class="flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h3 class="m-0">Listado de Reservas</h3>
+        <div class="flex gap-1">
+          <Button :icon="vistaCards ? 'pi pi-table' : 'pi pi-th-large'" text rounded size="small"
+            v-tooltip.top="vistaCards ? 'Vista tabla' : 'Vista cards'"
+            @click="vistaCards = !vistaCards" />
+        </div>
       </div>
-      <template v-else>
-        <div v-if="reservasFiltradas.length === 0" class="text-center text-gray-400 py-4">Sin reservas</div>
-        <div v-else class="mobile-card-list">
-          <MobileRecordCard
-            v-for="r in paginatedReservas"
-            :key="r.id"
-            :title="r.socioNombre || r.nombreCliente || '—'"
-            :subtitle="`${formatDate(r.fecha)} · ${r.horaInicio} - ${r.horaFin}`"
-          >
-            <template #tags>
+
+      <!-- Vista cards (mobile-friendly) -->
+      <div v-if="vistaCards" class="reservas-cards-grid">
+        <div v-if="loading" class="text-center py-4"><i class="pi pi-spin pi-spinner text-2xl" /></div>
+        <div v-else-if="reservasFiltradas.length === 0" class="text-center text-gray-400 py-4">Sin reservas</div>
+        <div v-for="r in reservasFiltradas" :key="r.id" class="reserva-card">
+          <div class="reserva-card-header">
+            <div class="flex align-items-center gap-2 flex-wrap">
               <Tag :value="r.espacioNombre" :severity="getTipoSeverity(r.espacioTipo)" />
               <Tag :severity="getEstadoSeverity(r.estado)" :value="r.estado" />
-            </template>
-            <template #body>
-              <div class="record-card__row">
-                <span class="record-card__label">Espacio</span>
-                <span class="record-card__value">{{ r.espacioNombre }}</span>
-              </div>
-              <div class="record-card__row">
-                <span class="record-card__label">Monto</span>
-                <span class="record-card__value font-bold text-primary">${{ r.monto?.toLocaleString() }}</span>
-              </div>
-              <div class="record-card__row">
-                <span class="record-card__label">Pago</span>
-                <span class="record-card__value">
-                  <span :class="`pago-${r.estadoPago?.toLowerCase()}`">{{ r.estadoPago }}</span>
-                  <span v-if="r.metodoPago" class="text-gray-400 ml-1">· {{ r.metodoPago }}</span>
-                </span>
-              </div>
-            </template>
-            <template #actions>
-              <Button v-if="r.estado === 'pendiente'" icon="pi pi-thumbs-up" text rounded size="small" severity="success" @click="aprobarReserva(r)" v-tooltip.top="'Aprobar'" />
-              <Button v-if="r.estado === 'pendiente'" icon="pi pi-thumbs-down" text rounded size="small" severity="danger" @click="openRechazo(r)" v-tooltip.top="'Rechazar'" />
-              <Button v-if="r.estado === 'pendiente'" icon="pi pi-check" text rounded size="small" severity="success" @click="confirmarReserva(r)" v-tooltip.top="'Confirmar'" />
-              <Button v-if="r.estado?.toLowerCase() === 'confirmada' && r.estadoPago?.toLowerCase() === 'pendiente'" icon="pi pi-money-bill" text rounded size="small" severity="success" @click="confirmarPagoEfectivo(r)" v-tooltip.top="'Pagar'" />
-              <Button v-if="r.estadoPago?.toLowerCase() !== 'pagado' && r.estado?.toLowerCase() !== 'cancelada'" icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmDelete(r)" v-tooltip.top="'Eliminar'" />
-              <Button icon="pi pi-whatsapp" text rounded size="small" severity="success" @click="abrirWhatsApp(r)" v-tooltip.top="'Enviar WhatsApp'" />
-            </template>
-          </MobileRecordCard>
+            </div>
+            <span class="font-bold text-primary text-lg">${{ r.monto?.toLocaleString() }}</span>
+          </div>
+          <div class="reserva-card-body">
+            <div class="reserva-card-row"><i class="pi pi-calendar mr-2 text-gray-400"></i><span>{{ formatDate(r.fecha) }} · {{ r.horaInicio }} - {{ r.horaFin }}</span></div>
+            <div class="reserva-card-row"><i class="pi pi-user mr-2 text-gray-400"></i><span>{{ r.socioNombre || r.nombreCliente || '—' }}</span></div>
+            <div class="reserva-card-row">
+              <i class="pi pi-credit-card mr-2 text-gray-400"></i>
+              <span :class="`pago-${r.estadoPago?.toLowerCase()}`">{{ r.estadoPago }}</span>
+              <span v-if="r.metodoPago" class="text-gray-400 ml-1">· {{ r.metodoPago }}</span>
+            </div>
+          </div>
+          <div class="reserva-card-actions">
+            <Button v-if="r.estado === 'pendiente'" icon="pi pi-thumbs-up" text rounded size="small" severity="success" @click="aprobarReserva(r)" v-tooltip.top="'Aprobar'" />
+            <Button v-if="r.estado === 'pendiente'" icon="pi pi-thumbs-down" text rounded size="small" severity="danger" @click="openRechazo(r)" v-tooltip.top="'Rechazar'" />
+            <Button v-if="r.estado === 'pendiente'" icon="pi pi-check" text rounded size="small" severity="success" @click="confirmarReserva(r)" v-tooltip.top="'Confirmar'" />
+            <Button v-if="r.estado?.toLowerCase() === 'confirmada' && r.estadoPago?.toLowerCase() === 'pendiente'" icon="pi pi-money-bill" text rounded size="small" severity="success" @click="confirmarPagoEfectivo(r)" v-tooltip.top="'Pagar'" />
+            <Button v-if="r.estadoPago?.toLowerCase() !== 'pagado' && r.estado?.toLowerCase() !== 'cancelada'" icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmDelete(r)" v-tooltip.top="'Eliminar'" />
+            <Button icon="pi pi-whatsapp" text rounded size="small" severity="success" @click="abrirWhatsApp(r)" v-tooltip.top="'Enviar WhatsApp'" />
+          </div>
         </div>
-        <MobilePaginator v-model:page="reservasPage" :rows="10" :total="reservasFiltradas.length" />
-      </template>
+      </div>
+
+      <!-- Vista tabla (default desktop) -->
+      <DataTable v-else
+        :value="reservasFiltradas" 
+        :loading="loading"
+        :paginator="true"
+        :rows="10"
+        dataKey="id"
+        responsiveLayout="scroll"
+      >
+
+        <Column header="Fecha" sortable style="min-width: 100px">
+          <template #body="slotProps">
+            {{ formatDate(slotProps.data.fecha) }}
+          </template>
+        </Column>
+        <Column header="Horario" style="min-width: 120px">
+          <template #body="slotProps">
+            {{ slotProps.data.horaInicio }} - {{ slotProps.data.horaFin }}
+          </template>
+        </Column>
+        <Column field="espacioNombre" header="Espacio" sortable style="min-width: 150px">
+          <template #body="slotProps">
+            <div class="flex align-items-center gap-2">
+              <Tag :value="slotProps.data.espacioTipo" :severity="getTipoSeverity(slotProps.data.espacioTipo)" size="small" />
+              <span>{{ slotProps.data.espacioNombre }}</span>
+            </div>
+          </template>
+        </Column>
+        <Column field="socioNombre" header="Socio" sortable style="min-width: 150px">
+          <template #body="slotProps">
+            <div>
+              <div>{{ slotProps.data.socioNombre }}</div>
+              <small class="text-gray-400">{{ slotProps.data.socioEmail }}</small>
+            </div>
+          </template>
+        </Column>
+        <Column header="Monto" style="min-width: 100px">
+          <template #body="slotProps">
+            <span class="font-bold">${{ slotProps.data.monto?.toLocaleString() }}</span>
+          </template>
+        </Column>
+        <Column header="Estado" style="min-width: 120px">
+          <template #body="slotProps">
+            <Tag :severity="getEstadoSeverity(slotProps.data.estado)" :value="slotProps.data.estado" />
+          </template>
+        </Column>
+        <Column header="Pago" style="min-width: 150px">
+          <template #body="slotProps">
+            <div class="pago-cell">
+              <span class="pago-status" :class="`pago-${slotProps.data.estadoPago?.toLowerCase()}`">
+                <i class="pago-dot"></i>{{ slotProps.data.estadoPago }}
+              </span>
+              <span v-if="slotProps.data.metodoPago" class="pago-metodo">
+                <i :class="getMetodoPagoIcon(slotProps.data.metodoPago)" class="mr-1"></i>{{ slotProps.data.metodoPago }}
+              </span>
+              <span v-if="slotProps.data.fechaPago" class="pago-fecha">
+                {{ formatDate(slotProps.data.fechaPago) }}
+              </span>
+            </div>
+          </template>
+        </Column>        <Column header="Acciones" style="min-width: 120px; width: 120px">
+          <template #body="slotProps">            <Button 
+              v-if="slotProps.data.estado === 'pendiente'"
+              icon="pi pi-thumbs-up" 
+              text 
+              rounded 
+              class="mr-1" 
+              severity="success"
+              @click="aprobarReserva(slotProps.data)"
+              v-tooltip.top="'Aprobar reserva'"
+            />
+            <Button 
+              v-if="slotProps.data.estado === 'pendiente'"
+              icon="pi pi-thumbs-down" 
+              text 
+              rounded 
+              class="mr-1" 
+              severity="danger"
+              @click="openRechazo(slotProps.data)"
+              v-tooltip.top="'Rechazar reserva'"
+            />
+            <Button 
+              v-if="slotProps.data.estado === 'pendiente'"
+              icon="pi pi-check" 
+              text 
+              rounded 
+              class="mr-1" 
+              severity="success"
+              @click="confirmarReserva(slotProps.data)"
+              v-tooltip.top="'Confirmar'"
+            />
+            <Button 
+              v-if="slotProps.data.estado?.toLowerCase() === 'confirmada' && slotProps.data.estadoPago?.toLowerCase() === 'pendiente'"
+              icon="pi pi-money-bill" 
+              text 
+              rounded 
+              class="mr-1" 
+              severity="success"
+              @click="confirmarPagoEfectivo(slotProps.data)"
+              v-tooltip.top="'Pagar'"
+            />
+            <Button 
+              v-if="slotProps.data.estadoPago?.toLowerCase() !== 'pagado' && slotProps.data.estado?.toLowerCase() !== 'cancelada'"
+              icon="pi pi-trash" 
+              text 
+              rounded 
+              severity="danger"
+              @click="confirmDelete(slotProps.data)"
+              v-tooltip.top="'Eliminar'"
+            />
+            <Button
+              icon="pi pi-whatsapp"
+              text
+              rounded
+              severity="success"
+              @click="abrirWhatsApp(slotProps.data)"
+              v-tooltip.top="'Enviar WhatsApp'"
+            />
+          </template>
+        </Column>
+      </DataTable>
     </div>
 
     <!-- Dialog de Reservas Pendientes de Efectivo -->    <Dialog 
@@ -202,37 +315,26 @@
       :modal="true"
       :style="{ width: '700px' }"
     >
-      <div v-if="reservasPendientesEfectivo.length === 0" class="text-center text-gray-400 py-4">
-        Sin reservas pendientes de efectivo
-      </div>
-      <div v-else class="mobile-card-list">
-        <MobileRecordCard
-          v-for="r in reservasPendientesEfectivo"
-          :key="r.id"
-          :title="r.socioNombre || r.nombreCliente || '—'"
-          :subtitle="r.espacioNombre"
-          @click="togglePendienteSeleccion(r)"
-        >
-          <template #leading>
-            <Checkbox
-              :modelValue="isPendienteSelected(r)"
-              binary
-              @update:modelValue="togglePendienteSeleccion(r)"
-              @click.stop
-            />
+      <DataTable 
+        :value="reservasPendientesEfectivo" 
+        v-model:selection="reservasParaConfirmar"
+        dataKey="id"
+        responsiveLayout="scroll"
+      >
+        <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
+        <Column field="socioNombre" header="Socio"></Column>
+        <Column field="espacioNombre" header="Espacio"></Column>
+        <Column header="Fecha">
+          <template #body="slotProps">
+            {{ formatDate(slotProps.data.fecha) }}
           </template>
-          <template #body>
-            <div class="record-card__row">
-              <span class="record-card__label">Fecha</span>
-              <span class="record-card__value">{{ formatDate(r.fecha) }}</span>
-            </div>
-            <div class="record-card__row">
-              <span class="record-card__label">Monto</span>
-              <span class="record-card__value font-bold">${{ r.monto?.toLocaleString() }}</span>
-            </div>
+        </Column>
+        <Column header="Monto">
+          <template #body="slotProps">
+            ${{ slotProps.data.monto?.toLocaleString() }}
           </template>
-        </MobileRecordCard>
-      </div>
+        </Column>
+      </DataTable>
 
       <template #footer>
         <Button label="Cancelar" icon="pi pi-times" text @click="pendientesEfectivoDialog = false" />
@@ -788,12 +890,6 @@ import {
 } from '@/utils/reservationDates'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { savePdfDocument, downloadTextFile } from '@/platform/files'
-import { useMobilePagination } from '@/composables/useMobilePagination'
-import PageHeader from '@/components/mobile/PageHeader.vue'
-import { formatCompactMoney } from '@/utils/formatMoney'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
-import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -807,8 +903,6 @@ import Tag from 'primevue/tag'
 import InputSwitch from 'primevue/inputswitch'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
-import Checkbox from 'primevue/checkbox'
-import ProgressSpinner from 'primevue/progressspinner'
 
 const toast = useToast()
 const confirm = useConfirm()
@@ -835,6 +929,8 @@ const waMensaje = ref('')
 // Espacio forzado para admins no-master
 const espacioForzado = ref(false)
 const misEspaciosIds = ref([])
+// default cards on small screens
+const vistaCards = ref(window.innerWidth < 768)
 
 // Reservas visibles: master ve todo, admin solo sus espacios
 const reservasFiltradas = computed(() => {
@@ -842,12 +938,6 @@ const reservasFiltradas = computed(() => {
   if (misEspaciosIds.value.length === 0) return []
   return reservas.value.filter(r => misEspaciosIds.value.includes(r.espacioId))
 })
-
-const { page: reservasPage, paginated: paginatedReservas } = useMobilePagination(
-  reservasFiltradas,
-  10,
-  [() => filtros.value.socioId, () => filtros.value.espacioId, () => filtros.value.estado, () => filtros.value.estadoPago, () => filtros.value.fechaDesde, () => filtros.value.fechaHasta]
-)
 
 // Dialog de pendientes efectivo
 const pendientesEfectivoDialog = ref(false)
@@ -1288,16 +1378,6 @@ function confirmDelete(data) {
 }
 
 // Funciones de pago
-function isPendienteSelected(r) {
-  return reservasParaConfirmar.value.some(x => x.id === r.id)
-}
-
-function togglePendienteSeleccion(r) {
-  const idx = reservasParaConfirmar.value.findIndex(x => x.id === r.id)
-  if (idx >= 0) reservasParaConfirmar.value.splice(idx, 1)
-  else reservasParaConfirmar.value.push(r)
-}
-
 function mostrarPendientesEfectivo() {
   reservasParaConfirmar.value = []
   pendientesEfectivoDialog.value = true
@@ -1454,10 +1534,13 @@ function exportarCSV() {
     r.metodoPago || ''
   ])
   const csv = [header, ...rows].map(row => row.map(v => `"${v}"`).join(',')).join('\n')
-  downloadTextFile(
-    '\uFEFF' + csv,
-    `informe-reservas-${nombreMes}-${informeFiltros.value.anio}.csv`
-  )
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `informe-reservas-${nombreMes}-${informeFiltros.value.anio}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 function exportarPDF() {
@@ -1563,7 +1646,7 @@ function exportarPDF() {
     doc.text(`Página ${p} de ${pageCount}`, 148, 205, { align: 'center' })
   }
 
-  savePdfDocument(doc, `informe-reservas-${nombreMes}-${anio}.pdf`)
+  doc.save(`informe-reservas-${nombreMes}-${anio}.pdf`)
 }
 
 async function generarInformeAnual() {
@@ -1650,7 +1733,7 @@ function exportarPDFAnual() {
     margin: { left: 14, right: 14 }
   })
 
-  savePdfDocument(doc, `informe-anual-reservas-${anio}.pdf`)
+  doc.save(`informe-anual-reservas-${anio}.pdf`)
 }
 function aplicarFiltroEspacio() {
   const user = authStore.user
@@ -1847,15 +1930,15 @@ onMounted(async () => {
 }
 
 .turno-salon-card:hover:not(.disabled) {
-  border-color: #dc2626;
-  background: rgba(220, 38, 38, 0.07);
+  border-color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 7%, transparent);
   transform: translateY(-1px);
 }
 
 .turno-salon-card.selected {
-  border-color: #dc2626;
-  background: rgba(220, 38, 38, 0.15);
-  box-shadow: 0 0 12px rgba(220, 38, 38, 0.3);
+  border-color: var(--primary-color);
+  background: var(--udl-red-active);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--primary-color) 30%, transparent);
 }
 
 .turno-salon-card.disabled {

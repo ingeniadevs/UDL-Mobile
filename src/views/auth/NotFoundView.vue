@@ -1,6 +1,6 @@
 <template>  <div class="not-found-page min-h-screen flex align-items-center justify-content-center">
     <div class="text-center">
-      <img src="/images/logo-udl.png" alt="UDL" style="width: 120px; margin-bottom: 2rem" />
+      <img :src="clubLogo" :alt="clubLogoAlt" style="width: 120px; margin-bottom: 2rem" @error="onClubLogoError" />
       <div class="text-6xl text-primary mb-4">404</div>
       <h1 class="page-title text-3xl mb-3">Página no encontrada</h1>
       <p class="text-gray-400 mb-5">La página que buscas no existe.</p>
@@ -11,9 +11,18 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
+import { useClubBranding, hydrateClubBranding } from '@/composables/useClubBranding'
+import { onMounted } from 'vue'
 import Button from 'primevue/button'
 
 const router = useRouter()
+const { logoUrl, logoAlt, onClubLogoError } = useClubBranding()
+const clubLogo = logoUrl
+const clubLogoAlt = logoAlt
+
+onMounted(() => {
+  hydrateClubBranding()
+})
 
 function goHome() {
   router.push('/login')

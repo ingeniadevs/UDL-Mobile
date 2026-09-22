@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageHeader :title="`¡Bienvenido, ${authStore.user?.nombre}!`" />
+    <h1 class="text-3xl font-bold page-title mb-4">¡Bienvenido a {{ shortName }}, {{ authStore.user?.nombre }}!</h1>
     
     <!-- Quick Stats -->
     <div class="grid">
@@ -64,25 +64,28 @@
             <h3 class="text-xl font-semibold m-0" style="color: var(--text-color)">Próximos Vencimientos</h3>
             <Button label="Ver todos" text size="small" @click="goToPagos" />
           </div>
-          <div class="mobile-card-list">
-            <MobileRecordCard
-              v-for="pago in proximosPagos"
-              :key="pago.id"
-              :title="pago.concepto"
-              :subtitle="formatDate(pago.fechaVencimiento)"
-            >
-              <template #tags>
-                <Tag :severity="getEstadoSeverity(pago.estado)" :value="pago.estado" />
+          <DataTable :value="proximosPagos" :rows="5" class="p-datatable-sm">
+            <template #empty>
+              <div class="text-center text-gray-400 py-3">No hay pagos pendientes</div>
+            </template>
+            <Column field="concepto" header="Concepto"></Column>
+            <Column header="Monto">
+              <template #body="slotProps">
+                ${{ slotProps.data.monto?.toLocaleString() }}
               </template>
-              <template #body>
-                <div class="record-card__row">
-                  <span class="record-card__label">Monto</span>
-                  <span class="record-card__value">${{ pago.monto?.toLocaleString() }}</span>
-                </div>
+            </Column>
+            <Column header="Vencimiento">
+              <template #body="slotProps">
+                {{ formatDate(slotProps.data.fechaVencimiento) }}
               </template>
-            </MobileRecordCard>
-            <div v-if="proximosPagos.length === 0" class="text-center text-gray-400 py-3">No hay pagos pendientes</div>
-          </div>
+            </Column>
+            <Column header="Estado">
+              <template #body="slotProps">
+                <Tag :severity="getEstadoSeverity(slotProps.data.estado)" 
+                     :value="slotProps.data.estado" />
+              </template>
+            </Column>
+          </DataTable>
         </div>
       </div>
 
@@ -137,38 +140,46 @@
             />
           </div>
 
-          <div v-if="historialFiltrado.length === 0" class="text-center text-gray-400 py-3">
-            Sin pagos en el historial
-          </div>
-          <template v-else>
-            <div class="mobile-card-list">
-              <MobileRecordCard
-                v-for="pago in paginatedHistorial"
-                :key="pago.id"
-                :title="pago.concepto"
-                :subtitle="formatDate(pago.fechaPago || pago.fechaCreacion)"
-              >
-                <template #tags>
-                  <Tag :severity="getEstadoSeverity(pago.estado)" :value="pago.estado" />
-                </template>
-                <template #body>
-                  <div v-if="pago.tipo" class="record-card__row">
-                    <span class="record-card__label">Tipo</span>
-                    <span class="record-card__value">{{ pago.tipo }}</span>
-                  </div>
-                  <div class="record-card__row">
-                    <span class="record-card__label">Monto</span>
-                    <span class="record-card__value">${{ pago.monto?.toLocaleString('es-AR') }}</span>
-                  </div>
-                  <div class="record-card__row">
-                    <span class="record-card__label">Método</span>
-                    <span class="record-card__value">{{ pago.metodoPago || '-' }}</span>
-                  </div>
-                </template>
-              </MobileRecordCard>
-            </div>
-            <MobilePaginator v-model:page="historialPage" :rows="8" :total="historialFiltrado.length" />
-          </template>
+          <DataTable
+            :value="historialFiltrado"
+            :rows="8"
+            :paginator="historialFiltrado.length > 8"
+            class="p-datatable-sm"
+            sortField="fechaCreacion"
+            :sortOrder="-1"
+          >
+            <template #empty>
+              <div class="text-center text-gray-400 py-3">Sin pagos en el historial</div>
+            </template>
+            <Column field="concepto" header="Concepto" style="min-width:180px">
+              <template #body="{ data }">
+                <div>
+                  <span class="font-medium" style="color:var(--text-color)">{{ data.concepto }}</span>
+                  <div v-if="data.tipo" class="text-xs text-gray-400">{{ data.tipo }}</div>
+                </div>
+              </template>
+            </Column>
+            <Column header="Monto" style="min-width:100px">
+              <template #body="{ data }">
+                <span class="font-bold" style="color:var(--primary-color)">${{ data.monto?.toLocaleString('es-AR') }}</span>
+              </template>
+            </Column>
+            <Column header="Método" style="min-width:110px">
+              <template #body="{ data }">
+                <span class="text-sm" style="color:var(--text-color-secondary)">{{ data.metodoPago || '-' }}</span>
+              </template>
+            </Column>
+            <Column header="Fecha" style="min-width:110px">
+              <template #body="{ data }">
+                <span class="text-sm">{{ formatDate(data.fechaPago || data.fechaCreacion) }}</span>
+              </template>
+            </Column>
+            <Column header="Estado" style="min-width:100px">
+              <template #body="{ data }">
+                <Tag :severity="getEstadoSeverity(data.estado)" :value="data.estado" />
+              </template>
+            </Column>
+          </DataTable>
         </div>
       </div>
     </div>
@@ -193,27 +204,27 @@
             No tenés reservas próximas
           </div>
 
-          <div v-else class="mobile-card-list">
-            <MobileRecordCard
-              v-for="r in proximasReservas"
-              :key="r.id"
-              :title="r.espacioNombre"
-              :subtitle="`${formatDateReserva(r.fecha)} · ${r.horaInicio} – ${r.horaFin}`"
-            >
-              <template #tags>
-                <Tag :severity="getEstadoReservaSeverity(r.estado)" :value="r.estado" size="small" />
-              </template>
-              <template #body>
-                <div class="record-card__row">
-                  <span class="record-card__label">Monto</span>
-                  <span class="record-card__value">${{ r.monto?.toLocaleString() }}</span>
+          <div v-else class="grid">
+            <div v-for="r in proximasReservas" :key="r.id" class="col-12 md:col-6 lg:col-4">
+              <div class="reserva-prox-card p-3 border-round">
+                <div class="flex justify-content-between align-items-start mb-2">
+                  <div>
+                    <div class="font-bold" style="color: var(--text-color)">{{ r.espacioNombre }}</div>
+                    <div class="text-sm text-gray-400">{{ formatDateReserva(r.fecha) }}</div>
+                  </div>
+                  <Tag :severity="getEstadoReservaSeverity(r.estado)" :value="r.estado" size="small" />
                 </div>
-                <div v-if="r.estadoPago" class="record-card__row">
-                  <span class="record-card__label">Pago</span>
+                <div class="flex justify-content-between align-items-center">
+                  <span class="text-sm text-gray-400">
+                    <i class="pi pi-clock mr-1"></i>{{ r.horaInicio }} – {{ r.horaFin }}
+                  </span>
+                  <span class="font-bold" style="color: var(--primary-color)">${{ r.monto?.toLocaleString() }}</span>
+                </div>
+                <div v-if="r.estadoPago" class="mt-1">
                   <Tag :severity="r.estadoPago === 'pagado' ? 'success' : 'warning'" :value="r.estadoPago" size="small" />
                 </div>
-              </template>
-            </MobileRecordCard>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -225,18 +236,18 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useClubBranding } from '@/composables/useClubBranding'
 import { sociosService, reservasService, pedidosService } from '@/services'
 import { planesService } from '@/services/planesService'
-import { useMobilePagination } from '@/composables/useMobilePagination'
-import PageHeader from '@/components/mobile/PageHeader.vue'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
-import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import Divider from 'primevue/divider'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { shortName } = useClubBranding()
 
 const stats = ref({
   pagosPendientes: 0,
@@ -270,12 +281,6 @@ const historialFiltrado = computed(() => {
   if (filtroHistorial.value === 'pendiente') return historialPagos.value.filter(p => ['pendiente','vencido'].includes(p.estado?.toLowerCase()))
   return historialPagos.value.filter(p => p.tipo?.toLowerCase().includes(filtroHistorial.value))
 })
-
-const { page: historialPage, paginated: paginatedHistorial } = useMobilePagination(
-  historialFiltrado,
-  8,
-  [filtroHistorial]
-)
 
 function formatDate(date) {
   if (!date) return '-'
@@ -446,7 +451,7 @@ async function loadReservas() {
 }
 
 .stat-icon.bg-red {
-  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--udl-red-dark) 100%);
 }
 
 .stat-icon.bg-yellow {
@@ -497,9 +502,19 @@ async function loadReservas() {
   border: 1px solid var(--surface-border);
 }
 
+.reserva-prox-card {
+  background: var(--surface-hover);
+  border: 1px solid var(--surface-border);
+  transition: border-color 0.2s;
+}
+
+.reserva-prox-card:hover {
+  border-color: var(--primary-color);
+}
+
 .discipline-icon {
   width: 2.5rem;
   height: 2.5rem;
-  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--udl-red-dark) 100%);
 }
 </style>

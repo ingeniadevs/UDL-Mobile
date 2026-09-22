@@ -2,7 +2,7 @@
   <div class="inicio-container">
     <div class="inicio-content">
       <div class="logo-wrapper">
-        <img :src="clubLogo" :alt="clubLogoAlt" class="club-logo" />
+        <img :src="clubLogo" :alt="clubLogoAlt" class="club-logo" @error="onClubLogoError" />
       </div>
       <h1 class="club-nombre">{{ clubName }}</h1>
       <p class="bienvenida">Bienvenido, <span class="nombre-admin">{{ authStore.user?.nombre }}</span></p>
@@ -53,7 +53,6 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useClubBranding } from '@/composables/useClubBranding'
-import { resolveAssetUrl } from '@/utils/assetUrl'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
@@ -61,9 +60,9 @@ import Checkbox from 'primevue/checkbox'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const { branding, clubName } = useClubBranding()
-const clubLogo = computed(() => resolveAssetUrl(branding.value.logo))
-const clubLogoAlt = computed(() => branding.value.logoAlt || branding.value.shortName || 'Club')
+const { clubName, logoUrl, logoAlt, onClubLogoError } = useClubBranding()
+const clubLogo = logoUrl
+const clubLogoAlt = logoAlt
 
 const isMaster = computed(() => authStore.user?.rol === 'master')
 const hp = (s) => isMaster.value || authStore.hasPermiso(s)
@@ -78,13 +77,14 @@ const allAvailableTiles = computed(() => {
   if (hp('pedidos'))     items.push({ id: 'pedidos',         label: 'Pedidos',            icono: 'pi-shopping-cart', ruta: '/admin/pedidos' })
   if (hp('empleados'))   items.push({ id: 'empleados',       label: 'Empleados',          icono: 'pi-id-card',       ruta: '/admin/empleados' })
   if (hp('notificaciones')) items.push({ id: 'notificaciones', label: 'Envío de Notificaciones', icono: 'pi-send', ruta: '/admin/notificaciones' })
-  if (hp('planes-membresia') || isMaster.value) items.push({ id: 'planes-membresia', label: 'Planes de Membresía', icono: 'pi-credit-card', ruta: '/admin/planes-membresia' })
+  if (isMaster.value)    items.push({ id: 'planes',          label: 'Planes Membresía',    icono: 'pi-credit-card',   ruta: '/admin/planes-membresia' })
   if (hp('espacios'))    items.push({ id: 'espacios',        label: 'Espacios',           icono: 'pi-building',      ruta: '/admin/espacios' })
   if (hp('reservas'))      items.push({ id: 'reservas',        label: 'Reservas',                    icono: 'pi-calendar',      ruta: '/admin/reservas' })
   if (hp('movimientos'))   items.push({ id: 'movimientos',     label: 'Ingresos & Egresos',          icono: 'pi-chart-line',    ruta: '/admin/movimientos' })
   if (hp('contabilidad'))  items.push({ id: 'contabilidad',    label: 'Contabilidad por Disciplina', icono: 'pi-calculator',    ruta: '/admin/contabilidad-disciplinas' })
   if (hp('eventos'))       items.push({ id: 'eventos',         label: 'Eventos',                     icono: 'pi-star',          ruta: '/admin/eventos' })
   if (hp('inventario') || isMaster.value) items.push({ id: 'inventario', label: 'Inventario', icono: 'pi-box', ruta: '/admin/inventario' })
+  if (hp('planes-membresia') || isMaster.value) items.push({ id: 'planes-membresia', label: 'Planes de Membresía', icono: 'pi-credit-card', ruta: '/admin/planes-membresia' })
   if (isMaster.value)      items.push({ id: 'administradores', label: 'Administradores',             icono: 'pi-shield',        ruta: '/admin/administradores' })
   return items
 })
@@ -123,13 +123,12 @@ const saveConfig = () => {
 
 <style scoped>
 .inicio-container {
-  min-height: 0;
-  height: auto;
+  height: calc(100vh - 64px);
   display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  padding: 0;
-  overflow: visible;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 2rem;
+  overflow-y: auto;
 }
 
 .inicio-content {
@@ -138,46 +137,45 @@ const saveConfig = () => {
   align-items: center;
   text-align: center;
   width: 100%;
-  max-width: none;
+  max-width: 860px;
 }
 
 .logo-wrapper {
-  width: 88px;
-  height: 88px;
-  margin-bottom: 0.25rem;
-  filter: drop-shadow(0 4px 12px rgba(220, 38, 38, 0.3));
+  width: 210px;
+  height: 210px;
+  margin-bottom: 0.6rem;
+  filter: drop-shadow(0 6px 20px color-mix(in srgb, var(--primary-color) 35%, transparent));
 }
 
 .club-logo { width: 100%; height: 100%; object-fit: contain; }
 
 .club-nombre {
-  font-size: 1.15rem;
+  font-size: 1.75rem;
   font-weight: 700;
   color: var(--text-color);
-  margin: 0 0 0.15rem;
-  line-height: 1.25;
+  margin: 0 0 0.2rem;
 }
 
 .bienvenida {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: var(--text-color-secondary);
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.6rem;
 }
 
-.nombre-admin { color: #dc2626; font-weight: 600; }
+.nombre-admin { color: var(--primary-color); font-weight: 600; }
 
-.tag-rol { margin-bottom: 0.65rem; }
+.tag-rol { margin-bottom: 1rem; }
 
 .accesos-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
 }
 
 .accesos-titulo {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -186,8 +184,8 @@ const saveConfig = () => {
 
 .accesos-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.4rem;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.45rem;
   width: 100%;
 }
 
@@ -195,37 +193,36 @@ const saveConfig = () => {
   background: var(--surface-card);
   border: 1px solid var(--surface-border);
   border-radius: 10px;
-  padding: 0.65rem 0.3rem;
+  padding: 0.75rem 0.4rem;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
   transition: all 0.18s ease;
-  min-height: 4.25rem;
 }
 
 .acceso-card:hover {
-  border-color: #dc2626;
-  background: rgba(220, 38, 38, 0.06);
-  transform: translateY(-1px);
+  border-color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 6%, transparent);
+  transform: translateY(-2px);
 }
 
-.acceso-icon { font-size: 1.05rem; color: #dc2626; }
+.acceso-icon { font-size: 1.2rem; color: var(--primary-color); }
 
 .acceso-label {
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   font-weight: 500;
   color: var(--text-color);
-  line-height: 1.15;
+  line-height: 1.2;
   text-align: center;
 }
 
 .acceso-vacio {
   grid-column: 1 / -1;
   color: var(--text-color-secondary);
-  font-size: 0.85rem;
-  padding: 0.75rem;
+  font-size: 0.9rem;
+  padding: 1rem;
 }
 
 .config-hint { color: var(--text-color-secondary); font-size: 0.875rem; margin: 0 0 1rem; }
@@ -233,10 +230,9 @@ const saveConfig = () => {
 .config-item { display: flex; align-items: center; gap: 0.75rem; }
 .config-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.95rem; color: var(--text-color); }
 
-@media (min-width: 701px) {
-  .accesos-grid { grid-template-columns: repeat(4, 1fr); }
-  .logo-wrapper { width: 120px; height: 120px; }
-  .club-nombre { font-size: 1.45rem; }
-  .acceso-label { font-size: 0.72rem; }
+@media (max-width: 700px) {
+  .accesos-grid { grid-template-columns: repeat(3, 1fr); }
+  .logo-wrapper { width: 150px; height: 150px; }
+  .club-nombre { font-size: 1.35rem; }
 }
 </style>

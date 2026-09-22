@@ -1,11 +1,12 @@
 <template>
   <div class="planes-membresia-container">
-    <BlockUI :blocked="blockUi" fullScreen />
-    <PageHeader title="Planes de Membresía" subtitle="Gestión de planes y cuotas del club">
-      <template #actions>
-        <Button label="Nuevo Plan" icon="pi pi-plus" size="small" severity="danger" @click="openCreateDialog" />
-      </template>
-    </PageHeader>
+    <div class="header">
+      <div>
+        <h1>Planes de Membresía</h1>
+        <p class="subtitle">Gestión de planes y cuotas del club</p>
+      </div>
+      <Button label="+ Nuevo Plan" @click="openCreateDialog" severity="danger" />
+    </div>
 
     <!-- Estadísticas -->
     <div class="stats-grid">
@@ -28,7 +29,7 @@
       <Card class="stat-card highlight">
         <template #content>
           <div class="stat-content">
-            <div class="stat-number">{{ formatCompactMoney(estadisticas.ingresoMensualEstimado) }}</div>
+            <div class="stat-number">{{ formatCurrency(estadisticas.ingresoMensualEstimado) }}</div>
             <div class="stat-label">Ingreso mensual estimado</div>
           </div>
         </template>
@@ -174,11 +175,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { planesService } from '@/services/planesService';
-import { formatCompactMoney } from '@/utils/formatMoney';
-import PageHeader from '@/components/mobile/PageHeader.vue';
 import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Dialog from 'primevue/dialog';
@@ -189,7 +188,6 @@ import Dropdown from 'primevue/dropdown';
 import InputSwitch from 'primevue/inputswitch';
 import Checkbox from 'primevue/checkbox';
 import Tag from 'primevue/tag';
-import BlockUI from 'primevue/blockui';
 import { PLAN_TYPES, getPlanTypeSeverity } from '@/utils/planTypes';
 
 const toast = useToast();
@@ -206,9 +204,6 @@ const deleteDialogVisible = ref(false);
 const isEditing = ref(false);
 const saving = ref(false);
 const deleting = ref(false);
-const loading = ref(false);
-
-const blockUi = computed(() => loading.value || saving.value || deleting.value);
 
 const planForm = ref({
   nombre: '',
@@ -242,15 +237,6 @@ const loadEstadisticas = async () => {
     estadisticas.value = await planesService.getEstadisticas();
   } catch (error) {
     console.error('Error cargando estadísticas:', error);
-  }
-};
-
-const refreshAll = async () => {
-  loading.value = true;
-  try {
-    await Promise.all([loadPlanes(), loadEstadisticas()]);
-  } finally {
-    loading.value = false;
   }
 };
 
@@ -316,7 +302,8 @@ const savePlan = async () => {
     }
 
     dialogVisible.value = false;
-    await refreshAll();
+    await loadPlanes();
+    await loadEstadisticas();
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -347,7 +334,8 @@ const deletePlan = async () => {
     });
 
     deleteDialogVisible.value = false;
-    await refreshAll();
+    await loadPlanes();
+    await loadEstadisticas();
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -361,7 +349,6 @@ const deletePlan = async () => {
 };
 
 const togglePlanActivo = async (plan) => {
-  loading.value = true;
   try {
     await planesService.update(plan.id, { activo: plan.activo });
     toast.add({
@@ -380,8 +367,6 @@ const togglePlanActivo = async (plan) => {
       detail: 'Error al cambiar el estado del plan',
       life: 3000
     });
-  } finally {
-    loading.value = false;
   }
 };
 
@@ -394,14 +379,24 @@ const formatPrice = (price) => {
   }).format(price);
 };
 
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount);
+};
+
 onMounted(() => {
-  refreshAll();
+  loadPlanes();
+  loadEstadisticas();
 });
 </script>
 
 <style scoped>
 .planes-membresia-container {
-  padding: 0;
+  padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -437,7 +432,7 @@ onMounted(() => {
 }
 
 .stat-card.highlight {
-  border: 1px solid #dc2626;
+  border: 1px solid var(--primary-color);
   background: var(--surface-card);
 }
 
@@ -448,7 +443,7 @@ onMounted(() => {
 .stat-number {
   font-size: 2rem;
   font-weight: bold;
-  color: #dc2626;
+  color: var(--primary-color);
   margin-bottom: 0.5rem;
 }
 
@@ -470,9 +465,9 @@ onMounted(() => {
 }
 
 .plan-card:hover {
-  border-color: #dc2626;
+  border-color: var(--primary-color);
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.2);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--primary-color) 20%, transparent);
 }
 
 .plan-card.inactive {
@@ -512,14 +507,14 @@ onMounted(() => {
 
 .precio-simbolo {
   font-size: 1.5rem;
-  color: #dc2626;
+  color: var(--primary-color);
   vertical-align: super;
 }
 
 .precio-monto {
   font-size: 3rem;
   font-weight: bold;
-  color: #dc2626;
+  color: var(--primary-color);
 }
 
 .precio-periodo {
@@ -542,7 +537,7 @@ onMounted(() => {
 }
 
 .detalle-item i {
-  color: #dc2626;
+  color: var(--primary-color);
   font-size: 1.1rem;
 }
 
@@ -616,7 +611,7 @@ onMounted(() => {
   padding: 1.5rem;
   border-radius: 8px;
   text-align: center;
-  border: 1px solid #dc2626;
+  border: 1px solid var(--primary-color);
 }
 
 .preview-card h3 {
@@ -632,7 +627,7 @@ onMounted(() => {
 .preview-precio {
   font-size: 2rem;
   font-weight: bold;
-  color: #dc2626;
+  color: var(--primary-color);
   margin: 1rem 0;
 }
 

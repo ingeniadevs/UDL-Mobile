@@ -11,64 +11,55 @@
         <Button label="Cargar balance" icon="pi pi-upload" size="small" @click="abrirUpload" />
       </div>
 
-      <div v-if="loading" class="flex justify-content-center py-4">
-        <i class="pi pi-spin pi-spinner text-2xl text-gray-400"></i>
-      </div>
-      <div v-else-if="balances.length === 0" class="text-center py-4 text-gray-400">
-        No hay balances anuales cargados
-      </div>
-      <div v-else class="mobile-card-list">
-        <MobileRecordCard
-          v-for="item in balances"
-          :key="item.id"
-          :title="`Balance ${item.anio}`"
-          :subtitle="item.nombreArchivo"
-        >
-          <template #body>
-            <div v-if="item.descripcion" class="record-card__row">
-              <span class="record-card__label">Descripción</span>
-              <span class="record-card__value">{{ item.descripcion }}</span>
-            </div>
-            <div class="record-card__row">
-              <span class="record-card__label">Cargado por</span>
-              <span class="record-card__value">{{ item.usuarioNombre || '—' }}</span>
-            </div>
-            <div class="record-card__row">
-              <span class="record-card__label">Fecha</span>
-              <span class="record-card__value">{{ formatFecha(item.fechaCarga) }}</span>
+      <DataTable :value="balances" :loading="loading" class="p-datatable-sm" responsiveLayout="scroll">
+        <template #empty>
+          <div class="text-center py-4 text-gray-400">No hay balances anuales cargados</div>
+        </template>
+        <Column field="anio" header="Año" style="min-width:80px" sortable />
+        <Column field="nombreArchivo" header="Archivo" style="min-width:200px" />
+        <Column field="descripcion" header="Descripción" />
+        <Column header="Cargado por" style="min-width:140px">
+          <template #body="{ data }">
+            <span class="text-gray-400 text-sm">{{ data.usuarioNombre || '—' }}</span>
+          </template>
+        </Column>
+        <Column header="Fecha de carga" style="min-width:120px">
+          <template #body="{ data }">{{ formatFecha(data.fechaCarga) }}</template>
+        </Column>
+        <Column header="Acciones" style="min-width:130px">
+          <template #body="{ data }">
+            <div class="flex gap-1">
+              <Button
+                icon="pi pi-eye"
+                text
+                rounded
+                size="small"
+                v-tooltip.top="'Ver archivo'"
+                :disabled="!getDownloadUrl(data)"
+                @click="verArchivo(data)"
+              />
+              <Button
+                icon="pi pi-download"
+                text
+                rounded
+                size="small"
+                v-tooltip.top="'Descargar'"
+                :disabled="!getDownloadUrl(data)"
+                @click="descargar(data)"
+              />
+              <Button
+                icon="pi pi-trash"
+                text
+                rounded
+                size="small"
+                severity="danger"
+                v-tooltip.top="'Eliminar'"
+                @click="eliminar(data)"
+              />
             </div>
           </template>
-          <template #actions>
-            <Button
-              icon="pi pi-eye"
-              text
-              rounded
-              size="small"
-              v-tooltip.top="'Ver archivo'"
-              :disabled="!getDownloadUrl(item)"
-              @click="verArchivo(item)"
-            />
-            <Button
-              icon="pi pi-download"
-              text
-              rounded
-              size="small"
-              v-tooltip.top="'Descargar'"
-              :disabled="!getDownloadUrl(item)"
-              @click="descargar(item)"
-            />
-            <Button
-              icon="pi pi-trash"
-              text
-              rounded
-              size="small"
-              severity="danger"
-              v-tooltip.top="'Eliminar'"
-              @click="eliminar(item)"
-            />
-          </template>
-        </MobileRecordCard>
-      </div>
+        </Column>
+      </DataTable>
     </div>
 
     <Dialog v-model:visible="mostrarUpload" header="Cargar balance anual" modal :style="{ width: '520px' }" @hide="resetUpload">
@@ -116,8 +107,9 @@ import { ref, watch, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { balancesAnualesService } from '@/services'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
 import Button from 'primevue/button'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 import Dialog from 'primevue/dialog'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'

@@ -6,15 +6,65 @@ Aplicación móvil (Android / iOS) del portal **Unión Deportiva Laspiur**, cons
 
 **Referencia web (solo lectura):** `c:\dev\Personal\Clubes\UDL\UDL-Frontend`
 
-## Inicio rápido
+## Perfiles de API (Railway vs Docker)
+
+| Perfil | Cuándo | Env | API |
+|--------|--------|-----|-----|
+| **Railway** | sin backend local | `.env.railway` | `https://udl-backend-production.up.railway.app/api` |
+| **Docker** | API en `docker compose` (:5055) | `.env.android` | `http://10.0.2.2:5055/api` (emulador) |
+
+### Perfil Railway
+
+```powershell
+cd C:\dev\Personal\Clubes\Mobile\UDL-Mobile
+
+# Script
+.\scripts\start-android.ps1 -OpenStudio
+
+# O npm
+npm run cap:android:railway
+# sync sin abrir Studio: npm run cap:sync:railway
+```
+
+### Perfil Docker (emulador → PC)
+
+```powershell
+# 1) API local
+cd C:\dev\Personal\Clubes\UDL\UDL-Backend
+docker compose up -d
+.\scripts\seed-tenants.ps1   # opcional, primera vez
+
+# 2) App mobile
+cd C:\dev\Personal\Clubes\Mobile\UDL-Mobile
+.\scripts\start-android-local.ps1 -OpenStudio
+
+# O npm
+npm run cap:android:local
+# sync sin abrir Studio: npm run cap:sync:local
+```
+
+Celular físico (misma Wi‑Fi): copiá `.env.android.local.example` → `.env.android.local` con la IP LAN de tu PC (`http://192.168.x.x:5055/api`) y volvé a `npm run cap:android:local`.
+
+| Comando | Perfil |
+|---------|--------|
+| `npm run cap:android` / `cap:android:railway` | Railway |
+| `npm run cap:android:local` / `cap:android:docker` | Docker |
+| `npm run android:run:railway` | Railway + `cap run` |
+| `npm run android:run:local` | Docker + `cap run` |
+| `npm run dev` / `dev:local` | Navegador + proxy → Docker `:5055` |
+| `npm run dev:railway` | Navegador → Railway |
+
+Alias: `*:docker` = `*:local`.
+
+## Inicio rápido (navegador)
 
 ```powershell
 # Opción A: script que abre 3 ventanas (backend + mobile + web)
 c:\dev\Personal\Clubes\Mobile\UDL-Mobile\scripts\start-review.ps1
 
 # Opción B: manual
-cd c:\dev\Personal\Clubes\UDL\UDL-Backend\ClubSocios.Api
-dotnet run --launch-profile http
+cd c:\dev\Personal\Clubes\UDL\UDL-Backend
+docker compose up -d
 
 cd c:\dev\Personal\Clubes\Mobile\UDL-Mobile
 npm run dev
@@ -23,36 +73,10 @@ npm run dev
 | Servicio | URL |
 |----------|-----|
 | **Mobile (revisar)** | http://localhost:5003 |
-| Backend local | http://localhost:5055/swagger |
-| Web referencia | http://localhost:5002 (o 5004 si el puerto está ocupado) |
+| Backend Docker | http://localhost:5055/swagger |
+| Web referencia | http://localhost:5002 |
 
-API en desarrollo: proxy Vite → `http://localhost:5055`.
-
-## Build nativo (Android / iOS → Railway)
-
-No requiere backend ni PostgreSQL local. La API apunta a Railway (`.env.railway`).
-
-```powershell
-cd C:\dev\Personal\Clubes\Mobile\UDL-Mobile
-
-# Opción A: script todo-en-uno
-.\scripts\start-android.ps1 -OpenStudio
-
-# Opción B: manual
-npm run cap:android
-```
-
-| Servicio | URL |
-|----------|-----|
-| **API (Railway)** | https://udl-backend-production.up.railway.app/api |
-| **Health** | https://udl-backend-production.up.railway.app/health |
-| **Mobile web (dev)** | http://localhost:5003 (`npm run dev:railway`) |
-
-### Solo Railway en el navegador (sin Android)
-
-```powershell
-npm run dev:railway
-```
+API en desarrollo navegador: proxy Vite → `http://localhost:5055`.
 
 ## Documentación
 
@@ -71,7 +95,7 @@ npm run dev:railway
 
 - Portal **socio**: MercadoPago, carrito, carnet, inicio personalizado — adaptado a móvil
 - Portal **admin**: rutas habilitadas (`VITE_ENABLE_ADMIN=true`), WhatsApp, export PDF/CSV, reportes
-- Build + sync Android/iOS: `npm run build && npm run cap:sync`
+- Build + sync: `npm run cap:sync:railway` o `npm run cap:sync:local`
 
 Pendiente operativo: Firebase push, logos en `public/images/`, QA en dispositivo, URLs MP en backend.
 

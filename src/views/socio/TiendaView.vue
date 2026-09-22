@@ -1,18 +1,19 @@
 <template>
   <div>
-    <PageHeader title="Tienda UDL">
-      <template #actions>
-        <Button
-          icon="pi pi-shopping-cart"
+    <div class="flex align-items-center justify-content-between mb-4">
+      <h1 class="text-3xl font-bold page-title m-0">Tienda {{ shortName }}</h1>
+      <div class="flex align-items-center gap-3">
+        <span class="text-gray-400 hidden md:inline">Productos oficiales del club</span>
+        <Button 
+          icon="pi pi-shopping-cart" 
           :badge="cartItemsCount > 0 ? cartItemsCount.toString() : null"
           badgeClass="p-badge-danger"
           class="p-button-rounded cart-btn"
-          size="small"
           @click="showCart = true"
           v-tooltip.left="'Ver carrito'"
         />
-      </template>
-    </PageHeader>
+      </div>
+    </div>
 
     <!-- Filters -->
     <div class="card mb-4">
@@ -410,7 +411,7 @@
             placeholder="Ingresa tu dirección completa"
             class="w-full"
           />
-          <small v-if="!envioADomicilio" class="text-gray-400">Retiro en secretaria del club: Mendoza 235, S. M. Laspiur</small>
+          <small v-if="!envioADomicilio && pickupAddress" class="text-gray-400">Retiro en secretaria del club: {{ pickupAddress }}</small>
         </div>
 
         <!-- Observaciones -->
@@ -444,9 +445,6 @@ import { useAuthStore } from '@/stores/auth'
 import { useClubBranding } from '@/composables/useClubBranding'
 import { useTenantSettings } from '@/composables/useTenantSettings'
 import { productosService, pedidosService } from '@/services'
-import { getPreference, setPreference } from '@/platform/storage'
-import { openMercadoPagoCheckout } from '@/platform/mercadopago'
-import PageHeader from '@/components/mobile/PageHeader.vue'
 import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
 import Checkbox from 'primevue/checkbox'
@@ -460,8 +458,9 @@ import ProgressSpinner from 'primevue/progressspinner'
 
 const toast = useToast()
 const authStore = useAuthStore()
-const { clubName } = useClubBranding()
-const { bankTransfer } = useTenantSettings()
+const { clubName, shortName } = useClubBranding()
+const { bankTransfer, settings: tenantSettings } = useTenantSettings()
+const pickupAddress = computed(() => tenantSettings.value.address || '')
 
 const productos = ref([])
 const loading = ref(false)
@@ -509,15 +508,17 @@ const cartTotal = computed(() => {
   return cart.value.reduce((total, item) => total + (item.precio * item.cantidad), 0)
 })
 
-const CART_KEY = 'udl_cart'
-
-async function loadCart() {
-  const saved = await getPreference(CART_KEY, [])
-  cart.value = Array.isArray(saved) ? saved : []
+// Load cart from localStorage
+function loadCart() {
+  const savedCart = localStorage.getItem('udl_cart')
+  if (savedCart) {
+    cart.value = JSON.parse(savedCart)
+  }
 }
 
-async function saveCart() {
-  await setPreference(CART_KEY, cart.value)
+// Save cart to localStorage
+function saveCart() {
+  localStorage.setItem('udl_cart', JSON.stringify(cart.value))
 }
 
 async function loadProductos() {
@@ -658,7 +659,7 @@ async function confirmCheckout() {
       
       // Limpiar carrito antes de redirigir
       cart.value = []
-      await saveCart()
+      saveCart()
       checkoutDialog.value = false
       showCart.value = false
       toast.add({ 
@@ -668,14 +669,12 @@ async function confirmCheckout() {
         life: 4000 
       })
 
-      await openMercadoPagoCheckout(
-        mpResponse.initPoint || mpResponse.sandboxInitPoint
-      )
+      window.location.href = mpResponse.initPoint || mpResponse.sandboxInitPoint
     } else {
       // Pago en efectivo
       const totalConfirmado = cartTotal.value
       cart.value = []
-      await saveCart()
+      saveCart()
       checkoutDialog.value = false
       showCart.value = false
       
@@ -698,9 +697,9 @@ async function confirmCheckout() {
   }
 }
 
-onMounted(async () => {
-  await loadProductos()
-  await loadCart()
+onMounted(() => {
+  loadProductos()
+  loadCart()
 
   // Manejar retorno desde MercadoPago
   const params = new URLSearchParams(window.location.search)
@@ -747,9 +746,9 @@ onMounted(async () => {
 }
 
 .product-card:hover {
-  border-color: #dc2626;
+  border-color: var(--primary-color);
   transform: translateY(-6px);
-  box-shadow: 0 12px 40px rgba(220, 38, 38, 0.2);
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--primary-color) 20%, transparent);
 }
 
 .product-image-wrapper {
@@ -785,7 +784,7 @@ onMounted(async () => {
 
 .product-placeholder i {
   font-size: 4rem;
-  color: #dc2626;
+  color: var(--primary-color);
   opacity: 0.3;
 }
 
@@ -811,7 +810,7 @@ onMounted(async () => {
 }
 
 .badge-soldout {
-  background: #dc2626;
+  background: var(--primary-color);
   color: white;
   padding: 6px 12px;
   border-radius: 20px;
@@ -822,7 +821,7 @@ onMounted(async () => {
 .product-content { padding: 1.25rem; }
 
 .product-category {
-  color: #dc2626;
+  color: var(--primary-color);
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -897,7 +896,7 @@ onMounted(async () => {
 .product-price {
   font-size: 1.5rem;
   font-weight: 800;
-  color: #dc2626;
+  color: var(--primary-color);
 }
 
 .stock-tag { font-size: 0.7rem; }
@@ -918,7 +917,7 @@ onMounted(async () => {
 
 .empty-state i {
   font-size: 4rem;
-  color: #dc2626;
+  color: var(--primary-color);
   opacity: 0.5;
   margin-bottom: 1rem;
 }
@@ -963,7 +962,7 @@ onMounted(async () => {
 
 .detail-placeholder i {
   font-size: 5rem;
-  color: #dc2626;
+  color: var(--primary-color);
   opacity: 0.3;
 }
 
@@ -982,7 +981,7 @@ onMounted(async () => {
 .detail-price {
   font-size: 2.5rem;
   font-weight: 800;
-  color: #dc2626;
+  color: var(--primary-color);
   margin-top: 1rem;
 }
 
@@ -1028,16 +1027,16 @@ onMounted(async () => {
 }
 
 .size-btn:hover {
-  border-color: #dc2626 !important;
-  background: rgba(220, 38, 38, 0.08) !important;
+  border-color: var(--primary-color) !important;
+  background: var(--highlight-bg) !important;
 }
 
 .size-btn.selected {
-  background: #dc2626 !important;
-  border-color: #dc2626 !important;
+  background: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
   color: white !important;
   font-weight: 700;
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.3) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 30%, transparent) !important;
   transform: scale(1.08);
 }
 
@@ -1072,7 +1071,7 @@ onMounted(async () => {
 
 .cart-empty i {
   font-size: 4rem;
-  color: #dc2626;
+  color: var(--primary-color);
   opacity: 0.4;
   margin-bottom: 1rem;
 }
@@ -1125,7 +1124,7 @@ onMounted(async () => {
   background: var(--surface-border);
 }
 
-.cart-item-placeholder i { color: #dc2626; opacity: 0.5; }
+.cart-item-placeholder i { color: var(--primary-color); opacity: 0.5; }
 
 .cart-item-name {
   color: var(--text-color);
@@ -1142,7 +1141,7 @@ onMounted(async () => {
   gap: 10px;
 }
 
-.cart-item-price { color: #dc2626; font-weight: 700; font-size: 0.95rem; }
+.cart-item-price { color: var(--primary-color); font-weight: 700; font-size: 0.95rem; }
 
 .cart-summary { padding-top: 1rem; }
 
@@ -1174,8 +1173,8 @@ onMounted(async () => {
 }
 
 .payment-option.selected {
-  border-color: #dc2626;
-  background: rgba(220, 38, 38, 0.1);
+  border-color: var(--primary-color);
+  background: var(--udl-red-hover);
 }
 
 .payment-icon {

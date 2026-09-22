@@ -1,18 +1,19 @@
 <template>
   <div>
-    <PageHeader title="Mis Pagos">
-      <template #actions>
-        <Button
-          icon="pi pi-shopping-cart"
+    <div class="flex align-items-center justify-content-between mb-4">
+      <h1 class="text-3xl font-bold page-title m-0">Mis Pagos</h1>
+      <div class="flex align-items-center gap-3">
+        <span class="text-gray-400 hidden md:inline">Selecciona los pagos a realizar</span>
+        <Button 
+          icon="pi pi-shopping-cart" 
           :badge="cartItemsCount > 0 ? cartItemsCount.toString() : null"
           badgeClass="p-badge-danger"
           class="p-button-rounded cart-btn"
-          size="small"
           @click="showCart = true"
           v-tooltip.left="'Ver carrito de pagos'"
         />
-      </template>
-    </PageHeader>
+      </div>
+    </div>
 
     <!-- Stats -->
     <div class="grid mb-4">
@@ -143,33 +144,35 @@
       <div v-if="pagosGrouped.pagados.length > 0" class="mt-5">        <h3 class="text-xl mb-3" style="color: var(--text-color)">
           <i class="pi pi-check-circle mr-2 text-green-400"></i>Historial de pagos
         </h3>
-        <div class="mobile-card-list">
-          <MobileRecordCard
-            v-for="pago in paginatedPagados"
-            :key="pago.id"
-            :title="pago.concepto"
-            :subtitle="formatDate(pago.fechaPago)"
-          >
-            <template #tags>
-              <Tag severity="success" value="Pagado" />
-            </template>
-            <template #body>
-              <div class="record-card__row">
-                <span class="record-card__label">Monto</span>
-                <span class="record-card__value">${{ pago.monto?.toLocaleString() }}</span>
-              </div>
-              <div class="record-card__row">
-                <span class="record-card__label">Método</span>
-                <Tag
-                  :severity="pago.metodoPago?.toLowerCase() === 'efectivo' ? 'info' : pago.metodoPago?.toLowerCase() === 'mutual' ? 'warning' : 'success'"
-                  :value="pago.metodoPago || '-'"
-                  :icon="pago.metodoPago?.toLowerCase() === 'efectivo' ? 'pi pi-wallet' : pago.metodoPago?.toLowerCase() === 'mutual' ? 'pi pi-dollar' : 'pi pi-credit-card'"
+        <div class="card">
+          <DataTable :value="pagosGrouped.pagados" responsiveLayout="scroll">
+            <Column field="concepto" header="Concepto"></Column>
+            <Column header="Monto">
+              <template #body="slotProps">
+                ${{ slotProps.data.monto?.toLocaleString() }}
+              </template>
+            </Column>
+            <Column header="Fecha Pago">
+              <template #body="slotProps">
+                {{ formatDate(slotProps.data.fechaPago) }}
+              </template>
+            </Column>
+            <Column header="Método">
+              <template #body="slotProps">
+                <Tag 
+                  :severity="slotProps.data.metodoPago?.toLowerCase() === 'efectivo' ? 'info' : slotProps.data.metodoPago?.toLowerCase() === 'mutual' ? 'warning' : 'success'" 
+                  :value="slotProps.data.metodoPago || '-'" 
+                  :icon="slotProps.data.metodoPago?.toLowerCase() === 'efectivo' ? 'pi pi-wallet' : slotProps.data.metodoPago?.toLowerCase() === 'mutual' ? 'pi pi-dollar' : 'pi pi-credit-card'"
                 />
-              </div>
-            </template>
-          </MobileRecordCard>
+              </template>
+            </Column>
+            <Column header="Estado">
+              <template #body>
+                <Tag severity="success" value="Pagado" />
+              </template>
+            </Column>
+          </DataTable>
         </div>
-        <MobilePaginator v-model:page="pagadosPage" :rows="10" :total="pagosGrouped.pagados.length" />
       </div>
     </div>
 
@@ -363,11 +366,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { pagosService, reservasService, pedidosService } from '@/services'
-import { useMobilePagination } from '@/composables/useMobilePagination'
-import { useTenantSettings } from '@/composables/useTenantSettings'
-import PageHeader from '@/components/mobile/PageHeader.vue'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
-import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
@@ -376,7 +376,7 @@ import Divider from 'primevue/divider'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
-import { openMercadoPagoCheckout } from '@/platform/mercadopago'
+import { useTenantSettings } from '@/composables/useTenantSettings'
 
 const authStore = useAuthStore()
 const toast = useToast()
@@ -410,9 +410,6 @@ const pagosGrouped = computed(() => {
 const pagosDisponiblesPagar = computed(() => {
   return [...pagosGrouped.value.pendientes, ...pagosGrouped.value.vencidos]
 })
-
-const pagosPagados = computed(() => pagosGrouped.value.pagados)
-const { page: pagadosPage, paginated: paginatedPagados } = useMobilePagination(pagosPagados, 10)
 
 const cartItemsCount = computed(() => cart.value.length)
 
@@ -469,7 +466,7 @@ async function procesarPago() {
       if (metodoPago.value === 'mercadopago') {
       const response = await pagosService.initMercadoPagoMultiple(pagoIds)
       checkoutDialog.value = false
-      await openMercadoPagoCheckout(response.initPoint || response.sandboxInitPoint)
+      window.location.href = response.initPoint || response.sandboxInitPoint
     } else if (metodoPago.value === 'efectivo') {
       await pagosService.solicitarPagoEfectivo(pagoIds)
       toast.add({

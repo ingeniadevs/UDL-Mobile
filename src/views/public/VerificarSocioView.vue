@@ -1,7 +1,7 @@
 <template>
   <div class="verificar-container">
     <div class="verificar-header">
-      <img :src="clubLogo" :alt="clubLogoAlt" class="verificar-logo" />
+      <img :src="clubLogo" :alt="clubLogoAlt" class="verificar-logo" @error="onClubLogoError" />
       <h2>{{ clubHeaderName }}</h2>
       <p class="subtitulo">Verificación de Carnet de Socio</p>
     </div>
@@ -59,7 +59,7 @@
       </div>
 
       <p class="text-gray-600 text-xs text-center mt-3">
-        Verificado el {{ fechaHoy }} · {{ clubFooterName }}
+        Verificado el {{ fechaHoy }} · {{ clubName }}
       </p>
     </div>
   </div>
@@ -69,18 +69,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/services/api'
-import { hydrateClubBranding, useClubBranding } from '@/composables/useClubBranding'
-import { useTenantStore } from '@/stores/tenant'
-import { getWhiteLabelClubId } from '@/config/clubs'
-import { resolveAssetUrl } from '@/utils/assetUrl'
+import { useClubBranding, hydrateClubBranding } from '@/composables/useClubBranding'
 
 const route = useRoute()
-const tenantStore = useTenantStore()
-const { branding, setClubId, clubName } = useClubBranding()
-const clubLogo = computed(() => resolveAssetUrl(branding.value.logo))
-const clubLogoAlt = computed(() => branding.value.logoAlt || branding.value.shortName || 'Club')
-const clubHeaderName = computed(() => (branding.value.name || clubName.value || 'Club').toUpperCase())
-const clubFooterName = computed(() => branding.value.name || clubName.value || 'Club')
+const { clubName, logoUrl, logoAlt, onClubLogoError } = useClubBranding()
+const clubLogo = logoUrl
+const clubLogoAlt = logoAlt
+const clubHeaderName = computed(() => (clubName.value || 'Club').toUpperCase())
+
 const socio = ref(null)
 const loading = ref(true)
 const error = ref(false)
@@ -95,15 +91,7 @@ const fechaHoy = computed(() =>
 )
 
 onMounted(async () => {
-  const tenantKey =
-    route.query.tenant ||
-    tenantStore.clubId ||
-    getWhiteLabelClubId()
-  if (tenantKey) {
-    setClubId(tenantKey)
-    await hydrateClubBranding()
-  }
-
+  await hydrateClubBranding()
   try {
     const { data } = await api.get(`/socios/verificar/${route.params.id}`)
     socio.value = data

@@ -1,15 +1,13 @@
 <template>
   <div class="movimientos-view">
-    <PageHeader title="Ingresos & Egresos">
-      <template #actions>
-        <Button
-          label="Nuevo Movimiento"
-          icon="pi pi-plus"
-          size="small"
-          @click="abrirFormulario"
-        />
-      </template>
-    </PageHeader>
+    <!-- Header -->
+    <div class="flex justify-content-between align-items-center mb-4">
+      <h1 class="text-3xl font-bold page-title m-0">Ingresos & Egresos</h1>
+      <div class="flex gap-2">
+        <Button label="Orden de Compra" icon="pi pi-file-pdf" severity="secondary" @click="abrirOrdenCompra" />
+        <Button label="Nuevo Movimiento" icon="pi pi-plus" @click="abrirFormulario" />
+      </div>
+    </div>
 
     <!-- Tabs principales -->
     <TabView v-model:activeIndex="activeTabIndex" class="custom-tabview" @tab-change="onTabChange">
@@ -119,72 +117,86 @@
             </div>
           </div>
 
-          <!-- Lista de movimientos -->
+          <!-- Tabla de movimientos -->
           <div class="card">
-            <div class="flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div class="flex justify-content-between align-items-center mb-3">
               <h3 class="m-0">Listado de Movimientos</h3>
               <Button icon="pi pi-refresh" text rounded size="small" @click="cargarMovimientos" :loading="loading" v-tooltip="'Actualizar datos'" />
             </div>
+            <DataTable 
+              :value="movimientosFiltrados" 
+              :loading="loading"
+              :paginator="true"
+              :rows="15"
+              :rowsPerPageOptions="[10, 15, 25]"
+              dataKey="id"
+              responsiveLayout="scroll"
+              :sortField="'createdAt'"
+              :sortOrder="-1"
+              class="p-datatable-striped"
+            >
 
-            <div v-if="loading" class="flex justify-content-center py-4">
-              <i class="pi pi-spin pi-spinner text-2xl"></i>
-            </div>
-            <div v-else-if="movimientosFiltrados.length === 0" class="text-center text-gray-400 py-4">
-              No hay movimientos para mostrar
-            </div>
-            <template v-else>
-              <div class="mobile-card-list">
-                <MobileRecordCard
-                  v-for="item in paginatedMovimientos"
-                  :key="item.id"
-                  :title="item.concepto"
-                  :subtitle="formatFecha(item.fecha)"
-                >
-                  <template #tags>
-                    <Tag
-                      :severity="item.tipo === 'ingreso' ? 'success' : 'danger'"
-                      :value="item.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'"
-                      :icon="item.tipo === 'ingreso' ? 'pi pi-arrow-down' : 'pi pi-arrow-up'"
+              <Column field="fecha" header="Fecha" sortable>
+                <template #body="slotProps">
+                  {{ formatFecha(slotProps.data.fecha) }}
+                </template>
+              </Column>
+              
+              <Column field="tipo" header="Tipo" sortable>
+                <template #body="slotProps">
+                  <Tag 
+                    :severity="slotProps.data.tipo === 'ingreso' ? 'success' : 'danger'"
+                    :value="slotProps.data.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'"
+                    :icon="slotProps.data.tipo === 'ingreso' ? 'pi pi-arrow-down' : 'pi pi-arrow-up'"
+                  />
+                </template>
+              </Column>
+              
+              <Column field="categoria" header="Categoría" sortable />
+              <Column field="concepto" header="Concepto" sortable />
+
+              <Column field="pagadorNombre" header="Pagador" sortable>
+                <template #body="{ data }">
+                  <div v-if="data.pagadorNombre">
+                    <div>{{ data.pagadorNombre }}</div>
+                    <div v-if="data.pagadorDni" class="text-gray-500 text-xs">DNI {{ data.pagadorDni }}</div>
+                  </div>
+                  <span v-else class="text-gray-400">—</span>
+                </template>
+              </Column>
+              
+              <Column field="monto" header="Monto" sortable>
+                <template #body="slotProps">
+                  <span class="font-bold" :class="slotProps.data.tipo === 'ingreso' ? 'text-green-600' : 'text-red-600'">
+                    {{ slotProps.data.tipo === 'ingreso' ? '+' : '-' }}${{ slotProps.data.monto.toLocaleString('es-AR') }}
+                  </span>
+                </template>
+              </Column>
+              
+              <Column header="Acciones">
+                <template #body="slotProps">
+                  <div class="flex gap-2">
+                    <Button 
+                      icon="pi pi-pencil" 
+                      size="small"
+                      text
+                      rounded
+                      @click="editarMovimiento(slotProps.data)"
+                      v-tooltip="'Editar'"
                     />
-                  </template>
-                  <template #body>
-                    <div class="record-card__row">
-                      <span class="record-card__label">Categoría</span>
-                      <span class="record-card__value">{{ item.categoria }}</span>
-                    </div>
-                    <div v-if="item.pagadorNombre" class="record-card__row">
-                      <span class="record-card__label">Pagador</span>
-                      <span class="record-card__value">
-                        {{ item.pagadorNombre }}
-                        <span v-if="item.pagadorDni" class="text-gray-500 text-xs block">DNI {{ item.pagadorDni }}</span>
-                      </span>
-                    </div>
-                    <div v-if="item.empleadoNombre" class="record-card__row">
-                      <span class="record-card__label">Empleado</span>
-                      <span class="record-card__value">{{ item.empleadoNombre }}</span>
-                    </div>
-                    <div v-if="item.usuarioRegistro" class="record-card__row">
-                      <span class="record-card__label">Usuario</span>
-                      <span class="record-card__value">{{ item.usuarioRegistro }}</span>
-                    </div>
-                    <div class="record-card__row">
-                      <span class="record-card__label">Monto</span>
-                      <span
-                        class="record-card__value font-bold"
-                        :class="item.tipo === 'ingreso' ? 'text-green-400' : 'text-red-400'"
-                      >
-                        {{ item.tipo === 'ingreso' ? '+' : '-' }}${{ item.monto.toLocaleString('es-AR') }}
-                      </span>
-                    </div>
-                  </template>
-                  <template #actions>
-                    <Button icon="pi pi-pencil" text rounded size="small" @click="editarMovimiento(item)" v-tooltip="'Editar'" />
-                    <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmarEliminar(item)" v-tooltip="'Eliminar'" />
-                  </template>
-                </MobileRecordCard>
-              </div>
-              <MobilePaginator v-model:page="movimientosPage" :rows="10" :total="movimientosFiltrados.length" />
-            </template>
+                    <Button 
+                      icon="pi pi-trash" 
+                      size="small"
+                      text
+                      rounded
+                      severity="danger"
+                      @click="confirmarEliminar(slotProps.data)"
+                      v-tooltip="'Eliminar'"
+                    />
+                  </div>
+                </template>
+              </Column>
+            </DataTable>
           </div>
         </div>
       </TabPanel>
@@ -254,19 +266,75 @@
         />
       </template>
     </Dialog>
+
+    <!-- Dialog Orden de Compra -->
+    <Dialog v-model:visible="ocDialog" header="Nueva Orden de Compra" :modal="true" :style="{ width: '700px' }">
+      <div class="flex flex-column gap-4 pt-2">
+        <div class="grid">
+          <div class="col-6">
+            <label class="font-medium text-gray-300 block mb-1">Proveedor / Negocio *</label>
+            <InputText v-model="oc.proveedor" class="w-full" placeholder="Nombre del proveedor" />
+          </div>
+          <div class="col-3">
+            <label class="font-medium text-gray-300 block mb-1">Fecha</label>
+            <InputText v-model="oc.fecha" class="w-full" />
+          </div>
+          <div class="col-3"></div>
+        </div>
+
+        <!-- Items -->
+        <div>
+          <div class="flex align-items-center justify-content-between mb-2">
+            <label class="font-medium text-gray-300">Ítems *</label>
+            <Button label="Agregar ítem" icon="pi pi-plus" text size="small" @click="oc.items.push({descripcion:'',cantidad:1,precioUnitario:0})" />
+          </div>
+          <div class="surface-ground border-round p-2">
+            <div class="grid font-medium text-gray-400 text-sm mb-1 px-2">
+              <div class="col-6">Descripción</div><div class="col-2 text-center">Cant.</div><div class="col-3 text-right">P. Unitario</div><div class="col-1"></div>
+            </div>
+            <div v-for="(item, i) in oc.items" :key="i" class="grid align-items-center mb-1">
+              <div class="col-6"><InputText v-model="item.descripcion" class="w-full" size="small" placeholder="Descripción del ítem" /></div>
+              <div class="col-2"><InputText v-model.number="item.cantidad" class="w-full text-center" size="small" type="number" min="1" /></div>
+              <div class="col-3"><InputText v-model.number="item.precioUnitario" class="w-full text-right" size="small" type="number" min="0" placeholder="0.00" /></div>
+              <div class="col-1 text-center"><Button icon="pi pi-times" text rounded size="small" severity="danger" @click="oc.items.splice(i,1)" /></div>
+            </div>
+          </div>
+          <div class="flex justify-content-end mt-2 text-lg font-bold text-primary">
+            Total: ${{ oc.items.reduce((s,i)=>s+(i.cantidad||0)*(i.precioUnitario||0),0).toLocaleString('es-AR') }}
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="col-6">
+            <label class="font-medium text-gray-300 block mb-1">Autoriza (Club)</label>
+            <InputText v-model="oc.autoriza" class="w-full" placeholder="Nombre y cargo" />
+          </div>
+          <div class="col-6">
+            <label class="font-medium text-gray-300 block mb-1">Observaciones</label>
+            <InputText v-model="oc.observaciones" class="w-full" placeholder="Opcional" />
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Cancelar" icon="pi pi-times" text @click="ocDialog = false" />
+        <Button label="Generar PDF" icon="pi pi-file-pdf" severity="danger" @click="generarOrdenCompraPDF" :disabled="!oc.proveedor || !oc.items.length" />
+      </template>
+    </Dialog>
+
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import { movimientosService } from '@/services'
 import { useToast } from 'primevue/usetoast'
-import { useMobilePagination } from '@/composables/useMobilePagination'
-import PageHeader from '@/components/mobile/PageHeader.vue'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
-import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
+import { useClubBranding } from '@/composables/useClubBranding'
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Calendar from 'primevue/calendar'
@@ -281,6 +349,120 @@ import ReporteDistribucionDisciplinas from '@/components/contabilidad/ReporteDis
 import MovimientoFormDialog from '@/components/movimientos/MovimientoFormDialog.vue'
 
 const toast = useToast()
+const { clubName } = useClubBranding()
+
+// ── Orden de Compra ───────────────────────────────────────────────────────────
+const ocDialog = ref(false)
+const oc = ref({ proveedor: '', fecha: '', numero: '', autoriza: '', observaciones: '', items: [] })
+
+function abrirOrdenCompra() {
+  const hoy = new Date()
+  const pad = n => String(n).padStart(2, '0')
+  oc.value = {
+    proveedor: '',
+    fecha: `${pad(hoy.getDate())}/${pad(hoy.getMonth()+1)}/${hoy.getFullYear()}`,
+    numero: `OC-${hoy.getFullYear()}${pad(hoy.getMonth()+1)}${pad(hoy.getDate())}-${Math.floor(Math.random()*900+100)}`,
+    autoriza: '',
+    observaciones: '',
+    items: [{ descripcion: '', cantidad: 1, precioUnitario: 0 }]
+  }
+  ocDialog.value = true
+}
+
+function generarOrdenCompraPDF() {
+  const { proveedor, fecha, numero, autoriza, observaciones, items } = oc.value
+  const total = items.reduce((s, i) => s + (i.cantidad||0) * (i.precioUnitario||0), 0)
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+
+  doc.setFillColor(0, 0, 0)
+  doc.rect(0, 0, 210, 35, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(20); doc.setFont('helvetica', 'bold')
+  doc.text(clubName.value || 'Club', 14, 14)
+  doc.setFontSize(13); doc.setFont('helvetica', 'normal')
+  doc.text('ORDEN DE COMPRA', 14, 23)
+  doc.setFontSize(10)
+  doc.text(`Fecha: ${fecha}`, 196, 18, { align: 'right' })
+
+  doc.setTextColor(30, 30, 46)
+  doc.setFontSize(11); doc.setFont('helvetica', 'bold')
+  doc.text('Proveedor:', 14, 46)
+  doc.setFont('helvetica', 'normal')
+  doc.text(proveedor, 46, 46)
+
+  doc.setDrawColor(0)
+  doc.setLineWidth(0.5)
+  doc.line(14, 50, 196, 50)
+
+  const rows = items
+    .filter(i => i.descripcion)
+    .map((i, idx) => [
+      idx + 1,
+      i.descripcion,
+      i.cantidad,
+      `$${Number(i.precioUnitario||0).toLocaleString('es-AR', {minimumFractionDigits:2})}`,
+      `$${((i.cantidad||0)*(i.precioUnitario||0)).toLocaleString('es-AR', {minimumFractionDigits:2})}`
+    ])
+
+  autoTable(doc, {
+    startY: 55,
+    head: [['#', 'Descripci\u00f3n', 'Cant.', 'P. Unitario', 'Subtotal']],
+    body: rows,
+    theme: 'grid',
+    headStyles: { fillColor: [0, 0, 0], textColor: 255, fontStyle: 'bold', fontSize: 10 },
+    bodyStyles: { fontSize: 10, textColor: [0, 0, 0] },
+    alternateRowStyles: { fillColor: [240, 240, 240] },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 12 },
+      2: { halign: 'center', cellWidth: 18 },
+      3: { halign: 'right', cellWidth: 30 },
+      4: { halign: 'right', cellWidth: 30, fontStyle: 'bold' }
+    },
+    margin: { left: 14, right: 14 }
+  })
+
+  const afterTable = doc.lastAutoTable.finalY + 6
+
+  doc.setFillColor(0, 0, 0)
+  doc.rect(130, afterTable, 66, 10, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(12); doc.setFont('helvetica', 'bold')
+  doc.text('TOTAL:', 135, afterTable + 7)
+  doc.text(`$${total.toLocaleString('es-AR', {minimumFractionDigits:2})}`, 194, afterTable + 7, { align: 'right' })
+
+  let y = afterTable + 22
+  if (observaciones) {
+    doc.setTextColor(30, 30, 46)
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold')
+    doc.text('Observaciones:', 14, y)
+    doc.setFont('helvetica', 'normal')
+    doc.text(observaciones, 14, y + 6, { maxWidth: 180 })
+    y += 20
+  }
+
+  const firmaY = Math.max(y + 10, 240)
+  doc.setDrawColor(150); doc.setLineWidth(0.3)
+  doc.line(14, firmaY, 90, firmaY)
+  doc.line(120, firmaY, 196, firmaY)
+  doc.setFontSize(9); doc.setTextColor(100)
+  doc.text('Firma Proveedor', 52, firmaY + 5, { align: 'center' })
+  if (autoriza) {
+    doc.setFontSize(9); doc.setTextColor(30, 30, 30); doc.setFont('helvetica', 'bold')
+    doc.text(autoriza, 158, firmaY - 3, { align: 'center' })
+    doc.setFont('helvetica', 'normal')
+  }
+  doc.setFontSize(8); doc.setTextColor(120)
+  doc.text('Firma Autorizante', 158, firmaY + 5, { align: 'center' })
+
+  doc.setFillColor(0, 0, 0)
+  doc.rect(0, 282, 210, 15, 'F')
+  doc.setTextColor(180); doc.setFontSize(8); doc.setFont('helvetica', 'normal')
+  doc.text(`${clubName.value || 'Club'} \u2014 Documento generado autom\u00e1ticamente`, 105, 291, { align: 'center' })
+
+  doc.save(`orden-compra-${fecha.replace(/\//g,'-')}.pdf`)
+  ocDialog.value = false
+}
 
 // Estado
 const loading = ref(false)
@@ -400,12 +582,6 @@ const resumen = computed(() => {
 })
 
 const saldo = computed(() => resumen.value.totalIngresos - resumen.value.totalEgresos)
-
-const { page: movimientosPage, paginated: paginatedMovimientos } = useMobilePagination(
-  movimientosFiltrados,
-  10,
-  [busqueda, () => filtros.value.fechaDesde, () => filtros.value.fechaHasta, () => filtros.value.tipo, () => filtros.value.categoria]
-)
 
 const notificarCambioMovimientos = () => {
   movimientosVersion.value++
@@ -572,7 +748,7 @@ onMounted(() => {
 }
 
 .stat-icon.bg-red {
-  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--udl-red-dark) 100%);
 }
 
 .stat-icon.bg-blue {

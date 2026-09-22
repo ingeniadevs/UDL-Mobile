@@ -1,23 +1,21 @@
 <template>
   <div>
-    <PageHeader title="Espacios">
-      <template #actions>
-        <Button label="Nuevo Espacio" icon="pi pi-plus" size="small" @click="openNew" />
-      </template>
-    </PageHeader>
+    <div class="flex align-items-center justify-content-between mb-4">
+      <h1 class="text-3xl font-bold m-0" style="color: var(--text-color)">Espacios</h1>
+      <Button label="Nuevo Espacio" icon="pi pi-plus" @click="openNew" />
+    </div>
 
     <!-- Filtros y Búsqueda -->
     <div class="card mb-4">
-      <div class="flex flex-wrap align-items-center gap-3 mobile-filters">
-        <span class="p-input-icon-left w-full">
+      <div class="flex flex-wrap align-items-center gap-3">
+        <span class="p-input-icon-left">
           <i class="pi pi-search" />
-          <InputText v-model="searchTerm" placeholder="Buscar espacios..." class="w-full" />
+          <InputText v-model="searchTerm" placeholder="Buscar espacios..." />
         </span>
         <Dropdown 
           v-model="selectedTipo" 
           :options="tiposEspacio" 
           placeholder="Todos los tipos"
-          class="w-full"
           showClear
         />
         <Dropdown 
@@ -26,10 +24,9 @@
           optionLabel="label"
           optionValue="value"
           placeholder="Todos los estados"
-          class="w-full"
           showClear
         />
-        <div class="flex align-items-center gap-2">
+        <div class="flex align-items-center gap-2 ml-auto">
           <span class="text-gray-400 text-sm">{{ filteredEspacios.length }} espacios</span>
         </div>
       </div>
@@ -327,7 +324,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { espaciosService, adminsService } from '@/services'
-import PageHeader from '@/components/mobile/PageHeader.vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'

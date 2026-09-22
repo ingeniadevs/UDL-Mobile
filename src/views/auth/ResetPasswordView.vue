@@ -3,7 +3,7 @@
     <div class="reset-card p-6 w-full lg:w-4">
       <div class="text-center mb-5">
         <div class="logo-container mb-4">
-          <img src="/images/logo-udl.png" alt="UDL" class="logo-image" />
+          <img :src="clubLogo" :alt="clubLogoAlt" class="logo-image" @error="onClubLogoError" />
         </div>
         <div class="page-title text-3xl font-bold mb-2">Recuperar Contraseña</div>
         <span class="text-gray-400 font-medium">Ingresá tu nueva contraseña</span>
@@ -73,12 +73,16 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { authService } from '@/services'
+import { useClubBranding, hydrateClubBranding } from '@/composables/useClubBranding'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 
 const router = useRouter()
 const route = useRoute()
+const { logoUrl, logoAlt, onClubLogoError } = useClubBranding()
+const clubLogo = logoUrl
+const clubLogoAlt = logoAlt
 
 const password = ref('')
 const confirmPassword = ref('')
@@ -90,6 +94,7 @@ const successMessage = ref('')
 const token = ref('')
 
 onMounted(() => {
+  hydrateClubBranding()
   token.value = route.query.token || ''
   if (!token.value) {
     errorMessage.value = 'Token inválido. Solicitá nuevamente la recuperación de contraseña.'

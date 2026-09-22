@@ -1,5 +1,5 @@
 <template>  <div class="carnet-container">
-    <PageHeader title="Mi Carnet Digital" />
+    <h1 class="text-3xl font-bold mb-4 text-center">Mi Carnet Digital</h1>
 
     <div v-if="loading" class="flex justify-content-center p-5">
       <ProgressSpinner />
@@ -11,7 +11,7 @@
         <!-- Anverso -->
         <div class="carnet-front">
           <div class="carnet-header">
-            <img :src="clubLogo" :alt="clubLogoAlt" class="carnet-logo" />
+            <img :src="clubLogo" :alt="clubLogoAlt" class="carnet-logo" @error="onClubLogoError" />
             <h3>{{ clubHeaderName }}</h3>
             <p class="subtitle">CARNET DE SOCIO</p>
           </div>
@@ -78,24 +78,18 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
-import { sociosService } from '@/services'
 import { useClubBranding } from '@/composables/useClubBranding'
-import { resolveAssetUrl } from '@/utils/assetUrl'
-import PageHeader from '@/components/mobile/PageHeader.vue'
+import { sociosService } from '@/services'
 import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
 import ProgressSpinner from 'primevue/progressspinner'
 import html2canvas from 'html2canvas'
-import { Share } from '@capacitor/share'
-import { Capacitor } from '@capacitor/core'
-import { shareDataUrl } from '@/platform/files'
-import { copyToClipboard } from '@/platform/clipboard'
 
 const toast = useToast()
-const { branding, clubName } = useClubBranding()
-const clubLogo = computed(() => resolveAssetUrl(branding.value.logo))
-const clubLogoAlt = computed(() => branding.value.logoAlt || branding.value.shortName || 'Club')
-const clubHeaderName = computed(() => (branding.value.name || clubName.value || 'Club').toUpperCase())
+const { clubName, logoUrl, logoAlt, onClubLogoError } = useClubBranding()
+const clubLogo = logoUrl
+const clubLogoAlt = logoAlt
+const clubHeaderName = computed(() => (clubName.value || 'Club').toUpperCase())
 
 const carnet = ref(null)
 const loading = ref(true)
@@ -140,9 +134,11 @@ async function descargarCarnet() {
       scale: 2,
       logging: false
     })
-
-    const dataUrl = canvas.toDataURL('image/png')
-    await shareDataUrl(dataUrl, `carnet-socio-${carnet.value.numeroSocio}.png`)
+    
+    const link = document.createElement('a')
+    link.download = `carnet-socio-${carnet.value.numeroSocio}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
 
     toast.add({ 
       severity: 'success', 
@@ -165,30 +161,22 @@ async function descargarCarnet() {
 
 async function compartirCarnet() {
   try {
-    const text = `Socio N° ${carnet.value.numeroSocio} - ${carnet.value.nombreCompleto}`
-    if (Capacitor.isNativePlatform()) {
-      await Share.share({
-        title: `Mi Carnet - ${clubName.value || 'Club'}`,
-        text,
-        dialogTitle: 'Compartir carnet'
-      })
-      return
-    }
     if (navigator.share) {
       await navigator.share({
         title: `Mi Carnet - ${clubName.value || 'Club'}`,
-        text,
+        text: `Socio N° ${carnet.value.numeroSocio} - ${carnet.value.nombreCompleto}`,
         url: window.location.href
       })
-      return
+    } else {
+      // Fallback: copiar link al portapapeles
+      await navigator.clipboard.writeText(window.location.href)
+      toast.add({ 
+        severity: 'info', 
+        summary: 'Copiado', 
+        detail: 'Link copiado al portapapeles', 
+        life: 3000 
+      })
     }
-    const ok = await copyToClipboard(text)
-    toast.add({
-      severity: ok ? 'info' : 'warn',
-      summary: ok ? 'Copiado' : 'Compartir',
-      detail: ok ? 'Datos del carnet copiados' : 'Usá descargar para compartir la imagen',
-      life: 3000
-    })
   } catch (error) {
     console.error('Error sharing:', error)
   }
@@ -215,7 +203,7 @@ onMounted(() => {
   border-radius: 20px;
   padding: 30px 20px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-  border: 2px solid rgba(220, 38, 38, 0.3);
+  border: 2px solid color-mix(in srgb, var(--primary-color) 30%, transparent);
   position: relative;
   overflow: hidden;
 }
@@ -227,7 +215,7 @@ onMounted(() => {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #dc2626, #991b1b);
+  background: linear-gradient(90deg, var(--primary-color), var(--udl-red-dark));
 }
 
 .carnet-front,
@@ -240,7 +228,7 @@ onMounted(() => {
 
 .carnet-header {
   text-align: center;
-  border-bottom: 2px solid rgba(220, 38, 38, 0.3);
+  border-bottom: 2px solid color-mix(in srgb, var(--primary-color) 30%, transparent);
   padding-bottom: 15px;
   width: 100%;
 }
@@ -253,7 +241,7 @@ onMounted(() => {
 }
 
 .carnet-header h3 {
-  color: #dc2626;
+  color: var(--primary-color);
   font-size: 1.2rem;
   font-weight: 700;
   margin: 0;
@@ -278,8 +266,8 @@ onMounted(() => {
   height: 120px;
   border-radius: 50%;
   overflow: hidden;
-  border: 4px solid #dc2626;
-  box-shadow: 0 4px 20px rgba(220, 38, 38, 0.3);
+  border: 4px solid var(--primary-color);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--primary-color) 30%, transparent);
   background: #e2e8f0;
 }
 
@@ -347,7 +335,7 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding-top: 15px;
-  border-top: 2px solid rgba(220, 38, 38, 0.3);
+  border-top: 2px solid color-mix(in srgb, var(--primary-color) 30%, transparent);
   width: 100%;
 }
 
@@ -371,12 +359,12 @@ onMounted(() => {
 /* Reverso */
 .carnet-back {
   padding-top: 10px;
-  border-top: 2px solid rgba(220, 38, 38, 0.3);
+  border-top: 2px solid color-mix(in srgb, var(--primary-color) 30%, transparent);
   width: 100%;
 }
 
 .carnet-back h4 {
-  color: #dc2626;
+  color: var(--primary-color);
   font-size: 1.1rem;
   margin: 0 0 15px 0;
   text-align: center;
@@ -394,7 +382,7 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  background: rgba(220, 38, 38, 0.07);
+  background: color-mix(in srgb, var(--primary-color) 7%, transparent);
   border-radius: 8px;
   color: #0f172a;
   font-size: 0.9rem;
@@ -436,12 +424,12 @@ onMounted(() => {
   padding: 15px;
   background: var(--surface-card);
   border-radius: 10px;
-  border-left: 4px solid #dc2626;
+  border-left: 4px solid var(--primary-color);
 }
 
 .info-card i {
   font-size: 1.5rem;
-  color: #dc2626;
+  color: var(--primary-color);
 }
 
 .info-card .label {

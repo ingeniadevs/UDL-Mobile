@@ -192,13 +192,13 @@ function removeImage() {
 }
 
 .upload-area:hover {
-  border-color: #dc2626;
-  background: rgba(220, 38, 38, 0.05);
+  border-color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 5%, transparent);
 }
 
 .upload-area.dragging {
-  border-color: #dc2626;
-  background: rgba(220, 38, 38, 0.1);
+  border-color: var(--primary-color);
+  background: var(--udl-red-hover);
 }
 
 .upload-area.has-image {
@@ -220,7 +220,7 @@ function removeImage() {
 
 .upload-placeholder i {
   font-size: 2.5rem;
-  color: #dc2626;
+  color: var(--primary-color);
 }
 
 .upload-placeholder span {

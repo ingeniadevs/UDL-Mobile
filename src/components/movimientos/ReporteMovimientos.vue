@@ -126,7 +126,7 @@
       <div class="grid mb-4" id="reporte-contenido">
         <div class="col-12">
           <div class="text-center mb-4">
-            <h2 class="m-0">Club Socios UDL</h2>
+            <h2 class="m-0">{{ clubName }}</h2>
             <h3 class="m-0 text-gray-600">Reporte de Movimientos</h3>
             <p class="m-0 text-sm text-gray-500">
               Período: {{ formatFecha(filtros.fechaDesde) }} - {{ formatFecha(filtros.fechaHasta) }}
@@ -257,6 +257,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
+import { useClubBranding } from '@/composables/useClubBranding'
 import { movimientosService } from '@/services'
 import Calendar from 'primevue/calendar'
 import Button from 'primevue/button'
@@ -272,6 +273,7 @@ const props = defineProps({
 
 // Estado
 const toast = useToast()
+const { clubName } = useClubBranding()
 const loading = ref(false)
 const loadingCategorias = ref(false)
 const reporte = ref(null)

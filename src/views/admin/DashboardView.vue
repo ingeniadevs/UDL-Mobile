@@ -1,6 +1,8 @@
 <template>
   <div>
-    <PageHeader title="Dashboard Financiero" />
+    <div class="flex justify-content-between align-items-center mb-4">
+      <h1 class="text-3xl font-bold page-title m-0">Dashboard Financiero</h1>
+    </div>
     
     <!-- Stats Cards -->
     <div class="grid">
@@ -190,66 +192,50 @@
       <div class="col-12 lg:col-6">
         <div class="card">
           <h3 class="text-xl font-semibold mb-4 card-title">Últimos Pagos</h3>
-          <div v-if="!(stats.ultimosPagos?.length)" class="text-center text-gray-400 py-3">
-            No hay pagos recientes
-          </div>
-          <div v-else class="mobile-card-list">
-            <MobileRecordCard
-              v-for="pago in stats.ultimosPagos"
-              :key="pago.id || `${pago.socioNombre}-${pago.concepto}`"
-              :title="pago.socioNombre"
-              :subtitle="pago.concepto"
-            >
-              <template #tags>
+          <DataTable :value="stats.ultimosPagos" :rows="5" class="p-datatable-sm">
+            <Column field="socioNombre" header="Socio" style="min-width: 150px"></Column>
+            <Column field="concepto" header="Concepto" style="min-width: 150px"></Column>
+            <Column header="Monto" style="min-width: 100px">
+              <template #body="slotProps">
+                ${{ slotProps.data.monto?.toLocaleString() }}
+              </template>
+            </Column>
+            <Column header="Estado">
+              <template #body="slotProps">
                 <Tag severity="success" value="Pagado" icon="pi pi-check" />
               </template>
-              <template #body>
-                <div class="record-card__row">
-                  <span class="record-card__label">Monto</span>
-                  <span class="record-card__value">${{ pago.monto?.toLocaleString() }}</span>
-                </div>
-              </template>
-            </MobileRecordCard>
-          </div>
+            </Column>
+          </DataTable>
         </div>
       </div>
 
       <div class="col-12 lg:col-6">
         <div class="card">
           <h3 class="text-xl font-semibold mb-4 card-title">Pagos Pendientes</h3>
-          <div v-if="!(stats.pagosPendientesDetalle?.length)" class="text-center text-gray-400 py-3">
-            No hay pagos pendientes
-          </div>
-          <template v-else>
-            <div class="mobile-card-list">
-              <MobileRecordCard
-                v-for="pago in paginatedPendientes"
-                :key="pago.id || `${pago.socioNombre}-${pago.concepto}-${pago.fecha}`"
-                :title="pago.socioNombre"
-                :subtitle="pago.concepto"
-              >
-                <template #tags>
-                  <Tag
-                    :severity="pago.estado?.toLowerCase() === 'vencido' ? 'danger' : 'warning'"
-                    :value="pago.estado?.toLowerCase() === 'vencido' ? 'Vencido' : 'Pendiente'"
-                  />
-                </template>
-                <template #body>
-                  <div class="record-card__row">
-                    <span class="record-card__label">Monto</span>
-                    <span class="record-card__value">${{ pago.monto?.toLocaleString() }}</span>
-                  </div>
-                  <div class="record-card__row">
-                    <span class="record-card__label">Vencimiento</span>
-                    <span class="record-card__value" :class="isVencido(pago.fecha) ? 'text-red-400' : ''">
-                      {{ formatFecha(pago.fecha) }}
-                    </span>
-                  </div>
-                </template>
-              </MobileRecordCard>
-            </div>
-            <MobilePaginator v-model:page="pendientesPage" :rows="5" :total="pagosPendientesList.length" />
-          </template>
+          <DataTable :value="stats.pagosPendientesDetalle" :rows="10" class="p-datatable-sm" paginator>
+            <Column field="socioNombre" header="Socio" style="min-width: 150px"></Column>
+            <Column field="concepto" header="Concepto" style="min-width: 150px"></Column>
+            <Column header="Monto">
+              <template #body="slotProps">
+                ${{ slotProps.data.monto?.toLocaleString() }}
+              </template>
+            </Column>
+            <Column header="Estado">
+              <template #body="slotProps">
+                <Tag
+                  :severity="slotProps.data.estado?.toLowerCase() === 'vencido' ? 'danger' : 'warning'"
+                  :value="slotProps.data.estado?.toLowerCase() === 'vencido' ? 'Vencido' : 'Pendiente'"
+                />
+              </template>
+            </Column>
+            <Column header="Vencimiento">
+              <template #body="slotProps">
+                <span :class="isVencido(slotProps.data.fecha) ? 'text-red-400' : 'text-gray-400'">
+                  {{ formatFecha(slotProps.data.fecha) }}
+                </span>
+              </template>
+            </Column>
+          </DataTable>
         </div>
       </div>
     </div>
@@ -257,14 +243,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onActivated } from 'vue'
+import { ref, onMounted, onActivated } from 'vue'
 import { estadisticasService } from '@/services'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'primevue/usetoast'
-import { useMobilePagination } from '@/composables/useMobilePagination'
-import PageHeader from '@/components/mobile/PageHeader.vue'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
-import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import ProgressBar from 'primevue/progressbar'
 import Divider from 'primevue/divider'
@@ -302,9 +286,6 @@ const stats = ref({
   empleadosActivos: 0,
   valorCuotaSocioPromedio: 0
 })
-
-const pagosPendientesList = computed(() => stats.value.pagosPendientesDetalle || [])
-const { page: pendientesPage, paginated: paginatedPendientes } = useMobilePagination(pagosPendientesList, 5)
 
 function formatNumber(num) {
   if (!num) return '0'
@@ -405,7 +386,7 @@ onActivated(() => {
 }
 
 .stat-icon.bg-red {
-  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--udl-red-dark) 100%);
 }
 
 .stat-icon.bg-yellow {

@@ -55,145 +55,141 @@
     </div>
 
     <div class="card table-card">
-      <div class="table-toolbar mb-3">
-        <span class="table-toolbar__title">
-          {{ filteredItems.length }} de {{ items.length }} registro(s)
-        </span>
-        <span class="p-input-icon-left search-box">
-          <i class="pi pi-search" />
-          <InputText v-model="globalSearch" placeholder="Búsqueda rápida..." />
-        </span>
-      </div>
+      <DataTable
+        :value="filteredItems"
+        :loading="loading"
+        v-model:selection="selectionModel"
+        :selection-mode="tipo !== 'Pedido' ? 'multiple' : undefined"
+        dataKey="id"
+        paginator
+        :rows="10"
+        :rowsPerPageOptions="[10, 25, 50]"
+        responsiveLayout="scroll"
+        stripedRows
+        removableSort
+        class="p-datatable-sm notif-datatable"
+        :globalFilterFields="globalFields"
+        v-model:filters="tableFilters"
+      >
+        <template #header>
+          <div class="table-toolbar">
+            <span class="table-toolbar__title">
+              {{ filteredItems.length }} de {{ items.length }} registro(s)
+            </span>
+            <span class="p-input-icon-left search-box">
+              <i class="pi pi-search" />
+              <InputText v-model="globalSearch" placeholder="Búsqueda rápida..." />
+            </span>
+          </div>
+        </template>
 
-      <div v-if="loading" class="flex justify-content-center py-5">
-        <i class="pi pi-spin pi-spinner text-2xl text-gray-400"></i>
-      </div>
-      <div v-else-if="filteredItems.length === 0" class="empty-queue">
-        <i class="pi pi-inbox" />
-        <p>No hay notificaciones en cola</p>
-        <small v-if="hasActiveFilters">Probá limpiar los filtros</small>
-        <small v-else>Usá «Sincronizar cola» o esperá al proceso automático</small>
-      </div>
-      <template v-else>
-        <div class="mobile-card-list">
-          <MobileRecordCard
-            v-for="item in paginatedItems"
-            :key="item.id"
-            :title="item.cliente"
-            :subtitle="item.telefono || 'Sin teléfono'"
-          >
-            <template v-if="tipo !== 'Pedido'" #leading>
-              <Checkbox
-                :modelValue="isSelected(item)"
-                :binary="true"
-                @update:modelValue="toggleSelected(item, $event)"
-              />
-            </template>
-            <template #tags>
-              <Tag :value="estadoEnvioLabel(item.estadoEnvio)" :severity="estadoSeverity(item.estadoEnvio)" />
-              <Tag v-if="!item.telefono" value="Sin teléfono" severity="warning" />
-            </template>
-            <template #body>
-              <div v-if="tipo === 'Vencimiento'" class="record-card__row">
-                <span class="record-card__label">N° Socio</span>
-                <span class="record-card__value">{{ item.numeroSocio || '—' }}</span>
-              </div>
-              <div v-if="tipo === 'Vencimiento'" class="record-card__row">
-                <span class="record-card__label">Vencimiento</span>
-                <span class="record-card__value">{{ item.fechaVencimiento || '—' }}</span>
-              </div>
-              <div v-if="tipo === 'Vencimiento'" class="record-card__row">
-                <span class="record-card__label">Monto</span>
-                <span class="record-card__value monto-cell">${{ formatMonto(item.monto) }}</span>
-              </div>
-              <div v-if="tipo === 'Vencimiento'" class="record-card__row">
-                <span class="record-card__label">Recordatorio</span>
-                <Tag :value="subTipoVencLabel(item.subTipo)" severity="info" />
-              </div>
-              <div v-if="tipo === 'Reserva'" class="record-card__row">
-                <span class="record-card__label">Fecha</span>
-                <span class="record-card__value">{{ item.fechaReserva || '—' }}</span>
-              </div>
-              <div v-if="tipo === 'Reserva'" class="record-card__row">
-                <span class="record-card__label">Hora</span>
-                <span class="record-card__value">{{ item.horaReserva || '—' }}</span>
-              </div>
-              <div v-if="tipo === 'Reserva'" class="record-card__row">
-                <span class="record-card__label">Reserva</span>
-                <Tag :value="item.estadoReserva" severity="success" />
-              </div>
-              <div v-if="pedidoMode" class="record-card__row">
-                <span class="record-card__label">N° Pedido</span>
-                <span class="record-card__value">{{ item.numeroPedido || '—' }}</span>
-              </div>
-              <div v-if="pedidoMode" class="record-card__row">
-                <span class="record-card__label">Cambio</span>
-                <span class="record-card__value">{{ item.estadoAnterior }} → {{ item.estadoNuevo }}</span>
-              </div>
-              <div v-if="pedidoMode" class="record-card__row">
-                <span class="record-card__label">Fecha</span>
-                <span class="record-card__value">{{ item.fechaCambio || '—' }}</span>
-              </div>
-              <div class="record-card__row">
-                <span class="record-card__label">Último envío</span>
-                <span class="record-card__value">{{ item.fechaUltimoEnvio || '—' }}</span>
-              </div>
-            </template>
-            <template #actions>
+        <template #empty>
+          <div class="empty-queue">
+            <i class="pi pi-inbox" />
+            <p>No hay notificaciones en cola</p>
+            <small v-if="hasActiveFilters">Probá limpiar los filtros</small>
+            <small v-else>Usá «Sincronizar cola» o esperá al proceso automático</small>
+          </div>
+        </template>
+
+        <Column v-if="tipo !== 'Pedido'" selectionMode="multiple" headerStyle="width: 3rem" />
+
+        <Column field="cliente" header="Cliente" sortable style="min-width: 140px" />
+        <Column v-if="tipo === 'Vencimiento'" field="numeroSocio" header="N° Socio" sortable style="min-width: 90px" />
+        <Column field="telefono" header="Teléfono" style="min-width: 120px">
+          <template #body="{ data }">
+            <span v-if="data.telefono">{{ data.telefono }}</span>
+            <Tag v-else value="Sin teléfono" severity="warning" />
+          </template>
+        </Column>
+
+        <Column v-if="tipo === 'Vencimiento'" field="fechaVencimiento" header="Vencimiento" sortable />
+        <Column v-if="tipo === 'Vencimiento'" field="monto" header="Monto" sortable>
+          <template #body="{ data }">
+            <span class="monto-cell">${{ formatMonto(data.monto) }}</span>
+          </template>
+        </Column>
+        <Column v-if="tipo === 'Vencimiento'" field="subTipo" header="Recordatorio">
+          <template #body="{ data }">
+            <Tag :value="subTipoVencLabel(data.subTipo)" severity="info" />
+          </template>
+        </Column>
+
+        <Column v-if="tipo === 'Reserva'" field="fechaReserva" header="Fecha" sortable />
+        <Column v-if="tipo === 'Reserva'" field="horaReserva" header="Hora" sortable />
+        <Column v-if="tipo === 'Reserva'" field="estadoReserva" header="Reserva">
+          <template #body="{ data }">
+            <Tag :value="data.estadoReserva" severity="success" />
+          </template>
+        </Column>
+
+        <Column v-if="pedidoMode" field="numeroPedido" header="N° Pedido" sortable />
+        <Column v-if="pedidoMode" field="estadoAnterior" header="Antes" />
+        <Column v-if="pedidoMode" field="estadoNuevo" header="Nuevo" />
+        <Column v-if="pedidoMode" field="fechaCambio" header="Cambio" sortable />
+
+        <Column field="estadoEnvio" header="Envío" sortable>
+          <template #body="{ data }">
+            <Tag :value="estadoEnvioLabel(data.estadoEnvio)" :severity="estadoSeverity(data.estadoEnvio)" />
+          </template>
+        </Column>
+        <Column field="fechaUltimoEnvio" header="Último" sortable>
+          <template #body="{ data }">
+            {{ data.fechaUltimoEnvio || '—' }}
+          </template>
+        </Column>
+
+        <Column header="Acciones" style="min-width: 11rem">
+          <template #body="{ data }">
+            <div class="action-btns">
               <Button
-                v-if="item.puedeWhatsApp"
+                v-if="data.puedeWhatsApp"
                 icon="pi pi-whatsapp"
                 rounded
                 severity="success"
-                size="small"
                 v-tooltip.top="'Abrir WhatsApp'"
-                @click="$emit('whatsapp', mapRow(item))"
+                @click="$emit('whatsapp', mapRow(data))"
               />
               <Button
                 v-else
                 icon="pi pi-whatsapp"
                 rounded
                 severity="secondary"
-                size="small"
                 disabled
-                v-tooltip.top="item.telefonoError || 'Sin teléfono válido'"
+                v-tooltip.top="data.telefonoError || 'Sin teléfono válido'"
               />
               <Button
                 icon="pi pi-play"
                 rounded
                 text
                 severity="info"
-                size="small"
                 v-tooltip.top="'Simular'"
-                @click="$emit('simular', mapRow(item))"
+                @click="$emit('simular', mapRow(data))"
               />
               <Button
                 icon="pi pi-replay"
                 rounded
                 text
-                size="small"
                 v-tooltip.top="'Reintentar'"
-                @click="$emit('reintentar', mapRow(item))"
+                @click="$emit('reintentar', mapRow(data))"
               />
-            </template>
-          </MobileRecordCard>
-        </div>
-        <MobilePaginator v-model:page="queuePage" :rows="10" :total="filteredItems.length" />
-      </template>
+            </div>
+          </template>
+        </Column>
+      </DataTable>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useMobilePagination } from '@/composables/useMobilePagination'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
-import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
+import { ref, computed, watch } from 'vue'
+import { FilterMatchMode } from 'primevue/api'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
 import Calendar from 'primevue/calendar'
-import Checkbox from 'primevue/checkbox'
 import Tag from 'primevue/tag'
 
 const props = defineProps({
@@ -218,15 +214,25 @@ const selectionModel = computed({
   set: (v) => emit('update:selected', v)
 })
 
+const tableFilters = ref({
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+})
+
 const globalSearch = ref('')
+let globalSearchTimer
+watch(globalSearch, (value) => {
+  clearTimeout(globalSearchTimer)
+  globalSearchTimer = setTimeout(() => {
+    tableFilters.value.global.value = value || null
+  }, 300)
+})
 
 const hasActiveFilters = computed(() => {
   const f = localFilters.value
   return Boolean(
     (f.cliente && f.cliente.trim()) ||
     f.fecha ||
-    f.estado ||
-    (globalSearch.value && globalSearch.value.trim())
+    f.estado
   )
 })
 
@@ -250,7 +256,6 @@ function isSameCalendarDay(a, b) {
 const filteredItems = computed(() => {
   let rows = props.items || []
   const q = (localFilters.value.cliente || '').trim().toLowerCase()
-  const globalQ = (globalSearch.value || '').trim().toLowerCase()
 
   if (q) {
     rows = rows.filter((r) => {
@@ -263,25 +268,6 @@ const filteredItems = computed(() => {
         .filter(Boolean)
         .map((s) => String(s).toLowerCase())
       return hay.some((s) => s.includes(q))
-    })
-  }
-
-  if (globalQ) {
-    rows = rows.filter((r) => {
-      const hay = [
-        r.cliente,
-        r.numeroSocio,
-        r.numeroPedido,
-        r.telefono,
-        r.fechaVencimiento,
-        r.fechaReserva,
-        r.horaReserva,
-        r.estadoNuevo,
-        r.estadoAnterior
-      ]
-        .filter(Boolean)
-        .map((s) => String(s).toLowerCase())
-      return hay.some((s) => s.includes(globalQ))
     })
   }
 
@@ -301,28 +287,16 @@ const filteredItems = computed(() => {
   return rows
 })
 
-const { page: queuePage, paginated: paginatedItems } = useMobilePagination(
-  filteredItems,
-  10,
-  [() => localFilters.value.cliente, () => localFilters.value.fecha, () => localFilters.value.estado, globalSearch]
-)
-
-function isSelected(item) {
-  return (selectionModel.value || []).some((s) => s.id === item.id)
-}
-
-function toggleSelected(item, checked) {
-  const current = selectionModel.value || []
-  if (checked) {
-    if (!isSelected(item)) selectionModel.value = [...current, item]
-  } else {
-    selectionModel.value = current.filter((s) => s.id !== item.id)
-  }
-}
+const globalFields = computed(() => {
+  if (props.tipo === 'Vencimiento') return ['cliente', 'numeroSocio', 'telefono', 'fechaVencimiento']
+  if (props.tipo === 'Reserva') return ['cliente', 'telefono', 'horaReserva', 'fechaReserva']
+  return ['cliente', 'numeroPedido', 'estadoNuevo', 'estadoAnterior']
+})
 
 function clearFilters() {
   localFilters.value = { cliente: '', fecha: null, estado: null }
   globalSearch.value = ''
+  tableFilters.value.global.value = null
 }
 
 function mapRow(data) {

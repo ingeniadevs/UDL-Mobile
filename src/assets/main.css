@@ -3,12 +3,16 @@
    Variables custom + overrides PrimeVue para lara-light/dark-teal
    ============================================================ */
 
-/* Variables base (siempre) */
+/* Variables base (siempre). --primary-color se setea por tenant en useClubBranding. */
 :root {
-  --udl-red:        #dc2626;
-  --udl-red-dark:   #991b1b;
-  --udl-red-hover:  rgba(220, 38, 38, 0.1);
-  --udl-red-active: rgba(220, 38, 38, 0.15);
+  --club-primary: var(--primary-color, #64748b);
+  --club-primary-dark: var(--udl-red-dark, #475569);
+  --udl-red: var(--primary-color, #64748b);
+  --udl-red-dark: var(--club-primary-dark);
+  --udl-red-hover: color-mix(in srgb, var(--primary-color, #64748b) 10%, transparent);
+  --udl-red-active: color-mix(in srgb, var(--primary-color, #64748b) 15%, transparent);
+  --focus-ring-shadow: color-mix(in srgb, var(--primary-color, #64748b) 25%, transparent);
+  --focus-ring-input: color-mix(in srgb, var(--primary-color, #64748b) 15%, transparent);
 }
 
 /* Fix: icono dentro de inputs (p-input-icon-left) */
@@ -37,11 +41,10 @@ html.theme-light {
   --surface-section: #f3f4f6;
   --surface-card:    #ffffff;
   --surface-overlay: #ffffff;
-  --surface-hover:   rgba(220, 38, 38, 0.05);
+  --surface-hover:   color-mix(in srgb, var(--primary-color, #64748b) 5%, transparent);
   --surface-border:  #e5e7eb;
-  --primary-color:   #dc2626;
   --primary-color-text: #ffffff;
-  --highlight-bg:    rgba(220, 38, 38, 0.08);
+  --highlight-bg:    color-mix(in srgb, var(--primary-color, #64748b) 8%, transparent);
   --text-color:           #111827;
   --text-color-secondary: #6b7280;
 }
@@ -73,7 +76,7 @@ html.theme-light .p-datatable .p-datatable-tbody > tr {
   color: #111827 !important;
 }
 html.theme-light .p-datatable .p-datatable-tbody > tr:hover {
-  background: rgba(220, 38, 38, 0.04) !important;
+  background: color-mix(in srgb, var(--primary-color, #64748b) 4%, transparent) !important;
 }
 
 /* Inputs en modo claro */
@@ -120,11 +123,10 @@ html.theme-dark {
   --surface-e:       #161616;
   --surface-f:       #161616;
   --surface-border:  rgba(255, 255, 255, 0.08);
-  --surface-hover:   rgba(220, 38, 38, 0.06);
-  --primary-color:   #dc2626;
+  --surface-hover:   color-mix(in srgb, var(--primary-color, #64748b) 6%, transparent);
   --primary-color-text: #ffffff;
-  --highlight-bg:    rgba(220, 38, 38, 0.14);
-  --focus-ring:      0 0 0 0.2rem rgba(220, 38, 38, 0.25);
+  --highlight-bg:    color-mix(in srgb, var(--primary-color, #64748b) 14%, transparent);
+  --focus-ring:      0 0 0 0.2rem color-mix(in srgb, var(--primary-color, #64748b) 25%, transparent);
   --text-color:           #f9fafb;
   --text-color-secondary: #9ca3af;
 }
@@ -160,7 +162,7 @@ html.theme-dark .p-datatable .p-datatable-tbody > tr {
 }
 
 html.theme-dark .p-datatable .p-datatable-tbody > tr:hover {
-  background: rgba(220, 38, 38, 0.06) !important;
+  background: color-mix(in srgb, var(--primary-color, #64748b) 6%, transparent) !important;
 }
 
 html.theme-dark body,
@@ -204,7 +206,7 @@ a:hover { text-decoration: underline; }
   border-color: var(--udl-red-dark) !important;
 }
 .p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(.p-button-secondary):not(.p-button-success):not(.p-button-info):not(.p-button-warning):not(.p-button-danger):focus {
-  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25) !important;
+  box-shadow: 0 0 0 2px var(--focus-ring-shadow) !important;
 }
 
 /* Checkbox checked */
@@ -230,7 +232,7 @@ a:hover { text-decoration: underline; }
 .p-dropdown:not(.p-disabled).p-focus,
 .p-multiselect:not(.p-disabled).p-focus {
   border-color: var(--udl-red) !important;
-  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15) !important;
+  box-shadow: 0 0 0 2px var(--focus-ring-input) !important;
 }
 
 /* Paginator */
@@ -288,7 +290,7 @@ a:hover { text-decoration: underline; }
 /* ── OVERRIDE COLOR PRIMARIO: reemplazar teal por rojo UDL en AMBOS temas ── */
 
 /* Ripple / highlight */
-.p-ink { background: rgba(220, 38, 38, 0.3) !important; }
+.p-ink { background: color-mix(in srgb, var(--primary-color, #64748b) 30%, transparent) !important; }
 
 /* Focus ring global */
 .p-focus-ring,

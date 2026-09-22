@@ -420,7 +420,7 @@ watch(() => props.refreshKey, () => {
 }
 
 .stat-icon.bg-green { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); }
-.stat-icon.bg-red { background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); }
+.stat-icon.bg-red { background: linear-gradient(135deg, var(--primary-color) 0%, var(--udl-red-dark) 100%); }
 .stat-icon.bg-blue { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); }
 .stat-icon.bg-orange { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
 .stat-icon.bg-purple { background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%); }

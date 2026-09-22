@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageHeader title="Mi Perfil" />
+    <h1 class="text-3xl font-bold mb-4" style="color: var(--text-color)">Mi Perfil</h1>
 
     <div v-if="loading" class="flex justify-content-center p-5">
       <ProgressSpinner />
@@ -283,7 +283,6 @@ import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
 import { sociosService, authService, uploadService } from '@/services'
 import { planesService } from '@/services/planesService'
-import PageHeader from '@/components/mobile/PageHeader.vue'
 import Avatar from 'primevue/avatar'
 import InputSwitch from 'primevue/inputswitch'
 import Tag from 'primevue/tag'
@@ -611,6 +610,6 @@ onMounted(() => {
 }
 
 .avatar-red {
-  background-color: #dc2626 !important;
+  background-color: var(--primary-color) !important;
 }
 </style>

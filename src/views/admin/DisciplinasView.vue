@@ -1,10 +1,10 @@
 ﻿<template>
   <div>
-    <PageHeader title="Disciplinas">
-      <template #actions>
-        <Button v-if="isMaster" label="Nueva Disciplina" icon="pi pi-plus" size="small" @click="openNew" />
-      </template>
-    </PageHeader>
+    <!-- Header -->
+    <div class="flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+      <h1 class="text-3xl font-bold m-0" style="color: var(--text-color)">Disciplinas</h1>
+      <Button v-if="isMaster" label="Nueva Disciplina" icon="pi pi-plus" @click="openNew" />
+    </div>
 
     <!-- Stats Cards -->
     <div v-if="isMaster" class="grid mb-4">
@@ -76,77 +76,142 @@
             style="width:150px"
           />
         </div>
-        <Button icon="pi pi-filter-slash" label="Limpiar" outlined severity="secondary" size="small" @click="limpiarFiltros" />
+        <div class="flex flex-column gap-1">
+          <label class="text-gray-400 text-sm">Vista</label>
+          <div class="flex gap-2">
+            <Button icon="pi pi-th-large" size="small" v-tooltip="'Grid'" @click="vistaGrid = true" :outlined="!vistaGrid" />
+            <Button icon="pi pi-list" size="small" v-tooltip="'Lista'" @click="vistaGrid = false" :outlined="vistaGrid" />
+          </div>
+        </div>
+        <Button icon="pi pi-filter-slash" label="Limpiar" outlined severity="secondary" @click="limpiarFiltros" />
       </div>
     </div>
 
-    <div v-if="loading" class="flex justify-content-center py-5">
-      <ProgressSpinner />
-    </div>
-    <template v-else>
-      <div v-if="disciplinasFiltradas.length === 0" class="card text-center py-6">
-        <i class="pi pi-list text-5xl text-gray-600 mb-3 block"></i>
-        <p class="text-gray-400 text-lg">No se encontraron disciplinas</p>
-        <Button v-if="isMaster" label="Nueva Disciplina" icon="pi pi-plus" class="mt-2" size="small" @click="openNew" />
+    <!-- Loading skeleton -->
+    <div v-if="loading" class="grid">
+      <div v-for="i in 6" :key="i" class="col-12 md:col-6 lg:col-4">
+        <div class="card">
+          <Skeleton height="140px" class="mb-3" />
+          <Skeleton height="20px" class="mb-2" />
+          <Skeleton height="16px" width="60%" />
+        </div>
       </div>
-      <div v-else class="mobile-card-list">
-        <MobileRecordCard
-          v-for="disc in paginatedDisciplinas"
-          :key="disc.id"
-          :title="disc.nombre"
-          :subtitle="disc.empleadoNombre || 'Sin instructor'"
-          :class="{ 'opacity-60': !disc.activa }"
-          @click="openDetalle(disc)"
-        >
-          <template #leading>
-            <div class="disc-avatar" :style="{ background: getColor(disc.nombre) }">
-              <span class="text-white font-bold text-sm">{{ getInitials(disc.nombre) }}</span>
+    </div>
+
+    <!-- Vista Grid -->
+    <div v-else-if="vistaGrid" class="grid">
+      <div v-for="disc in disciplinasFiltradas" :key="disc.id" class="col-12 md:col-6 lg:col-4">
+        <div class="disciplina-card" :class="{ inactiva: !disc.activa }" @click="openDetalle(disc)">
+          <div class="disc-card-header">
+            <div class="flex align-items-center justify-content-between">
+              <div class="flex align-items-center gap-3">
+                <div class="disc-avatar" :style="{ background: getColor(disc.nombre) }">
+                  <span class="text-white font-bold text-xl">{{ getInitials(disc.nombre) }}</span>
+                </div>
+                <div>
+                  <h3 class="font-bold text-lg m-0" style="color: var(--text-color)">{{ disc.nombre }}</h3>
+                  <span class="text-gray-400 text-sm">{{ disc.empleadoNombre || 'Sin instructor' }}</span>
+                </div>
+              </div>
+              <Tag :severity="disc.activa ? 'success' : 'danger'" :value="disc.activa ? 'Activa' : 'Inactiva'" class="ml-2" />
             </div>
-          </template>
-          <template #tags>
-            <Tag :severity="disc.activa ? 'success' : 'danger'" :value="disc.activa ? 'Activa' : 'Inactiva'" />
-          </template>
-          <template #body>
-            <p v-if="disc.descripcion" class="text-gray-400 text-sm m-0 mb-2 disc-desc">{{ disc.descripcion }}</p>
-            <div class="record-card__row">
-              <span class="record-card__label">Inscriptos</span>
-              <span class="record-card__value text-blue-400 font-bold">{{ disc.cantidadSocios ?? 0 }}</span>
+          </div>
+          <div class="disc-card-body">
+            <p v-if="disc.descripcion" class="text-gray-400 text-sm m-0 mb-3 disc-desc">{{ disc.descripcion }}</p>
+            <p v-else class="text-gray-600 text-sm m-0 mb-3 font-italic">Sin descripcion</p>
+            <div class="flex align-items-center justify-content-between">
+              <div class="flex align-items-center gap-2">
+                <i class="pi pi-users text-gray-500 text-sm"></i>
+                <span class="text-gray-300 text-sm"><strong class="text-blue-400">{{ disc.cantidadSocios ?? 0 }}</strong> inscriptos</span>
+              </div>
+              <div class="flex align-items-center gap-2">
+                <i class="pi pi-dollar text-gray-500 text-sm"></i>
+                <span class="text-green-400 font-bold text-sm">${{ disc.cuotaMensual?.toLocaleString('es-AR') ?? '0' }}</span>
+              </div>
             </div>
-            <div class="record-card__row">
-              <span class="record-card__label">Cuota</span>
-              <span class="record-card__value text-green-400 font-bold">${{ disc.cuotaMensual?.toLocaleString('es-AR') ?? '0' }}</span>
+            <div class="flex align-items-center gap-2 mt-2">
+              <Tag :severity="disc.tipoFacturacion === 'IncluidaEnCuotaSocial' ? 'info' : 'warning'" :value="disc.tipoFacturacion === 'IncluidaEnCuotaSocial' ? 'Cuota mensual' : 'Cobro aparte'" class="text-xs" />
+              <span v-if="disc.subcomisionNombre" class="text-gray-500 text-xs">{{ disc.subcomisionNombre }}</span>
             </div>
-            <div class="record-card__row">
-              <span class="record-card__label">Cobro</span>
-              <span class="record-card__value">
-                <Tag
-                  :severity="disc.tipoFacturacion === 'IncluidaEnCuotaSocial' ? 'info' : 'warning'"
-                  :value="disc.tipoFacturacion === 'IncluidaEnCuotaSocial' ? 'Cuota mensual' : 'Cobro aparte'"
-                  class="text-xs"
-                />
-              </span>
-            </div>
-            <div v-if="disc.subcomisionNombre" class="record-card__row">
-              <span class="record-card__label">Subcomisión</span>
-              <span class="record-card__value">{{ disc.subcomisionNombre }}</span>
-            </div>
-            <div v-if="disc.categorias?.length || disc.cantidadCategorias" class="record-card__row">
-              <span class="record-card__label">Categorías</span>
-              <span class="record-card__value text-sm">
-                {{ disc.categorias?.map(c => c.nombre || c).join(', ') || disc.cantidadCategorias }}
-              </span>
-            </div>
-          </template>
-          <template #actions>
+          </div>
+          <div class="disc-card-footer" @click.stop>
             <Button icon="pi pi-eye" text rounded size="small" class="text-gray-400" v-tooltip="'Ver detalle'" @click="openDetalle(disc)" />
             <Button v-if="isMaster" icon="pi pi-pencil" text rounded size="small" severity="success" v-tooltip="'Editar'" @click="editDisciplina(disc)" />
             <Button icon="pi pi-users" text rounded size="small" class="text-blue-400" v-tooltip="'Inscriptos'" @click="openInscriptos(disc)" />
             <Button v-if="isMaster" icon="pi pi-trash" text rounded size="small" severity="danger" v-tooltip="'Eliminar'" @click="confirmDelete(disc)" />
-          </template>
-        </MobileRecordCard>
+          </div>
+        </div>
       </div>
-      <MobilePaginator v-model:page="disciplinasPage" :rows="10" :total="disciplinasFiltradas.length" />
-    </template>
+      <div v-if="disciplinasFiltradas.length === 0" class="col-12">
+        <div class="card text-center py-6">
+          <i class="pi pi-list text-5xl text-gray-600 mb-3 block"></i>
+          <p class="text-gray-400 text-lg">No se encontraron disciplinas</p>
+          <Button v-if="isMaster" label="Nueva Disciplina" icon="pi pi-plus" class="mt-2" @click="openNew" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Vista Tabla -->
+    <div v-else class="card">
+      <DataTable :value="disciplinasFiltradas" :loading="loading" paginator :rows="10" :rowsPerPageOptions="[10,20,50]" responsiveLayout="scroll" class="p-datatable-sm">
+        <template #empty>
+          <div class="text-center py-5">
+            <i class="pi pi-list text-4xl text-gray-500 mb-3 block"></i>
+            <p class="text-gray-400">No hay disciplinas registradas</p>
+          </div>
+        </template>
+        <Column field="nombre" header="Nombre" sortable style="min-width:160px">
+          <template #body="{ data }">
+            <div class="flex align-items-center gap-2">
+              <div class="disc-avatar-sm" :style="{ background: getColor(data.nombre) }">
+                <span class="text-white font-bold text-xs">{{ getInitials(data.nombre) }}</span>
+              </div>
+              <span class="font-medium" style="color: var(--text-color)">{{ data.nombre }}</span>
+            </div>
+          </template>
+        </Column>
+        <Column field="descripcion" header="Descripcion" style="min-width:200px">
+          <template #body="{ data }"><span class="text-gray-400 text-sm">{{ data.descripcion || '-' }}</span></template>
+        </Column>
+        <Column header="Entrenadores" style="min-width:140px">
+          <template #body="{ data }"><span class="text-gray-300">{{ data.empleadoNombre || 'Sin asignar' }}</span></template>
+        </Column>
+        <Column header="Cobro" style="min-width:150px">
+          <template #body="{ data }">
+            <div class="flex flex-column gap-1">
+              <Tag :severity="data.tipoFacturacion === 'IncluidaEnCuotaSocial' ? 'info' : 'warning'" :value="data.tipoFacturacion === 'IncluidaEnCuotaSocial' ? 'Cuota mensual' : 'Cobro aparte'" />
+              <span v-if="data.subcomisionNombre" class="text-gray-500 text-xs">{{ data.subcomisionNombre }}</span>
+            </div>
+          </template>
+        </Column>
+        <Column header="Cuota" sortable style="min-width:110px">
+          <template #body="{ data }"><span class="text-green-400 font-bold">${{ data.cuotaMensual?.toLocaleString('es-AR') ?? '0' }}</span></template>
+        </Column>
+        <Column header="Inscriptos" style="min-width:100px">
+          <template #body="{ data }">
+            <div class="flex align-items-center gap-2">
+              <i class="pi pi-users text-blue-400 text-sm"></i>
+              <span class="text-blue-400 font-bold">{{ data.cantidadSocios ?? 0 }}</span>
+            </div>
+          </template>
+        </Column>
+        <Column header="Estado" style="min-width:100px">
+          <template #body="{ data }">
+            <Tag :severity="data.activa ? 'success' : 'danger'" :value="data.activa ? 'Activa' : 'Inactiva'" />
+          </template>
+        </Column>
+        <Column header="Acciones" style="min-width:170px">
+          <template #body="{ data }">
+            <div class="flex gap-1">
+              <Button icon="pi pi-eye" text rounded size="small" class="text-gray-400" v-tooltip="'Detalle'" @click="openDetalle(data)" />
+              <Button icon="pi pi-pencil" text rounded size="small" severity="success" v-tooltip="'Editar'" v-if="isMaster" @click="editDisciplina(data)" />
+              <Button icon="pi pi-users" text rounded size="small" class="text-blue-400" v-tooltip="'Inscriptos'" @click="openInscriptos(data)" />
+              <Button v-if="isMaster" icon="pi pi-trash" text rounded size="small" severity="danger" v-tooltip="'Eliminar'" @click="confirmDelete(data)" />
+            </div>
+          </template>
+        </Column>
+      </DataTable>
+    </div>
 
     <!-- DIALOG CREAR / EDITAR -->
     <Dialog v-model:visible="dialogVisible" :header="isEditing ? 'Editar Disciplina' : 'Nueva Disciplina'" :modal="true" :style="{ width: '500px' }" :breakpoints="{ '640px': '95vw' }" @hide="resetForm">
@@ -304,74 +369,67 @@
             <div v-if="loadingSocios" class="text-center py-4">
               <i class="pi pi-spin pi-spinner text-2xl text-gray-400"></i>
             </div>
-            <div v-else-if="sociosInscritosFiltrados.length === 0" class="text-center py-4">
-              <i class="pi pi-users text-3xl text-gray-600 mb-2 block"></i>
-              <p class="text-gray-500 text-sm">
-                {{ sociosInscritos.length === 0 ? 'No hay socios inscriptos' : 'Ningún socio coincide con los filtros' }}
-              </p>
-            </div>
-            <template v-else>
-              <div class="mobile-card-list">
-                <MobileRecordCard
-                  v-for="data in paginatedInscriptos"
-                  :key="data.id"
-                  :title="data.nombre"
-                  :subtitle="data.email"
-                >
-                  <template #leading>
+            <DataTable v-else :value="sociosInscritosFiltrados" :rows="8" paginator size="small" class="p-datatable-sm inscriptos-table">
+              <template #empty>
+                <div class="text-center py-4">
+                  <i class="pi pi-users text-3xl text-gray-600 mb-2 block"></i>
+                  <p class="text-gray-500 text-sm">
+                    {{ sociosInscritos.length === 0 ? 'No hay socios inscriptos' : 'Ningún socio coincide con los filtros' }}
+                  </p>
+                </div>
+              </template>
+              <Column field="numeroSocio" header="#" style="width:4.5rem">
+                <template #body="{ data }"><span class="text-gray-500 text-sm">#{{ data.numeroSocio }}</span></template>
+              </Column>
+              <Column header="Socio">
+                <template #body="{ data }">
+                  <div class="flex align-items-center gap-2">
                     <div class="socio-avatar"><span>{{ getInitials(data.nombre) }}</span></div>
-                  </template>
-                  <template #tags>
-                    <Tag :severity="data.activo ? 'success' : 'danger'" :value="data.activo ? 'Activo' : 'Inactivo'" />
-                    <Tag
-                      v-if="data.tieneCuotasSocialesAdeudadas"
-                      severity="danger"
-                      :value="`${data.cantidadCuotasSocialesAdeudadas} adeud.`"
-                    />
-                    <Tag v-else severity="success" value="Al día" />
-                  </template>
-                  <template #body>
-                    <div class="record-card__row">
-                      <span class="record-card__label">N° Socio</span>
-                      <span class="record-card__value">#{{ data.numeroSocio }}</span>
+                    <div class="min-w-0">
+                      <div class="text-sm font-medium truncate" style="color: var(--text-color)">{{ data.nombre }}</div>
+                      <div class="text-gray-500 text-xs truncate">{{ data.email }}</div>
                     </div>
-                    <div class="record-card__row">
-                      <span class="record-card__label">Teléfono</span>
-                      <span class="record-card__value">{{ data.telefono || '-' }}</span>
-                    </div>
-                    <div class="record-card__row">
-                      <span class="record-card__label">Categoría</span>
-                      <span class="record-card__value" style="min-width: 0; flex: 1">
-                        <Dropdown
-                          :modelValue="data.categoriaId"
-                          @update:modelValue="v => cambiarCategoriaInscripto(data, v)"
-                          :options="categoriasDisciplinaOpciones"
-                          optionLabel="label"
-                          optionValue="value"
-                          placeholder="Sin categoría"
-                          class="w-full categoria-dropdown-sm"
-                          showClear
-                          :loading="asignandoCategoriaId === data.id"
-                          :disabled="categoriasDisciplina.length === 0"
-                        />
-                      </span>
-                    </div>
-                  </template>
-                  <template #actions>
-                    <Button
-                      icon="pi pi-user-minus"
-                      label="Desinscribir"
-                      text
-                      size="small"
-                      severity="danger"
-                      :loading="desinscribiendoId === data.id"
-                      @click="desinscribirSocio(data)"
-                    />
-                  </template>
-                </MobileRecordCard>
-              </div>
-              <MobilePaginator v-model:page="inscriptosPage" :rows="8" :total="sociosInscritosFiltrados.length" />
-            </template>
+                  </div>
+                </template>
+              </Column>
+              <Column header="Categoría" style="width:10rem">
+                <template #body="{ data }">
+                  <Dropdown
+                    :modelValue="data.categoriaId"
+                    @update:modelValue="v => cambiarCategoriaInscripto(data, v)"
+                    :options="categoriasDisciplinaOpciones"
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Sin categoría"
+                    class="w-full categoria-dropdown-sm"
+                    showClear
+                    :loading="asignandoCategoriaId === data.id"
+                    :disabled="categoriasDisciplina.length === 0"
+                  />
+                </template>
+              </Column>
+              <Column field="telefono" header="Teléfono" style="width:8rem">
+                <template #body="{ data }"><span class="text-gray-400 text-sm">{{ data.telefono || '-' }}</span></template>
+              </Column>
+              <Column header="Cuota social" style="width:7.5rem">
+                <template #body="{ data }">
+                  <Tag
+                    v-if="data.tieneCuotasSocialesAdeudadas"
+                    severity="danger"
+                    :value="`${data.cantidadCuotasSocialesAdeudadas} adeud.`"
+                  />
+                  <Tag v-else severity="success" value="Al día" />
+                </template>
+              </Column>
+              <Column header="Estado" style="width:5.5rem">
+                <template #body="{ data }"><Tag :severity="data.activo ? 'success' : 'danger'" :value="data.activo ? 'Activo' : 'Inactivo'" /></template>
+              </Column>
+              <Column header="" style="width:3rem">
+                <template #body="{ data }">
+                  <Button icon="pi pi-user-minus" text rounded size="small" severity="danger" v-tooltip="'Desinscribir'" :loading="desinscribiendoId === data.id" @click="desinscribirSocio(data)" />
+                </template>
+              </Column>
+            </DataTable>
           </TabPanel>
           <TabPanel header="Informacion">
             <div class="flex flex-column gap-0 pt-2">
@@ -520,10 +578,8 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useAuthStore } from '@/stores/auth'
 import { disciplinasService, empleadosService, sociosService, subcomisionesService } from '@/services'
-import { useMobilePagination } from '@/composables/useMobilePagination'
-import PageHeader from '@/components/mobile/PageHeader.vue'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
-import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -536,7 +592,8 @@ import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
-import ProgressSpinner from 'primevue/progressspinner'
+import Skeleton from 'primevue/skeleton'
+import SelectButton from 'primevue/selectbutton'
 
 const toast = useToast()
 const confirm = useConfirm()
@@ -569,6 +626,7 @@ const savingSubcomision = ref(false)
 
 const busqueda = ref('')
 const filtroEstado = ref(null)
+const vistaGrid = ref(true)
 
 const estadoOptions = [
   { label: 'Activas', value: true },
@@ -660,18 +718,6 @@ const disciplinasFiltradas = computed(() => {
     return matchBusq && matchEstado
   })
 })
-
-const { page: disciplinasPage, paginated: paginatedDisciplinas } = useMobilePagination(
-  disciplinasFiltradas,
-  10,
-  [busqueda, filtroEstado]
-)
-
-const { page: inscriptosPage, paginated: paginatedInscriptos } = useMobilePagination(
-  sociosInscritosFiltrados,
-  8,
-  [filtroInscriptosCategoria, filtroInscriptosCuotas]
-)
 
 const sociosDisponibles = computed(() => {
   const yaInscritos = new Set(sociosInscritos.value.map(s => s.id))

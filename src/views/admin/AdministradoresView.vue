@@ -1,78 +1,157 @@
 <template>
   <div>
-    <PageHeader title="Administradores">
-      <template #actions>
-        <Button label="Nuevo Administrador" icon="pi pi-plus" size="small" @click="openNew" />
-      </template>
-    </PageHeader>
-
-    <div v-if="loading" class="flex justify-content-center py-5">
-      <ProgressSpinner />
+    <div class="flex align-items-center justify-content-between mb-4">
+      <h1 class="text-3xl font-bold page-title m-0">Administradores</h1>
+      <Button label="Nuevo Administrador" icon="pi pi-plus" @click="openNew" />
     </div>
-    <template v-else>
-      <div v-if="admins.length === 0" class="card text-center py-5" style="color: var(--text-color-secondary)">
-        No hay administradores registrados
-      </div>
-      <div v-else class="mobile-card-list">
-        <MobileRecordCard
-          v-for="item in paginatedAdmins"
-          :key="item.id"
-          :title="item.nombre"
-          :subtitle="item.email"
-        >
-          <template #leading>
-            <Avatar :label="item.nombre?.charAt(0).toUpperCase()" shape="circle" class="avatar-red" />
+
+    <!-- Tabla -->
+    <div class="card">
+      <DataTable
+        :value="admins"
+        :loading="loading"
+        paginator
+        :rows="10"
+        responsiveLayout="scroll"
+        class="p-datatable-sm"
+      >
+        <template #empty>
+          <div class="text-center py-4" style="color: var(--text-color-secondary)">
+            No hay administradores registrados
+          </div>
+        </template>
+
+        <Column field="nombre" header="Nombre" sortable />
+        <Column field="email" header="Email" sortable />
+        <Column field="alias" header="Alias" />        <Column field="rol" header="Rol" sortable>
+          <template #body="{ data }">
+            <Tag
+              :value="rolLabel(data.rol)"
+              :severity="rolSeverity(data.rol)"
+            />
           </template>
-          <template #tags>
-            <Tag :value="rolLabel(item.rol)" :severity="rolSeverity(item.rol)" />
-            <Tag :value="item.activo ? 'Activo' : 'Inactivo'" :severity="item.activo ? 'success' : 'danger'" />
+        </Column>        <Column header="Secciones">
+          <template #body="{ data }">
+            <span v-if="data.rol === 'master'" style="color: var(--text-color-secondary); font-size: 0.8rem">
+              <i class="pi pi-lock-open mr-1" style="color: var(--primary-color)" />Acceso total
+            </span>
+            <span v-else style="color: var(--text-color-secondary); font-size: 0.8rem">
+              {{ permisosCount(data.permisos) }} sección(es)
+            </span>
           </template>
-          <template #body>
-            <div v-if="item.alias" class="record-card__row">
-              <span class="record-card__label">Alias</span>
-              <span class="record-card__value">{{ item.alias }}</span>
-            </div>
-            <div class="record-card__row">
-              <span class="record-card__label">Secciones</span>
-              <span class="record-card__value text-sm">
-                <template v-if="item.rol === 'master'"><i class="pi pi-lock-open mr-1" style="color: #dc2626" />Acceso total</template>
-                <template v-else>{{ permisosCount(item.permisos) }} sección(es)</template>
+        </Column>        <Column header="Deporte">
+          <template #body="{ data }">
+            <span v-if="data.rol === 'master'" style="color: var(--text-color-secondary); font-size: 0.8rem">—</span>
+            <Tag
+              v-else-if="data.deporte"
+              :value="deporteLabel(data.deporte)"
+              severity="info"
+            />
+            <span v-else style="color: var(--text-color-secondary); font-size: 0.8rem">Sin deporte</span>
+          </template>
+        </Column>
+        <Column header="Subcomisión">
+          <template #body="{ data }">
+            <span v-if="data.rol === 'master'" style="color: var(--text-color-secondary); font-size: 0.8rem">—</span>
+            <Tag v-else-if="data.subcomisionNombre" :value="data.subcomisionNombre" severity="warning" />
+            <span v-else style="color: var(--text-color-secondary); font-size: 0.8rem">Sin asignar (ve todo)</span>
+          </template>
+        </Column>
+        <Column header="Espacios asignados">
+          <template #body="{ data }">
+            <span v-if="data.rol === 'master'" style="color: var(--text-color-secondary); font-size: 0.8rem">
+              <i class="pi pi-building mr-1" />Todos
+            </span>
+            <span v-else-if="data.espaciosAsignados && data.espaciosAsignados.length > 0" class="text-sm">
+              <Tag
+                v-for="e in data.espaciosAsignados.slice(0, 2)"
+                :key="e.id"
+                :value="e.nombre"
+                severity="info"
+                class="mr-1 mb-1"
+              />
+              <span v-if="data.espaciosAsignados.length > 2" class="text-gray-400 text-xs">
+                +{{ data.espaciosAsignados.length - 2 }} más
               </span>
-            </div>
-            <div v-if="item.deporte && item.rol !== 'master'" class="record-card__row">
-              <span class="record-card__label">Deporte</span>
-              <Tag :value="deporteLabel(item.deporte)" severity="info" />
-            </div>
-            <div v-if="item.rol !== 'master'" class="record-card__row">
-              <span class="record-card__label">Subcomisión</span>
-              <span class="record-card__value">
-                <Tag v-if="item.subcomisionNombre" :value="item.subcomisionNombre" severity="warning" />
-                <span v-else class="text-sm text-color-secondary">Sin asignar</span>
+            </span>
+            <span v-else style="color: var(--text-color-secondary); font-size: 0.8rem">Sin asignar</span>
+          </template>
+        </Column>
+        <Column header="Disciplinas asignadas">
+          <template #body="{ data }">
+            <span v-if="data.rol === 'master'" style="color: var(--text-color-secondary); font-size: 0.8rem">
+              <i class="pi pi-bookmark mr-1" />Todas
+            </span>
+            <span v-else-if="data.disciplinasAsignadas && data.disciplinasAsignadas.length > 0" class="text-sm">
+              <Tag
+                v-for="d in data.disciplinasAsignadas.slice(0, 2)"
+                :key="d.id"
+                :value="d.nombre"
+                severity="warning"
+                class="mr-1 mb-1"
+              />
+              <span v-if="data.disciplinasAsignadas.length > 2" class="text-gray-400 text-xs">
+                +{{ data.disciplinasAsignadas.length - 2 }} más
               </span>
-            </div>
-            <div v-if="item.rol !== 'master' && item.espaciosAsignados?.length" class="record-card__row">
-              <span class="record-card__label">Espacios</span>
-              <span class="record-card__value text-sm">{{ item.espaciosAsignados.map(e => e.nombre).join(', ') }}</span>
-            </div>
-            <div v-if="item.rol !== 'master' && item.disciplinasAsignadas?.length" class="record-card__row">
-              <span class="record-card__label">Disciplinas</span>
-              <span class="record-card__value text-sm">{{ item.disciplinasAsignadas.map(d => d.nombre).join(', ') }}</span>
-            </div>
-            <div class="record-card__row">
-              <span class="record-card__label">Creado</span>
-              <span class="record-card__value">{{ formatDate(item.createdAt) }}</span>
+            </span>
+            <span v-else style="color: var(--text-color-secondary); font-size: 0.8rem">Sin asignar</span>
+          </template>
+        </Column>
+        <Column field="activo" header="Estado">
+          <template #body="{ data }">
+            <Tag
+              :value="data.activo ? 'Activo' : 'Inactivo'"
+              :severity="data.activo ? 'success' : 'danger'"
+            />
+          </template>
+        </Column>
+        <Column field="createdAt" header="Creado" sortable>
+          <template #body="{ data }">
+            {{ formatDate(data.createdAt) }}
+          </template>
+        </Column>        <Column header="Acciones" style="width: 10rem">
+          <template #body="{ data }">
+            <div class="flex gap-2">
+              <Button
+                icon="pi pi-building"
+                text
+                rounded
+                severity="success"
+                v-tooltip.top="'Asignar espacios'"
+                :disabled="data.rol === 'master'"
+                @click="openAsignarEspacios(data)"
+              />
+              <Button
+                icon="pi pi-bookmark"
+                text
+                rounded
+                severity="warning"
+                v-tooltip.top="'Asignar disciplinas'"
+                :disabled="data.rol === 'master'"
+                @click="openAsignarDisciplinas(data)"
+              />
+              <Button
+                icon="pi pi-pencil"
+                text
+                rounded
+                severity="info"
+                v-tooltip.top="'Editar'"
+                @click="openEdit(data)"
+              />
+              <Button
+                icon="pi pi-trash"
+                text
+                rounded
+                severity="danger"
+                v-tooltip.top="'Eliminar'"
+                :disabled="data.id === currentUserId"
+                @click="confirmDelete(data)"
+              />
             </div>
           </template>
-          <template #actions>
-            <Button icon="pi pi-building" text rounded size="small" severity="success" v-tooltip.top="'Asignar espacios'" :disabled="item.rol === 'master'" @click="openAsignarEspacios(item)" />
-            <Button icon="pi pi-bookmark" text rounded size="small" severity="warning" v-tooltip.top="'Asignar disciplinas'" :disabled="item.rol === 'master'" @click="openAsignarDisciplinas(item)" />
-            <Button icon="pi pi-pencil" text rounded size="small" severity="info" v-tooltip.top="'Editar'" @click="openEdit(item)" />
-            <Button icon="pi pi-trash" text rounded size="small" severity="danger" v-tooltip.top="'Eliminar'" :disabled="item.id === currentUserId" @click="confirmDelete(item)" />
-          </template>
-        </MobileRecordCard>
-      </div>
-      <MobilePaginator v-model:page="adminsPage" :rows="10" :total="admins.length" />
-    </template>
+        </Column>
+      </DataTable>
+    </div>
 
     <!-- Dialog crear/editar -->
     <Dialog
@@ -301,10 +380,8 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
 import { adminsService, espaciosService, disciplinasService, subcomisionesService } from '@/services'
-import { useMobilePagination } from '@/composables/useMobilePagination'
-import PageHeader from '@/components/mobile/PageHeader.vue'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
-import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
@@ -313,8 +390,6 @@ import Dropdown from 'primevue/dropdown'
 import Password from 'primevue/password'
 import InputSwitch from 'primevue/inputswitch'
 import Toast from 'primevue/toast'
-import Avatar from 'primevue/avatar'
-import ProgressSpinner from 'primevue/progressspinner'
 
 const confirm = useConfirm()
 const toast = useToast()
@@ -322,7 +397,6 @@ const authStore = useAuthStore()
 
 const admins = ref([])
 const loading = ref(false)
-const { page: adminsPage, paginated: paginatedAdmins } = useMobilePagination(admins, 10)
 const saving = ref(false)
 const dialogVisible = ref(false)
 const editMode = ref(false)
@@ -692,15 +766,15 @@ onMounted(() => {
 }
 
 .permiso-item:hover {
-  border-color: #dc2626;
-  color: #dc2626;
-  background: rgba(220, 38, 38, 0.05);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 5%, transparent);
 }
 
 .permiso-activo {
-  border-color: #dc2626 !important;
-  background: rgba(220, 38, 38, 0.1) !important;
-  color: #dc2626 !important;
+  border-color: var(--primary-color) !important;
+  background: var(--udl-red-hover) !important;
+  color: var(--primary-color) !important;
 }
 
 .permiso-icon {

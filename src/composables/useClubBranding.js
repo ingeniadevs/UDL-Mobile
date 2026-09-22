@@ -22,10 +22,15 @@ const communityBranding = {
 }
 
 function applyCssVariables(branding) {
+  if (!branding) return
   const root = document.documentElement
-  root.style.setProperty('--udl-red', branding.primaryColor)
-  root.style.setProperty('--udl-red-dark', branding.primaryDark)
-  root.style.setProperty('--primary-color', branding.primaryColor)
+  const primary = branding.primaryColor || APP_BRANDING.primaryColor
+  const primaryDark = branding.primaryDark || APP_BRANDING.primaryDark
+  root.style.setProperty('--club-primary', primary)
+  root.style.setProperty('--club-primary-dark', primaryDark)
+  root.style.setProperty('--udl-red', primary)
+  root.style.setProperty('--udl-red-dark', primaryDark)
+  root.style.setProperty('--primary-color', primary)
   if (branding.id) root.dataset.clubId = branding.id
   else delete root.dataset.clubId
 }
@@ -126,6 +131,9 @@ export function useClubBranding() {
     logoUrl: computed(() => resolveLogo(branding.value)),
     clubName: computed(() => branding.value.name),
     shortName: computed(() => branding.value.shortName),
+    logoAlt: computed(() => branding.value.logoAlt || branding.value.shortName),
+    primaryColor: computed(() => branding.value.primaryColor || APP_BRANDING.primaryColor),
+    primaryDark: computed(() => branding.value.primaryDark || APP_BRANDING.primaryDark),
     onClubLogoError
   }
 }

@@ -1,10 +1,9 @@
 <template>
   <div>
-    <PageHeader title="Gestión de Pedidos">
-      <template #actions>
-        <Button label="Nuevo Pedido" icon="pi pi-plus" size="small" @click="openManualDialog" />
-      </template>
-    </PageHeader>
+    <div class="flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+      <h1 class="text-3xl font-bold page-title m-0">Gestión de Pedidos</h1>
+      <Button label="Nuevo Pedido" icon="pi pi-plus" class="p-button-sm" @click="openManualDialog" />
+    </div>
 
     <!-- Stat cards -->
     <div class="grid mb-4">
@@ -72,61 +71,183 @@
       </div>
     </div>
 
-    <div v-if="loading" class="flex justify-content-center py-5">
-      <ProgressSpinner />
-    </div>
-    <template v-else>
-      <div v-if="errorMessage" class="card text-center py-6">
+    <!-- Listado -->
+    <div class="card">
+      <div class="flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h3 class="m-0">Listado de Pedidos</h3>
+        <Button :icon="viewMode === 'list' ? 'pi pi-th-large' : 'pi pi-list'" text rounded size="small"
+          v-tooltip.top="viewMode === 'list' ? 'Vista cards' : 'Vista lista'"
+          @click="viewMode = viewMode === 'list' ? 'cards' : 'list'" />
+      </div>
+
+      <!-- Loading -->
+      <div v-if="loading" class="flex justify-content-center p-5">
+        <ProgressSpinner />
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="errorMessage" class="text-center py-6">
         <i class="pi pi-exclamation-triangle text-4xl text-red-400 mb-3"></i>
         <p class="text-red-400 mb-3">{{ errorMessage }}</p>
         <Button label="Reintentar" icon="pi pi-refresh" @click="loadPedidos" />
       </div>
-      <div v-else-if="filteredPedidos.length === 0" class="card text-center py-6">
+
+      <!-- Empty State -->
+      <div v-else-if="filteredPedidos.length === 0" class="text-center py-6">
         <i class="pi pi-shopping-cart text-4xl text-gray-400 mb-3"></i>
         <p class="text-gray-400">No hay pedidos para mostrar</p>
       </div>
-      <div v-else class="mobile-card-list">
-        <MobileRecordCard
-          v-for="pedido in paginatedPedidos"
-          :key="pedido.id"
-          :title="pedido.nombreSocio"
-          :subtitle="`Socio #${pedido.numeroSocio}`"
-          @click="viewPedido(pedido)"
-        >
-          <template #leading>
-            <Avatar :label="pedido.nombreSocio?.charAt(0)" shape="circle" class="avatar-red" size="small" />
-          </template>
-          <template #tags>
-            <Tag :severity="getEstadoSeverity(pedido.estado)" :value="pedido.estado" />
-            <Tag :severity="getEstadoPagoSeverity(pedido.estadoPago)" :value="pedido.estadoPago" />
-          </template>
-          <template #body>
-            <div v-for="item in pedido.items" :key="item.id" class="text-xs mb-1">
-              <span class="text-red-400 font-bold">{{ item.cantidad }}x</span>
-              {{ item.nombreProducto }}
-              <span v-if="item.talla" class="text-color-secondary">({{ item.talla }})</span>
-            </div>
-            <div class="record-card__row mt-2">
-              <span class="record-card__label">Total</span>
-              <span class="record-card__value font-bold text-red-400">${{ pedido.total.toLocaleString() }}</span>
-            </div>
-            <div v-if="pedido.metodoPago" class="record-card__row">
-              <span class="record-card__label">Método</span>
-              <span class="record-card__value">{{ pedido.metodoPago }}</span>
-            </div>
-            <div class="record-card__row">
-              <span class="record-card__label">Fecha</span>
-              <span class="record-card__value">{{ formatDate(pedido.fechaPedido) }}</span>
+
+      <!-- Vista Lista -->
+      <div v-else-if="viewMode === 'list'">
+      <DataTable
+        :value="filteredPedidos"
+        :paginator="true"
+        :rows="15"
+        :rowsPerPageOptions="[10, 15, 25, 50]"
+        dataKey="id"
+        class="p-datatable-sm"
+        stripedRows
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+      >
+        <Column header="Socio" style="min-width: 180px">
+          <template #body="{ data }">
+            <div class="flex align-items-center gap-2">
+              <Avatar :label="data.nombreSocio?.charAt(0)" shape="circle" class="avatar-red" size="small" />
+              <div>
+                <div class="font-semibold text-sm">{{ data.nombreSocio }}</div>
+                <div class="text-xs text-color-secondary">#{{ data.numeroSocio }}</div>
+              </div>
             </div>
           </template>
-          <template #actions>
-            <Button icon="pi pi-eye" text rounded size="small" @click="viewPedido(pedido)" v-tooltip.top="'Ver detalle'" />
-            <Button icon="pi pi-pencil" text rounded size="small" severity="success" @click="editPedido(pedido)" v-tooltip.top="'Actualizar estado'" />
+        </Column>
+
+        <Column header="Productos" style="min-width: 200px">
+          <template #body="{ data }">
+            <div class="flex flex-column gap-1">
+              <div v-for="item in data.items" :key="item.id" class="text-xs">
+                <span class="text-red-400 font-bold">{{ item.cantidad }}x</span>
+                {{ item.nombreProducto }}
+                <span v-if="item.talla" class="text-color-secondary">({{ item.talla }})</span>
+              </div>
+            </div>
           </template>
-        </MobileRecordCard>
+        </Column>
+
+        <Column header="Estado Pedido" style="width: 130px">
+          <template #body="{ data }">
+            <Tag :severity="getEstadoSeverity(data.estado)" :value="data.estado" />
+          </template>
+        </Column>
+
+        <Column header="Estado Pago" style="width: 130px">
+          <template #body="{ data }">
+            <Tag :severity="getEstadoPagoSeverity(data.estadoPago)" :value="data.estadoPago" />
+          </template>
+        </Column>
+
+        <Column header="Método Pago" style="width: 120px">
+          <template #body="{ data }">
+            <span class="text-sm text-color-secondary">{{ data.metodoPago || '—' }}</span>
+          </template>
+        </Column>
+
+        <Column header="Total" style="width: 110px">
+          <template #body="{ data }">
+            <span class="font-bold text-red-400 text-lg">${{ data.total.toLocaleString() }}</span>
+          </template>
+        </Column>
+
+        <Column header="Fecha" style="width: 130px">
+          <template #body="{ data }">
+            <span class="text-sm text-color-secondary">{{ formatDate(data.fechaPedido) }}</span>
+          </template>
+        </Column>
+
+        <Column header="" style="width: 90px">
+          <template #body="{ data }">
+            <div class="flex gap-1">
+              <Button
+                icon="pi pi-eye"
+                class="p-button-rounded p-button-text p-button-sm"
+                @click="viewPedido(data)"
+                v-tooltip.top="'Ver detalle'"
+              />
+              <Button
+                icon="pi pi-pencil"
+                class="p-button-rounded p-button-text p-button-success p-button-sm"
+                @click="editPedido(data)"
+                v-tooltip.top="'Actualizar estado'"
+              />
+            </div>
+          </template>
+        </Column>
+      </DataTable>
+    </div>
+
+      <!-- Vista Cards -->
+      <div v-else class="grid">
+      <div v-for="pedido in filteredPedidos" :key="pedido.id" class="col-12 lg:col-6 xl:col-4">
+        <div class="pedido-card" :class="`pedido-card--${pedido.estado?.toLowerCase()}`">
+          <!-- Header -->
+          <div class="pedido-header">
+            <div class="flex align-items-center gap-2">
+              <Avatar :label="pedido.nombreSocio?.charAt(0)" shape="circle" class="avatar-red" />
+              <div>
+                <h4 class="pedido-socio">{{ pedido.nombreSocio }}</h4>
+                <span class="pedido-numero">Socio #{{ pedido.numeroSocio }}</span>
+              </div>
+            </div>
+            <div class="flex flex-column align-items-end gap-1">
+              <Tag :severity="getEstadoSeverity(pedido.estado)" :value="pedido.estado" />
+              <Tag :severity="getEstadoPagoSeverity(pedido.estadoPago)" :value="pedido.estadoPago" size="small" />
+            </div>
+          </div>
+
+          <!-- Items -->
+          <div class="pedido-items">
+            <div v-for="item in pedido.items" :key="item.id" class="pedido-item">
+              <span class="item-cantidad">{{ item.cantidad }}x</span>
+              <span class="item-nombre">{{ item.nombreProducto }}</span>
+              <span v-if="item.talla" class="item-talla">({{ item.talla }})</span>
+              <span class="item-precio ml-auto">${{ item.subtotal.toLocaleString() }}</span>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="pedido-footer">
+            <div class="pedido-info">
+              <div class="flex align-items-center gap-2 mb-2">
+                <i class="pi pi-calendar text-gray-400"></i>
+                <span class="text-gray-400 text-sm">{{ formatDate(pedido.fechaPedido) }}</span>
+              </div>
+              <div v-if="pedido.metodoPago" class="flex align-items-center gap-2 mb-2">
+                <i class="pi pi-credit-card text-gray-400"></i>
+                <span class="text-gray-400 text-sm">{{ pedido.metodoPago }}</span>
+              </div>
+              <div class="pedido-total">
+                Total: <span>${{ pedido.total.toLocaleString() }}</span>
+              </div>
+            </div>
+            <div class="pedido-actions">
+              <Button 
+                icon="pi pi-eye" 
+                class="p-button-rounded p-button-text"
+                @click="viewPedido(pedido)"
+                v-tooltip.top="'Ver detalle'"
+              />
+              <Button 
+                icon="pi pi-pencil" 
+                class="p-button-rounded p-button-text p-button-success"
+                @click="editPedido(pedido)"
+                v-tooltip.top="'Actualizar estado'"
+              />
+            </div>
+          </div>
+        </div>
       </div>
-      <MobilePaginator v-model:page="pedidosPage" :rows="10" :total="filteredPedidos.length" />
-    </template>
+      </div>
+    </div>
 
     <!-- Manual Order Dialog -->
     <Dialog
@@ -484,10 +605,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { pedidosService, productosService, sociosService } from '@/services'
-import { useMobilePagination } from '@/composables/useMobilePagination'
-import PageHeader from '@/components/mobile/PageHeader.vue'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
-import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Dropdown from 'primevue/dropdown'
@@ -506,6 +623,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 const toast = useToast()
 
 const pedidos = ref([])
+const viewMode = ref('cards')
 const loading = ref(false)
 const errorMessage = ref('')
 const searchTerm = ref('')
@@ -783,12 +901,6 @@ const filteredPedidos = computed(() => {
   })
 })
 
-const { page: pedidosPage, paginated: paginatedPedidos } = useMobilePagination(
-  filteredPedidos,
-  10,
-  [searchTerm, selectedEstado, selectedEstadoPago]
-)
-
 function getEstadoSeverity(estado) {
   const map = {
     'Pendiente': 'warning',
@@ -919,9 +1031,113 @@ onMounted(() => {
 .stat-label { font-size: 0.85rem; color: var(--text-color-secondary); }
 .stat-amount { font-size: 0.75rem; color: var(--text-color-secondary); margin-top: 0.25rem; }
 
+.pedido-card {
+  background: var(--surface-card);
+  border-radius: 12px;
+  border: 1px solid var(--surface-border);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.pedido-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 8px 25px var(--udl-red-active);
+}
+
+/* Borde izquierdo por estado */
+.pedido-card--pendiente  { border-left: 4px solid #f59e0b; }
+.pedido-card--confirmado { border-left: 4px solid #3b82f6; }
+.pedido-card--en_preparacion { border-left: 4px solid #8b5cf6; }
+.pedido-card--listo     { border-left: 4px solid #10b981; }
+.pedido-card--entregado { border-left: 4px solid #22c55e; }
+.pedido-card--cancelado { border-left: 4px solid #ef4444; }
+
+.pedido-header {
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.pedido-socio {
+  color: var(--text-color);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.pedido-numero {
+  color: var(--text-color-secondary);
+  font-size: 0.8rem;
+}
+
 .avatar-red {
-  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--udl-red-dark) 100%);
   color: white;
+}
+
+.pedido-items {
+  padding: 0.75rem 1rem;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.pedido-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--surface-border);
+  font-size: 0.85rem;
+}
+
+.pedido-item:last-child {
+  border-bottom: none;
+}
+
+.item-cantidad {
+  color: var(--primary-color);
+  font-weight: 600;
+  min-width: 30px;
+}
+
+.item-nombre {
+  color: var(--text-color);
+}
+
+.item-talla {
+  color: var(--text-color-secondary);
+  font-size: 0.8rem;
+}
+
+.item-precio {
+  color: var(--text-color-secondary);
+}
+
+.pedido-footer {
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--surface-border);
+  background: var(--surface-ground);
+}
+
+.pedido-total {
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+.pedido-total span {
+  color: var(--primary-color);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.pedido-actions {
+  display: flex;
+  gap: 4px;
 }
 
 .detail-section {
@@ -929,7 +1145,7 @@ onMounted(() => {
 }
 
 .detail-title {
-  color: #dc2626;
+  color: var(--primary-color);
   font-size: 1rem;
   font-weight: 600;
   margin: 0 0 1rem 0;

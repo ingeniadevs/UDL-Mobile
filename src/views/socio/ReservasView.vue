@@ -1,6 +1,8 @@
 <template>
   <div>
-    <PageHeader title="Reservar Espacio" />
+    <div class="flex align-items-center justify-content-between mb-4">
+      <h1 class="text-3xl font-bold m-0" style="color: var(--text-color)">Reservar Espacio</h1>
+    </div>
 
     <!-- Selección de Espacio con Imágenes -->
     <div class="grid mb-4">
@@ -246,71 +248,98 @@
         </div>
       </div>
 
-      <div v-if="loadingReservas" class="flex justify-content-center py-5">
-        <ProgressSpinner />
-      </div>
-      <template v-else>
-        <div v-if="misReservas.length === 0" class="text-center py-4 text-gray-400">
-          <i class="pi pi-calendar-times text-4xl mb-2 block"></i>
-          No tienes reservas registradas
-        </div>
-        <div v-else class="mobile-card-list">
-          <MobileRecordCard
-            v-for="item in paginatedReservas"
-            :key="item.id"
-            :title="item.espacioNombre"
-            :subtitle="`${formatDateShort(item.fecha)} · ${item.horaInicio} - ${item.horaFin}`"
-          >
-            <template #leading>
+      <DataTable 
+        :value="misReservas" 
+        :loading="loadingReservas"
+        :paginator="true"
+        :rows="5"
+        dataKey="id"
+        responsiveLayout="scroll"
+        class="reservas-table"
+      >
+        <template #empty>
+          <div class="text-center py-4 text-gray-400">
+            <i class="pi pi-calendar-times text-4xl mb-2 block"></i>
+            No tienes reservas registradas
+          </div>
+        </template>
+
+        <Column header="Espacio" style="min-width: 200px">
+          <template #body="slotProps">
+            <div class="flex align-items-center gap-2">
               <div class="reserva-espacio-image">
-                <img v-if="item.espacioImagen" :src="item.espacioImagen" :alt="item.espacioNombre" />
-                <div v-else class="reserva-espacio-placeholder"><i class="pi pi-building"></i></div>
+                <img 
+                  v-if="slotProps.data.espacioImagen" 
+                  :src="slotProps.data.espacioImagen" 
+                  :alt="slotProps.data.espacioNombre"
+                />
+                <div v-else class="reserva-espacio-placeholder">
+                  <i class="pi pi-building"></i>
+                </div>
               </div>
-            </template>
-            <template #tags>
-              <Tag :severity="getEstadoSeverity(item.estado)" :value="item.estado" />
-            </template>
-            <template #body>
-              <Tag :value="item.espacioTipo" :severity="getTipoSeverity(item.espacioTipo)" size="small" class="mb-2" />
-              <div class="record-card__row">
-                <span class="record-card__label">Monto</span>
-                <span class="record-card__value font-bold text-primary">${{ item.monto?.toLocaleString() }}</span>
+              <div>
+                <div class="font-medium" style="color: var(--text-color)">{{ slotProps.data.espacioNombre }}</div>
+                <Tag :value="slotProps.data.espacioTipo" :severity="getTipoSeverity(slotProps.data.espacioTipo)" size="small" />
               </div>
-              <div class="pago-cell">
-                <span class="pago-status" :class="`pago-${item.estadoPago?.toLowerCase()}`">
-                  <i class="pago-dot"></i>{{ item.estadoPago }}
-                </span>
-                <span v-if="item.metodoPago" class="pago-metodo">
-                  <i :class="getMetodoPagoIcon(item.metodoPago)" class="mr-1"></i>{{ item.metodoPago }}
-                </span>
-              </div>
-            </template>
-            <template #actions>
-              <Button
-                v-if="item.estadoPago === 'pendiente' && item.estado?.toLowerCase() === 'confirmada'"
-                icon="pi pi-wallet"
-                text
-                rounded
-                size="small"
-                severity="success"
-                @click="pagarReservaIndividual(item)"
-                v-tooltip.top="'Pagar'"
-              />
-              <Button
-                v-if="canCancel(item)"
-                icon="pi pi-times"
-                text
-                rounded
-                size="small"
-                severity="danger"
-                @click="cancelarReserva(item)"
-                v-tooltip.top="'Cancelar reserva'"
-              />
-            </template>
-          </MobileRecordCard>
-        </div>
-        <MobilePaginator v-model:page="reservasPage" :rows="5" :total="misReservas.length" />
-      </template>
+            </div>
+          </template>
+        </Column>
+        <Column header="Fecha" style="min-width: 120px">
+          <template #body="slotProps">
+            {{ formatDateShort(slotProps.data.fecha) }}
+          </template>
+        </Column>
+        <Column header="Horario" style="min-width: 120px">
+          <template #body="slotProps">
+            <i class="pi pi-clock mr-1 text-gray-400"></i>
+            {{ slotProps.data.horaInicio }} - {{ slotProps.data.horaFin }}
+          </template>
+        </Column>
+        <Column header="Monto" style="min-width: 100px">
+          <template #body="slotProps">
+            <span class="font-bold text-primary">${{ slotProps.data.monto?.toLocaleString() }}</span>
+          </template>
+        </Column>
+        <Column header="Estado" style="min-width: 120px">
+          <template #body="slotProps">
+            <Tag :severity="getEstadoSeverity(slotProps.data.estado)" :value="slotProps.data.estado" />
+          </template>
+        </Column>
+        <Column header="Pago" style="min-width: 140px">
+          <template #body="slotProps">
+            <div class="pago-cell">
+              <span class="pago-status" :class="`pago-${slotProps.data.estadoPago?.toLowerCase()}`">
+                <i class="pago-dot"></i>{{ slotProps.data.estadoPago }}
+              </span>
+              <span v-if="slotProps.data.metodoPago" class="pago-metodo">
+                <i :class="getMetodoPagoIcon(slotProps.data.metodoPago)" class="mr-1"></i>{{ slotProps.data.metodoPago }}
+              </span>
+            </div>
+          </template>
+        </Column>
+        <Column header="Acciones" style="min-width: 150px">
+          <template #body="slotProps">
+            <Button 
+              v-if="slotProps.data.estadoPago === 'pendiente' && slotProps.data.estado?.toLowerCase() === 'confirmada'"
+              icon="pi pi-wallet" 
+              text 
+              rounded 
+              severity="success"
+              @click="pagarReservaIndividual(slotProps.data)"
+              v-tooltip.top="'Pagar'"
+            />
+            <Button 
+              v-if="canCancel(slotProps.data)"
+              icon="pi pi-times" 
+              text 
+              rounded 
+              severity="danger"
+              @click="cancelarReserva(slotProps.data)"
+              v-tooltip.top="'Cancelar reserva'"
+            />
+          </template>
+        </Column>
+      </DataTable>
     </div>
 
     <!-- Modal de Pago -->
@@ -443,11 +472,8 @@ import {
   isSameLocalCalendarDay,
   startOfTodayLocal
 } from '@/utils/reservationDates'
-import { useMobilePagination } from '@/composables/useMobilePagination'
-import { useTenantSettings } from '@/composables/useTenantSettings'
-import PageHeader from '@/components/mobile/PageHeader.vue'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
-import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Calendar from 'primevue/calendar'
 import Textarea from 'primevue/textarea'
@@ -456,7 +482,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Dialog from 'primevue/dialog'
 import Divider from 'primevue/divider'
 import Message from 'primevue/message'
-import { openMercadoPagoCheckout } from '@/platform/mercadopago'
+import { useTenantSettings } from '@/composables/useTenantSettings'
 
 const toast = useToast()
 const confirm = useConfirm()
@@ -470,7 +496,6 @@ const turnos = ref([])
 const observaciones = ref('')
 const misReservas = ref([])
 const reservasSeleccionadas = ref([])
-const { page: reservasPage, paginated: paginatedReservas } = useMobilePagination(misReservas, 5)
 
 const loadingTurnos = ref(false)
 const loadingReservas = ref(false)
@@ -720,7 +745,8 @@ async function procesarPago() {
       const response = reservaIds.length === 1
         ? await reservasService.initMercadoPago(reservaIds[0])
         : await reservasService.initMercadoPagoMultiple(reservaIds)
-      await openMercadoPagoCheckout(response.initPoint || response.sandboxInitPoint)
+        // Abrir MercadoPago en nueva pestaña
+      window.location.href = response.initPoint || response.sandboxInitPoint
     } else {
       // Pago en efectivo o transferencia
       await reservasService.solicitarPagoEfectivo(reservaIds, metodoPagoSeleccionado.value)
@@ -798,13 +824,13 @@ onMounted(async () => {
 
 .espacio-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(220, 38, 38, 0.15);
-  border-color: rgba(220, 38, 38, 0.4);
+  box-shadow: 0 12px 40px var(--udl-red-active);
+  border-color: color-mix(in srgb, var(--primary-color) 40%, transparent);
 }
 
 .espacio-card.selected {
-  border-color: #dc2626;
-  box-shadow: 0 0 20px rgba(220, 38, 38, 0.3);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--primary-color) 30%, transparent);
 }
 
 .espacio-image-wrapper {
@@ -843,7 +869,7 @@ onMounted(async () => {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: #dc2626;
+  background: var(--primary-color);
   color: white;
   padding: 0.25rem 0.75rem;
   border-radius: 20px;
@@ -876,7 +902,7 @@ onMounted(async () => {
 .espacio-price {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #dc2626;
+  color: var(--primary-color);
 }
 
 .espacio-description {
@@ -913,7 +939,7 @@ onMounted(async () => {
 
 /* Reserva Panel */
 .reserva-panel {
-  border: 1px solid rgba(220, 38, 38, 0.3);
+  border: 1px solid color-mix(in srgb, var(--primary-color) 30%, transparent);
 }
 
 .reserva-header {
@@ -993,18 +1019,18 @@ onMounted(async () => {
 
 .resumen-item .value.price {
   font-size: 1.5rem;
-  color: #dc2626;
+  color: var(--primary-color);
 }
 
 .confirmar-btn {
-  background: #dc2626 !important;
-  border-color: #dc2626 !important;
+  background: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
   color: #fff !important;
 }
 
 .confirmar-btn:hover {
-  background: #991b1b !important;
-  border-color: #991b1b !important;
+  background: var(--udl-red-dark) !important;
+  border-color: var(--udl-red-dark) !important;
 }
 
 .approval-notice {
@@ -1069,8 +1095,8 @@ onMounted(async () => {
 }
 
 .payment-option.selected {
-  border-color: #dc2626;
-  background: rgba(220, 38, 38, 0.1);
+  border-color: var(--primary-color);
+  background: var(--udl-red-hover);
 }
 
 .payment-icon {
@@ -1150,16 +1176,16 @@ onMounted(async () => {
 }
 
 .turno-salon-card:hover:not(.disabled-turno) {
-  border-color: #dc2626;
-  background: rgba(220, 38, 38, 0.07);
+  border-color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 7%, transparent);
   transform: translateY(-1px);
   cursor: pointer;
 }
 
 .turno-salon-card.selected {
-  border-color: #dc2626;
-  background: rgba(220, 38, 38, 0.15);
-  box-shadow: 0 0 14px rgba(220, 38, 38, 0.3);
+  border-color: var(--primary-color);
+  background: var(--udl-red-active);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--primary-color) 30%, transparent);
 }
 
 .turno-salon-card.disabled-turno {

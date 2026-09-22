@@ -1,11 +1,11 @@
-<template>
-  <div>
-    <PageHeader title="Pago de Cuotas">
-      <template #actions>
-        <Button label="Nuevo Pago Mutual" icon="pi pi-money-bill" severity="success" size="small" @click="openPagoMutual" />
-        <Button label="Generar cuota atrasada" icon="pi pi-calendar-plus" severity="warning" size="small" @click="openGenerarCuota" v-tooltip.left="'Cuota de meses previos al alta en producción'" />
-      </template>
-    </PageHeader>
+<template>  <div>
+    <div class="flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+      <h1 class="text-3xl font-bold m-0" style="color: var(--text-color)">Pago de Cuotas</h1>
+      <div class="flex gap-2 flex-wrap">
+        <Button label="Nuevo Pago Mutual" icon="pi pi-money-bill" severity="success" @click="openPagoMutual" />
+        <Button label="Generar cuota atrasada" icon="pi pi-calendar-plus" severity="warning" @click="openGenerarCuota" v-tooltip.left="'Cuota de meses previos al alta en producción'" />
+      </div>
+    </div>
 
     <!-- Pagos esperando confirmación de efectivo -->
     <div v-if="pagosPendientesConfirmacion.length > 0" class="mb-4">
@@ -25,36 +25,36 @@
             :loading="confirmandoMultiple"
           />
         </div>
-        <div class="mobile-card-list">
-          <MobileRecordCard
-            v-for="item in pagosPendientesConfirmacion"
-            :key="item.id"
-            :title="item.socioNombre"
-            :subtitle="item.concepto"
-          >
-            <template #tags>
-              <Tag :severity="item.estado === 'vencido' ? 'danger' : 'warning'" :value="item.estado === 'vencido' ? 'Vencido' : 'Pendiente'" />
+        <DataTable 
+          :value="pagosPendientesConfirmacion" 
+          v-model:selection="selectedPendingPagos"
+          dataKey="id"
+          responsiveLayout="scroll"
+        >
+          <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
+          <Column field="socioNombre" header="Socio" sortable></Column>
+          <Column field="concepto" header="Concepto"></Column>
+          <Column header="Monto">
+            <template #body="slotProps">
+              <span class="font-bold text-green-400">${{ slotProps.data.monto?.toLocaleString() }}</span>
             </template>
-            <template #body>
-              <div class="record-card__row">
-                <span class="record-card__label">Monto</span>
-                <span class="record-card__value text-green-400 font-bold">${{ item.monto?.toLocaleString() }}</span>
-              </div>
-              <div class="record-card__row">
-                <span class="record-card__label">Vencimiento</span>
-                <span class="record-card__value">{{ formatDate(item.fechaVencimiento) }}</span>
-              </div>
+          </Column>
+          <Column header="Vencimiento">
+            <template #body="slotProps">{{ formatDate(slotProps.data.fechaVencimiento) }}</template>
+          </Column>
+          <Column header="Estado">
+            <template #body="slotProps">
+              <Tag :severity="slotProps.data.estado === 'vencido' ? 'danger' : 'warning'"
+                   :value="slotProps.data.estado === 'vencido' ? 'Vencido' : 'Pendiente'" />
             </template>
-            <template #actions>
-              <Checkbox
-                :modelValue="selectedPendingPagos.some(p => p.id === item.id)"
-                :binary="true"
-                @update:modelValue="val => togglePendingPago(item, val)"
-              />
-              <Button icon="pi pi-check" label="Confirmar" size="small" severity="success" @click="confirmarPagoEfectivoSingle(item)" :loading="procesandoPago === item.id" />
+          </Column>
+          <Column header="Acciones">
+            <template #body="slotProps">
+              <Button icon="pi pi-check" label="Confirmar" size="small" severity="success"
+                @click="confirmarPagoEfectivoSingle(slotProps.data)" :loading="procesandoPago === slotProps.data.id" />
             </template>
-          </MobileRecordCard>
-        </div>
+          </Column>
+        </DataTable>
         <div v-if="selectedPendingPagos.length > 0" class="mt-3 p-3 border-round" style="background: rgba(245, 158, 11, 0.1)">
           <div class="flex justify-content-between align-items-center">
             <span class="text-gray-300">{{ selectedPendingPagos.length }} pago(s) seleccionado(s)</span>
@@ -72,7 +72,7 @@
           <div class="stat-content">
             <span class="stat-value">{{ estadisticas.cantidadPagadas }}</span>
             <span class="stat-label">Cuotas Pagadas</span>
-            <small class="stat-amount">{{ formatCompactMoney(estadisticas.totalPagado) }}</small>
+            <small class="stat-amount">${{ estadisticas.totalPagado.toLocaleString() }}</small>
           </div>
         </div>
       </div>
@@ -82,7 +82,7 @@
           <div class="stat-content">
             <span class="stat-value">{{ estadisticas.cantidadPendientes }}</span>
             <span class="stat-label">Pendientes</span>
-            <small class="stat-amount">{{ formatCompactMoney(estadisticas.totalPendiente) }}</small>
+            <small class="stat-amount">${{ estadisticas.totalPendiente.toLocaleString() }}</small>
           </div>
         </div>
       </div>
@@ -92,7 +92,7 @@
           <div class="stat-content">
             <span class="stat-value">{{ estadisticas.cantidadVencidas }}</span>
             <span class="stat-label">Vencidas</span>
-            <small class="stat-amount">{{ formatCompactMoney(estadisticas.totalVencido) }}</small>
+            <small class="stat-amount">${{ estadisticas.totalVencido.toLocaleString() }}</small>
           </div>
         </div>
       </div>
@@ -102,7 +102,7 @@
           <div class="stat-content">
             <span class="stat-value">{{ estadisticas.cantidadMutual }}</span>
             <span class="stat-label">Pago Mutual</span>
-            <small class="stat-amount">{{ formatCompactMoney(estadisticas.totalMutual) }}</small>
+            <small class="stat-amount">${{ estadisticas.totalMutual.toLocaleString() }}</small>
           </div>
         </div>
       </div>
@@ -110,8 +110,8 @@
 
     <!-- Filtros -->
     <div class="card mb-4">
-      <div class="flex flex-wrap align-items-center gap-3 mobile-filters">
-        <span class="p-input-icon-left flex-1">
+      <div class="flex flex-wrap align-items-center gap-3">
+        <span class="p-input-icon-left flex-1" style="min-width: 200px">
           <i class="pi pi-search" />
           <InputText v-model="filters['global'].value" placeholder="Buscar por socio o concepto..." class="w-full" />
         </span>
@@ -121,7 +121,7 @@
           optionLabel="nombre" 
           optionValue="id"
           placeholder="Filtrar por socio"
-          class="w-full"
+          class="w-15rem"
           showClear
           filter
         />
@@ -131,59 +131,101 @@
           optionLabel="label" 
           optionValue="value"
           placeholder="Filtrar por estado"
-          class="w-full"
+          class="w-12rem"
           showClear
         />
       </div>
     </div>
 
-    <div v-if="loading" class="flex justify-content-center py-5">
-      <ProgressSpinner />
+    <!-- Listado -->
+    <div class="card">
+      <div class="flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h3 class="m-0">Listado de Pagos</h3>
+        <Button :icon="vistaCards ? 'pi pi-table' : 'pi pi-th-large'" text rounded size="small"
+          v-tooltip.top="vistaCards ? 'Vista tabla' : 'Vista cards'"
+          @click="vistaCards = !vistaCards" />
+      </div>
+
+      <!-- Vista cards -->
+      <div v-if="vistaCards">
+        <div v-if="loading" class="text-center py-4"><i class="pi pi-spin pi-spinner text-2xl" /></div>
+        <div v-else-if="pagos.length === 0" class="text-center text-gray-400 py-4">Sin pagos</div>
+        <div v-else class="pagos-cards-grid">
+          <div v-for="p in pagos" :key="p.id" class="pago-card">
+            <div class="pago-card-header">
+              <Tag :severity="getEstadoSeverity(p.estado)" :value="p.estado" />
+              <span class="font-bold text-primary text-lg">${{ p.monto?.toLocaleString() }}</span>
+            </div>
+            <div class="pago-card-body">
+              <div class="pago-card-row"><i class="pi pi-user mr-2 text-gray-400"></i><span class="font-medium">{{ p.socioNombre }}</span></div>
+              <div class="pago-card-row"><i class="pi pi-file mr-2 text-gray-400"></i><span>{{ p.concepto }}</span></div>
+              <div class="pago-card-row"><i class="pi pi-calendar mr-2 text-gray-400"></i><span>Vence: {{ formatDate(p.fechaVencimiento) }}</span></div>
+              <div class="pago-card-row" v-if="p.metodoPago">
+                <i class="pi pi-credit-card mr-2 text-gray-400"></i>
+                <span class="text-gray-300">{{ p.metodoPago?.charAt(0).toUpperCase() + p.metodoPago?.slice(1) }}</span>
+              </div>
+            </div>
+            <div class="pago-card-actions">
+              <Button icon="pi pi-list" text rounded size="small" severity="secondary" @click="verDetallePago(p)" v-tooltip.top="'Ver desglose'" />
+              <Button v-if="p.metodoPago?.toLowerCase() === 'mutual'" icon="pi pi-file-pdf" text rounded size="small" severity="help" @click="generarCupon(p)" v-tooltip.top="'Cupón mutual'" />
+              <Button v-if="p.estado === 'pendiente' || p.estado === 'vencido'" icon="pi pi-credit-card" label="Pagar" text rounded size="small" severity="success" @click="abrirPagarDialog(p)" :loading="procesandoPago === p.id" />
+              <Button v-if="p.estado?.toLowerCase() !== 'pagado'" icon="pi pi-pencil" text rounded size="small" severity="info" @click="editPago(p)" v-tooltip.top="'Editar'" />
+              <Button v-if="p.estado?.toLowerCase() !== 'pagado'" icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmDelete(p)" v-tooltip.top="'Eliminar'" />
+              <Button v-if="p.estado !== 'pagado'" icon="pi pi-whatsapp" text rounded size="small" severity="success" @click="abrirWhatsApp(p)" v-tooltip.top="'Enviar WhatsApp'" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vista tabla -->
+      <DataTable v-else
+        :value="pagos" 
+        :loading="loading"
+        :paginator="true"
+        :rows="10"
+        :rowsPerPageOptions="[5, 10, 25]"
+        dataKey="id"
+        :globalFilterFields="['socioNombre', 'concepto']"
+        v-model:filters="filters"
+        responsiveLayout="scroll"
+      >
+        <Column field="socioNombre" header="Socio" sortable style="min-width: 150px"></Column>
+        <Column field="concepto" header="Concepto" sortable style="min-width: 150px"></Column>
+        <Column header="Monto" sortable style="min-width: 100px">
+          <template #body="slotProps">${{ slotProps.data.monto?.toLocaleString() }}</template>
+        </Column>
+        <Column header="Vencimiento" sortable style="min-width: 120px">
+          <template #body="slotProps">{{ formatDate(slotProps.data.fechaVencimiento) }}</template>
+        </Column>
+        <Column header="Fecha Pago" style="min-width: 120px">
+          <template #body="slotProps">{{ slotProps.data.fechaPago ? formatDate(slotProps.data.fechaPago) : '-' }}</template>
+        </Column>
+        <Column header="Estado" style="min-width: 100px">
+          <template #body="slotProps">
+            <Tag :severity="getEstadoSeverity(slotProps.data.estado)" :value="slotProps.data.estado" />
+          </template>
+        </Column>
+        <Column header="Método" style="min-width: 120px">
+          <template #body="slotProps">
+            <Tag v-if="slotProps.data.metodoPago?.toLowerCase() === 'efectivo'" severity="info" value="Efectivo" />
+            <Tag v-else-if="slotProps.data.metodoPago?.toLowerCase() === 'transferencia'" severity="secondary" value="Transferencia" />
+            <Tag v-else-if="slotProps.data.metodoPago === 'mercadopago'" severity="warning" value="MercadoPago" />
+            <Tag v-else-if="slotProps.data.metodoPago?.toLowerCase() === 'mutual'" severity="success" icon="pi pi-building" value="Mutual" />
+            <span v-else class="text-gray-500">-</span>
+          </template>
+        </Column>
+        <Column header="Acciones" style="min-width: 300px">
+          <template #body="slotProps">
+            <Button icon="pi pi-list" text rounded class="mr-1" severity="secondary" @click="verDetallePago(slotProps.data)" v-tooltip.top="'Ver desglose'" />
+            <Button v-if="slotProps.data.metodoPago?.toLowerCase() === 'mutual'" icon="pi pi-file-pdf" text rounded class="mr-1" severity="help" @click="generarCupon(slotProps.data)" v-tooltip.top="'Cupón mutual'" />
+            <Button v-if="slotProps.data.estado === 'pendiente' || slotProps.data.estado === 'vencido'" icon="pi pi-credit-card" label="Pagar" text rounded class="mr-1" severity="success" @click="abrirPagarDialog(slotProps.data)" :loading="procesandoPago === slotProps.data.id" />
+            <Button v-if="slotProps.data.estado?.toLowerCase() !== 'pagado'" icon="pi pi-pencil" text rounded class="mr-1" severity="info" @click="editPago(slotProps.data)" v-tooltip.top="'Editar'" />
+            <Button v-if="slotProps.data.estado?.toLowerCase() !== 'pagado'" icon="pi pi-trash" text rounded severity="danger" @click="confirmDelete(slotProps.data)" v-tooltip.top="'Eliminar'" />
+            <Button v-if="slotProps.data.estado !== 'pagado'" icon="pi pi-whatsapp" text rounded severity="success" @click="abrirWhatsApp(slotProps.data)" v-tooltip.top="'Enviar WhatsApp'" />
+          </template>
+        </Column>
+      </DataTable>
     </div>
-    <template v-else>
-      <div v-if="pagosFiltrados.length === 0" class="card text-center py-5 text-color-secondary">
-        No hay pagos para mostrar
-      </div>
-      <div v-else class="mobile-card-list">
-        <MobileRecordCard
-          v-for="item in paginatedPagos"
-          :key="item.id"
-          :title="item.socioNombre"
-          :subtitle="item.concepto"
-        >
-          <template #tags>
-            <Tag :severity="getEstadoSeverity(item.estado)" :value="item.estado" />
-            <Tag v-if="item.metodoPago?.toLowerCase() === 'efectivo'" severity="info" value="Efectivo" />
-            <Tag v-else-if="item.metodoPago?.toLowerCase() === 'transferencia'" severity="secondary" value="Transferencia" />
-            <Tag v-else-if="item.metodoPago?.toLowerCase() === 'mercadopago'" severity="warning" value="MercadoPago" />
-            <Tag v-else-if="item.metodoPago?.toLowerCase() === 'mutual'" severity="success" icon="pi pi-building" value="Mutual" />
-          </template>
-          <template #body>
-            <div class="record-card__row">
-              <span class="record-card__label">Monto</span>
-              <span class="record-card__value text-green-400 font-bold">${{ item.monto?.toLocaleString() }}</span>
-            </div>
-            <div class="record-card__row">
-              <span class="record-card__label">Vencimiento</span>
-              <span class="record-card__value">{{ formatDate(item.fechaVencimiento) }}</span>
-            </div>
-            <div class="record-card__row">
-              <span class="record-card__label">Fecha pago</span>
-              <span class="record-card__value">{{ item.fechaPago ? formatDate(item.fechaPago) : '—' }}</span>
-            </div>
-          </template>
-          <template #actions>
-            <Button icon="pi pi-list" text rounded size="small" severity="secondary" @click="verDetallePago(item)" v-tooltip.top="'Ver desglose'" />
-            <Button v-if="item.metodoPago?.toLowerCase() === 'mutual'" icon="pi pi-file-pdf" text rounded size="small" severity="help" @click="generarCupon(item)" v-tooltip.top="'Cupón mutual'" />
-            <Button v-if="item.estado === 'pendiente' || item.estado === 'vencido'" icon="pi pi-credit-card" label="Pagar" text rounded size="small" severity="success" @click="abrirPagarDialog(item)" :loading="procesandoPago === item.id" />
-            <Button v-if="item.estado?.toLowerCase() !== 'pagado'" icon="pi pi-pencil" text rounded size="small" severity="info" @click="editPago(item)" v-tooltip.top="'Editar'" />
-            <Button v-if="item.estado?.toLowerCase() !== 'pagado'" icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmDelete(item)" v-tooltip.top="'Eliminar'" />
-            <Button v-if="item.estado !== 'pagado'" icon="pi pi-whatsapp" text rounded size="small" severity="success" @click="abrirWhatsApp(item)" v-tooltip.top="'Enviar WhatsApp'" />
-          </template>
-        </MobileRecordCard>
-      </div>
-      <MobilePaginator v-model:page="pagosPage" :rows="10" :total="pagosFiltrados.length" />
-    </template>
 
     <WhatsAppSendDialog
       v-model="waDialog"
@@ -256,25 +298,35 @@
               <i class="pi pi-search" />
               <InputText v-model="socioSearch" placeholder="Buscar socio por nombre o email..." class="w-full" />
             </span>
-            <div
-              class="mobile-card-list socio-selector-list"
+            <DataTable
+              :value="sociosFiltrados"
+              selectionMode="single"
+              @row-select="onSocioSelect"
+              :rows="5"
+              :paginator="sociosFiltrados.length > 5"
+              scrollable
+              scrollHeight="220px"
+              class="socio-selector-table"
               :class="{ 'p-invalid': submitted && !pago.socioId }"
+              dataKey="id"
+              size="small"
             >
-              <MobileRecordCard
-                v-for="s in sociosFiltrados.slice(0, 8)"
-                :key="s.id"
-                :title="s.nombre"
-                :subtitle="s.email"
-                @click="onSocioSelect({ data: s })"
-              >
-                <template #tags>
-                  <Tag :value="s.numeroSocio?.toString() || '-'" severity="info" />
+              <Column field="nombre" header="Nombre" style="min-width:140px">
+                <template #body="s">
+                  <div class="font-medium" style="color: var(--text-color)">{{ s.data.nombre }}</div>
                 </template>
-              </MobileRecordCard>
-            </div>
-            <p v-if="sociosFiltrados.length > 8" class="text-xs text-gray-400 mt-2 mb-0">
-              Mostrando 8 de {{ sociosFiltrados.length }}. Refiná la búsqueda para ver más.
-            </p>
+              </Column>
+              <Column field="email" header="Email" style="min-width:160px">
+                <template #body="s">
+                  <span class="text-sm text-gray-400">{{ s.data.email }}</span>
+                </template>
+              </Column>
+              <Column field="numeroSocio" header="N°" style="min-width:60px">
+                <template #body="s">
+                  <Tag :value="s.data.numeroSocio?.toString() || '-'" severity="info" />
+                </template>
+              </Column>
+            </DataTable>
           </div>
           <small v-if="submitted && !pago.socioId" class="p-error">Debe seleccionar un socio</small>
         </div>
@@ -364,26 +416,36 @@
             <p class="text-gray-400 text-sm">No hay socios con cobro por mutual configurado.</p>
             <p class="text-gray-500 text-xs mt-1">Activá "Cobra por Mutual" en la ficha del socio.</p>
           </div>
-          <div v-else class="mobile-card-list socio-selector-list">
-            <MobileRecordCard
-              v-for="s in mutualSociosFiltrados"
-              :key="s.id"
-              :title="s.nombre"
-              :subtitle="s.email"
-              @click="toggleMutualSocio(s)"
-            >
-              <template #tags>
-                <Tag :value="s.numeroSocio?.toString() || '-'" severity="info" />
+          <DataTable
+            v-else
+            :value="mutualSociosFiltrados"
+            v-model:selection="mutualSociosSeleccionados"
+            selectionMode="multiple"
+            :rows="6"
+            :paginator="mutualSociosFiltrados.length > 6"
+            scrollable
+            scrollHeight="240px"
+            class="socio-selector-table"
+            dataKey="id"
+            size="small"
+          >
+            <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
+            <Column field="nombre" header="Nombre" style="min-width:140px">
+              <template #body="s">
+                <div class="font-medium" style="color: var(--text-color)">{{ s.data.nombre }}</div>
               </template>
-              <template #actions>
-                <Checkbox
-                  :modelValue="mutualSociosSeleccionados.some(x => x.id === s.id)"
-                  :binary="true"
-                  @update:modelValue="val => toggleMutualSocio(s, val)"
-                />
+            </Column>
+            <Column field="email" header="Email" style="min-width:160px">
+              <template #body="s">
+                <span class="text-sm text-gray-400">{{ s.data.email }}</span>
               </template>
-            </MobileRecordCard>
-          </div>
+            </Column>
+            <Column field="numeroSocio" header="N°" style="min-width:60px">
+              <template #body="s">
+                <Tag :value="s.data.numeroSocio?.toString() || '-'" severity="info" />
+              </template>
+            </Column>
+          </DataTable>
           <small class="text-gray-400 mt-1 block">
             <i class="pi pi-info-circle mr-1"></i>{{ mutualSociosSeleccionados.length }} socio(s) seleccionado(s)
           </small>
@@ -564,9 +626,9 @@
           >
             <!-- Encabezado -->
             <div class="cupon-masivo-header">
-              <img src="/images/logo-udl.png" alt="UDL" style="width:44px;height:44px;object-fit:contain;" />
+              <img :src="clubLogo" :alt="clubLogoAlt" style="width:44px;height:44px;object-fit:contain;" @error="onClubLogoError" />
               <div>
-                <div class="font-bold text-sm">UNIÓN DEPORTIVA LASPIUR</div>
+                <div class="font-bold text-sm">{{ clubHeaderName }}</div>
                 <div class="text-xs text-gray-400">Cupón de Pago - Mutual</div>
               </div>
             </div>
@@ -623,8 +685,8 @@
       <div v-if="cuponData" class="cupon-container p-4" ref="cuponRef">
         <!-- Encabezado -->
         <div class="text-center mb-4">
-          <img src="/images/logo-udl.png" alt="UDL" style="width: 80px; margin: 0 auto;" />
-          <h2 class="text-2xl font-bold mt-2 mb-0">UNIÓN DEPORTIVA LASPIUR</h2>
+          <img :src="clubLogo" :alt="clubLogoAlt" style="width: 80px; margin: 0 auto;" @error="onClubLogoError" />
+          <h2 class="text-2xl font-bold mt-2 mb-0">{{ clubHeaderName }}</h2>
           <p class="text-gray-400 text-sm">Cupón de Pago - Mutual</p>
         </div>
 
@@ -684,18 +746,15 @@
         <div><strong>Estado:</strong> <Tag :severity="getEstadoSeverity(pagoDetalle.estado)" :value="pagoDetalle.estado" /></div>
         <div v-if="pagoDetalle.detalles?.length">
           <strong class="block mb-2">Desglose</strong>
-          <div
-            v-for="(d, i) in pagoDetalle.detalles"
-            :key="i"
-            class="record-card__row py-2"
-            style="border-bottom: 1px solid var(--surface-border)"
-          >
-            <span class="record-card__label">
-              {{ d.concepto }}
-              <span class="block text-xs">{{ d.tipoDestino === 'Club' ? 'Club' : (d.disciplinaNombre || 'Disciplina') }}</span>
-            </span>
-            <span class="record-card__value">${{ d.monto?.toLocaleString('es-AR') }}</span>
-          </div>
+          <DataTable :value="pagoDetalle.detalles" class="p-datatable-sm">
+            <Column field="concepto" header="Concepto" />
+            <Column header="Destino">
+              <template #body="{ data }">{{ data.tipoDestino === 'Club' ? 'Club' : (data.disciplinaNombre || 'Disciplina') }}</template>
+            </Column>
+            <Column header="Monto">
+              <template #body="{ data }">${{ data.monto?.toLocaleString('es-AR') }}</template>
+            </Column>
+          </DataTable>
         </div>
         <Message v-else severity="info" :closable="false">Este pago no tiene desglose (cobro histórico).</Message>
       </div>
@@ -713,16 +772,11 @@ import { useConfirm } from 'primevue/useconfirm'
 import { pagosService, sociosService } from '@/services'
 import { notificacionesService } from '@/services/notificacionesService'
 import { validarTelefonoAR } from '@/utils/phone'
-import { formatCompactMoney } from '@/utils/formatMoney'
 import { FilterMatchMode } from 'primevue/api'
-import { useMobilePagination } from '@/composables/useMobilePagination'
-import PageHeader from '@/components/mobile/PageHeader.vue'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
-import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 import WhatsAppSendDialog from '@/components/notificaciones/WhatsAppSendDialog.vue'
 import html2canvas from 'html2canvas'
-import { Capacitor } from '@capacitor/core'
-import { shareDataUrl } from '@/platform/files'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -731,12 +785,23 @@ import Dropdown from 'primevue/dropdown'
 import Calendar from 'primevue/calendar'
 import Tag from 'primevue/tag'
 import RadioButton from 'primevue/radiobutton'
-import Checkbox from 'primevue/checkbox'
 import Message from 'primevue/message'
-import ProgressSpinner from 'primevue/progressspinner'
+import { useClubBranding } from '@/composables/useClubBranding'
 
 const toast = useToast()
 const confirm = useConfirm()
+const { logoUrl, clubName, logoAlt, onClubLogoError } = useClubBranding()
+const clubLogo = logoUrl
+const clubLogoAlt = logoAlt
+const clubHeaderName = computed(() => (clubName.value || 'Club').toUpperCase())
+const printLogoUrl = computed(() => {
+  const u = logoUrl.value || ''
+  if (u.startsWith('http://') || u.startsWith('https://')) return u
+  if (u.startsWith('/')) return `${window.location.origin}${u}`
+  return u
+})
+
+const vistaCards = ref(window.innerWidth < 768)
 
 // WhatsApp
 const waDialog = ref(false)
@@ -759,21 +824,6 @@ const pago = ref({})
 const filters = ref({
   global: { value: null, matchMode: FilterMatchMode.CONTAINS }
 })
-
-const pagosFiltrados = computed(() => {
-  const search = (filters.value.global?.value || '').toLowerCase()
-  if (!search) return pagos.value
-  return pagos.value.filter(p =>
-    p.socioNombre?.toLowerCase().includes(search) ||
-    p.concepto?.toLowerCase().includes(search)
-  )
-})
-
-const { page: pagosPage, paginated: paginatedPagos } = useMobilePagination(
-  pagosFiltrados,
-  10,
-  [() => filters.value.global?.value, estadoFilter, socioFilter]
-)
 
 // Dialog Pagar
 const pagarDialog = ref(false)
@@ -817,15 +867,6 @@ const cuponMasivoData = ref(null)
 
 function imprimirCuponesMasivo() {
   if (!cuponMasivoData.value) return
-  if (Capacitor.isNativePlatform()) {
-    toast.add({
-      severity: 'info',
-      summary: 'Impresión',
-      detail: 'En la app, abrí cada cupón y usá Descargar / Imprimir para compartirlo',
-      life: 4000
-    })
-    return
-  }
   const d = cuponMasivoData.value
   const fechaEmision = d.fechaEmision?.toLocaleDateString('es-AR') ?? new Date().toLocaleDateString('es-AR')
   const fechaVenc = d.fechaVencimiento ? new Date(d.fechaVencimiento).toLocaleDateString('es-AR') : '-'
@@ -833,9 +874,9 @@ function imprimirCuponesMasivo() {
   const cuponesHtml = d.socios.map(s => `
     <div class="cupon">
       <div class="cupon-header">
-        <img src="/images/logo-udl.png" onerror="this.style.display='none'" alt="UDL" />
+        <img src="${printLogoUrl.value}" onerror="this.style.display='none'" alt="${clubLogoAlt.value}" />
         <div class="cupon-header-text">
-          <h3>UNIÓN DEPORTIVA LASPIUR</h3>
+          <h3>${clubHeaderName.value}</h3>
           <p>Cupón de Pago - Mutual</p>
         </div>
       </div>
@@ -1030,16 +1071,6 @@ function onSocioSelect(event) {
   }
 }
 
-function toggleMutualSocio(s, val) {
-  const selected = mutualSociosSeleccionados.value.some(x => x.id === s.id)
-  const shouldSelect = val === undefined ? !selected : !!val
-  if (shouldSelect && !selected) {
-    mutualSociosSeleccionados.value = [...mutualSociosSeleccionados.value, s]
-  } else if (!shouldSelect && selected) {
-    mutualSociosSeleccionados.value = mutualSociosSeleccionados.value.filter(x => x.id !== s.id)
-  }
-}
-
 async function cargarCuotaSocio(socioId) {
   try {
     const cuota = await pagosService.getCuotaTotal(socioId)
@@ -1116,16 +1147,6 @@ const pagosPendientesConfirmacion = computed(() => {
 const totalSeleccionadoPendientes = computed(() => {
   return selectedPendingPagos.value.reduce((sum, p) => sum + (p.monto || 0), 0)
 })
-
-function togglePendingPago(item, val) {
-  if (val) {
-    if (!selectedPendingPagos.value.some(p => p.id === item.id)) {
-      selectedPendingPagos.value = [...selectedPendingPagos.value, item]
-    }
-  } else {
-    selectedPendingPagos.value = selectedPendingPagos.value.filter(p => p.id !== item.id)
-  }
-}
 
 watch(estadoFilter, (val) => {
   applyFilters()
@@ -1505,8 +1526,8 @@ function _buildCuponHtml(c) {
     <body>
       <div class="cupon">
         <div class="header">
-          <img src="/images/logo-udl.png" onerror="this.style.display='none'" />
-          <h2>UNIÓN DEPORTIVA LASPIUR</h2>
+          <img src="${printLogoUrl.value}" onerror="this.style.display='none'" />
+          <h2>${clubHeaderName.value}</h2>
           <p>Cupón de Pago</p>
           <span class="badge">MUTUAL</span>
         </div>
@@ -1529,40 +1550,15 @@ function _buildCuponHtml(c) {
     </html>`
 }
 
-async function descargarCupon() {
-  try {
-    const element = cuponRef.value
-    if (!element) return
-    const canvas = await html2canvas(element, {
-      backgroundColor: '#1a1a1a',
-      scale: 2
-    })
-    await shareDataUrl(
-      canvas.toDataURL('image/png'),
-      `cupon-mutual-${cuponData.value.numeroSocio}.png`
-    )
-    toast.add({
-      severity: 'success',
-      summary: 'Descargado',
-      detail: 'Cupón descargado correctamente',
-      life: 2000
-    })
-  } catch (error) {
-    console.error('Error al descargar cupón:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'No se pudo descargar el cupón',
-      life: 3000
-    })
-  }
+function descargarCupon() {
+  const win = window.open('', '_blank')
+  win.document.write(_buildCuponHtml(cuponData.value))
+  win.document.close()
+  win.focus()
+  setTimeout(() => { win.print(); }, 600)
 }
 
-async function imprimirCupon() {
-  if (Capacitor.isNativePlatform()) {
-    await descargarCupon()
-    return
-  }
+function imprimirCupon() {
   const win = window.open('', '_blank')
   win.document.write(_buildCuponHtml(cuponData.value))
   win.document.close()
@@ -1617,6 +1613,49 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.pagos-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.pago-card {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pago-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pago-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.pago-card-row {
+  display: flex;
+  align-items: center;
+}
+
+.pago-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-top: 1px solid var(--surface-border);
+  padding-top: 0.5rem;
+}
+
 .stat-card {
   display: flex;
   align-items: center;
@@ -1641,7 +1680,7 @@ onMounted(() => {
 
 .stat-success .stat-icon { background: linear-gradient(135deg, #22c55e, #16a34a); }
 .stat-warning .stat-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
-.stat-danger .stat-icon  { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.stat-danger .stat-icon  { background: linear-gradient(135deg, #ef4444, var(--primary-color)); }
 .stat-mutual .stat-icon  { background: linear-gradient(135deg, #3b82f6, #2563eb); }
 
 .stat-content { display: flex; flex-direction: column; }
@@ -1800,13 +1839,18 @@ onMounted(() => {
   }
 }
 
-.socio-selector-list {
-  max-height: 240px;
-  overflow-y: auto;
+/* Grilla selector de socios */
+.socio-selector-table :deep(.p-datatable-tbody > tr) {
+  cursor: pointer;
 }
-.socio-selector-list.p-invalid {
+.socio-selector-table :deep(.p-datatable-tbody > tr:hover > td) {
+  background: var(--surface-hover) !important;
+}
+.socio-selector-table :deep(.p-datatable-header) {
+  display: none;
+}
+.socio-selector-table.p-invalid :deep(.p-datatable-wrapper) {
   border: 1px solid var(--red-500);
-  border-radius: 8px;
-  padding: 4px;
+  border-radius: 6px;
 }
 </style>

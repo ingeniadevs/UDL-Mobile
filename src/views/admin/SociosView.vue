@@ -1,10 +1,11 @@
-<template>
-  <div>
-    <PageHeader title="Socios">
-      <template #actions>
-        <Button label="Nuevo Socio" icon="pi pi-plus" size="small" @click="openNew" />
-      </template>
-    </PageHeader>
+<template>  <div>
+    <div class="flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+      <h1 class="text-3xl font-bold m-0" style="color: var(--text-color)">Socios</h1>
+      <div class="flex gap-2">
+        <Button label="Carga Masiva" icon="pi pi-file-excel" severity="secondary" @click="abrirCargaMasiva" />
+        <Button label="Nuevo Socio" icon="pi pi-plus" @click="openNew" />
+      </div>
+    </div>
 
     <!-- Stat cards -->
     <div class="grid mb-4">
@@ -49,82 +50,244 @@
 
     <!-- Filtros -->
     <div class="card mb-4">
-      <div class="flex flex-wrap align-items-center gap-3 mobile-filters">
-        <span class="p-input-icon-left flex-1 w-full">
+      <div class="flex flex-wrap align-items-center gap-3">
+        <span class="p-input-icon-left flex-1" style="min-width: 200px">
           <i class="pi pi-search" />
           <InputText v-model="filters['global'].value" placeholder="Buscar por nombre, email o número..." class="w-full" />
         </span>
-        <div class="flex gap-2 flex-wrap w-full filter-chip-row">
-          <Button :label="`Todos (${socios.length})`" :outlined="filtroEstado !== 'todos'" size="small" class="flex-1" @click="filtroEstado = 'todos'" />
-          <Button :label="`Inactivos (${sociosInactivos})`" :outlined="filtroEstado !== 'inactivos'" :severity="sociosInactivos > 0 ? 'warning' : undefined" size="small" class="flex-1" @click="filtroEstado = 'inactivos'" />
-          <Button :label="`Activos (${sociosActivos})`" :outlined="filtroEstado !== 'activos'" severity="success" size="small" class="flex-1" @click="filtroEstado = 'activos'" />
+        <div class="flex gap-2 flex-wrap">
+          <Button :label="`Todos (${socios.length})`" :outlined="filtroEstado !== 'todos'" size="small" @click="filtroEstado = 'todos'" />
+          <Button :label="`Inactivos (${sociosInactivos})`" :outlined="filtroEstado !== 'inactivos'" :severity="sociosInactivos > 0 ? 'warning' : undefined" size="small" @click="filtroEstado = 'inactivos'" />
+          <Button :label="`Activos (${sociosActivos})`" :outlined="filtroEstado !== 'activos'" severity="success" size="small" @click="filtroEstado = 'activos'" />
         </div>
       </div>
     </div>
 
-    <div v-if="loading" class="flex justify-content-center py-5">
-      <ProgressSpinner />
+    <!-- Listado -->
+    <div class="card">
+      <div class="flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h3 class="m-0">Listado de Socios</h3>
+        <Button :icon="vistaGrid ? 'pi pi-table' : 'pi pi-th-large'" text rounded size="small"
+          v-tooltip.top="vistaGrid ? 'Vista tabla' : 'Vista cards'"
+          @click="vistaGrid = !vistaGrid" />
+      </div>
+
+      <!-- Vista cards -->
+      <div v-if="vistaGrid">
+        <div v-if="sociosParaMostrar.length === 0" class="text-center py-6">
+          <i class="pi pi-users text-5xl text-gray-600 mb-3 block"></i>
+          <p class="text-gray-400 text-lg">No se encontraron socios</p>
+          <Button label="Nuevo Socio" icon="pi pi-plus" class="mt-2" @click="openNew" />
+        </div>
+        <div v-else class="grid">
+          <div v-for="s in sociosParaMostrar" :key="s.id" class="col-12 sm:col-6 md:col-4 lg:col-3">
+            <div class="socio-card" :class="{ 'socio-card--inactivo': !s.activo }">
+              <div class="socio-card__header">
+                <div class="socio-avatar-lg" :style="{ background: getSocioColor(s.nombre) }">
+                  <span>{{ getSocioInitials(s.nombre, s.apellido) }}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="font-bold text-base truncate" style="color: var(--text-color)">{{ s.nombre }} {{ s.apellido }}</div>
+                  <div class="text-gray-400 text-xs truncate">{{ s.email }}</div>
+                  <div class="text-gray-500 text-xs">#{{ s.numeroSocio }}</div>
+                </div>
+                <Tag :severity="s.activo ? 'success' : 'danger'" :value="s.activo ? 'Activo' : 'Inactivo'" class="flex-shrink-0" />
+              </div>
+              <div class="socio-card__body">
+                <div class="flex justify-content-between align-items-center mb-2">
+                  <div class="flex gap-1">
+                    <Tag v-if="s.tipoSocio === 'Adherente'" value="Adherente" severity="info" class="text-xs"
+                         v-tooltip.top="s.titularNombreCompleto ? `Adherente de: ${s.titularNombreCompleto}` : 'Adherente'" />
+                    <Tag v-else :value="s.cantidadAdherentes > 0 ? `Titular (${s.cantidadAdherentes})` : 'Titular'" severity="success" class="text-xs"
+                         v-tooltip.top="s.cantidadAdherentes > 0 ? `Titular con ${s.cantidadAdherentes} adherente(s)` : 'Titular'" />
+                    <Tag v-if="s.planNombre" :value="s.planNombre" severity="secondary" class="text-xs" />
+                  </div>
+                  <span class="text-green-400 font-bold text-sm">${{ s.cuotaSocio?.toLocaleString() }}</span>
+                </div>
+                <div v-if="s.disciplinasActivas && s.disciplinasActivas.length > 0" class="flex flex-wrap gap-1">
+                  <Tag v-for="d in s.disciplinasActivas" :key="d" :value="d" severity="secondary" style="font-size:0.65rem" />
+                </div>
+                <div v-else class="text-gray-600 text-xs">Sin disciplinas</div>
+              </div>
+              <div class="socio-card__footer">
+                <Button v-if="!s.activo" icon="pi pi-check-circle" text rounded size="small" severity="success" v-tooltip.top="'Activar'" @click="aprobarSocio(s)" />
+                <Button icon="pi pi-eye" text rounded size="small" class="text-gray-400" v-tooltip.top="'Ver detalle'" @click="viewSocio(s)" />
+                <Button icon="pi pi-pencil" text rounded size="small" severity="info" v-tooltip.top="'Editar'" @click="editSocio(s)" />
+                <Button v-if="s.activo" icon="pi pi-ban" text rounded size="small" severity="danger" v-tooltip.top="'Desactivar'" @click="confirmDesactivar(s)" />
+                <Button icon="pi pi-key" text rounded size="small" severity="warning" v-tooltip.top="'Resetear contraseña'" @click="openResetPassword(s)" />
+                <Button icon="pi pi-whatsapp" text rounded size="small" severity="success" v-tooltip.top="'WhatsApp'" @click="openWaDialog(s)" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vista tabla -->
+      <DataTable v-else
+        :value="sociosFiltrados"
+        :loading="loading"
+        :paginator="true"
+        :rows="10"
+        :rowsPerPageOptions="[5, 10, 25]"
+        dataKey="id"
+        :globalFilterFields="['nombre', 'email', 'numeroSocio']"
+        v-model:filters="filters"
+        filterDisplay="menu"
+        responsiveLayout="scroll"
+      >
+        <Column field="numeroSocio" header="# Socio" sortable style="min-width: 100px"></Column>
+        <Column header="Nombre" sortable style="min-width: 180px">
+          <template #body="slotProps">
+            {{ slotProps.data.nombre }} {{ slotProps.data.apellido }}
+          </template>
+        </Column>
+        <Column field="email" header="Email" sortable style="min-width: 200px"></Column>
+        <Column field="telefono" header="Teléfono" style="min-width: 120px"></Column>
+        <Column header="Tipo" sortable style="min-width: 80px">
+          <template #body="slotProps">
+            <Tag v-if="slotProps.data.tipoSocio === 'Adherente'" value="Adherente" severity="info"
+              v-tooltip.top="slotProps.data.titularNombreCompleto ? `Adherente de: ${slotProps.data.titularNombreCompleto}` : 'Adherente'" />
+            <Tag v-else :value="slotProps.data.cantidadAdherentes > 0 ? `Titular (${slotProps.data.cantidadAdherentes})` : 'Titular'" severity="success"
+              v-tooltip.top="slotProps.data.cantidadAdherentes > 0 ? `Titular con ${slotProps.data.cantidadAdherentes} adherente(s)` : 'Titular'" />
+            <Tag v-if="slotProps.data.pagaPorMutual" value="MUTUAL" severity="warning" class="ml-1"
+              v-tooltip.top="'Cobra por mutual — cuota no se genera automáticamente'" />
+          </template>
+        </Column>
+        <Column header="Plan" sortable style="min-width: 140px">
+          <template #body="slotProps">
+            <span v-if="slotProps.data.planNombre" class="text-sm">{{ slotProps.data.planNombre }}</span>
+            <span v-else class="text-gray-500 text-sm">Sin plan</span>
+          </template>
+        </Column>
+        <Column header="Disciplinas" style="min-width: 160px">
+          <template #body="slotProps">
+            <div v-if="slotProps.data.disciplinasActivas && slotProps.data.disciplinasActivas.length > 0" class="flex flex-wrap gap-1">
+              <Tag v-for="d in slotProps.data.disciplinasActivas" :key="d" :value="d" severity="secondary" style="font-size: 0.7rem" />
+            </div>
+            <span v-else class="text-gray-500 text-sm">Sin disciplinas</span>
+          </template>
+        </Column>
+        <Column header="Cuota" sortable style="min-width: 100px">
+          <template #body="slotProps">
+            ${{ slotProps.data.cuotaSocio?.toLocaleString() }}
+          </template>
+        </Column>
+        <Column header="Estado" style="min-width: 120px">
+          <template #body="slotProps">
+            <Tag :severity="slotProps.data.activo ? 'success' : 'danger'"
+              :value="slotProps.data.activo ? 'Activo' : 'Inactivo'"
+              :icon="slotProps.data.activo ? 'pi pi-check' : 'pi pi-ban'" />
+          </template>
+        </Column>
+        <Column header="Acciones" style="min-width: 200px">
+          <template #body="slotProps">
+            <Button v-if="!slotProps.data.activo" icon="pi pi-check-circle" text rounded class="mr-2" severity="success"
+              @click="aprobarSocio(slotProps.data)" v-tooltip.top="'Activar socio'" />
+            <Button icon="pi pi-eye" text rounded class="mr-2" @click="viewSocio(slotProps.data)" v-tooltip.top="'Ver detalle'" />
+            <Button icon="pi pi-pencil" text rounded class="mr-2" severity="info" @click="editSocio(slotProps.data)" v-tooltip.top="'Editar'" />
+            <Button v-if="slotProps.data.activo" icon="pi pi-ban" text rounded severity="danger" @click="confirmDesactivar(slotProps.data)" v-tooltip.top="'Desactivar'" />
+            <Button icon="pi pi-key" text rounded severity="warning" @click="openResetPassword(slotProps.data)" v-tooltip.top="'Resetear Contraseña'" />
+            <Button icon="pi pi-whatsapp" text rounded severity="success" @click="openWaDialog(slotProps.data)" v-tooltip.top="'Enviar WhatsApp'" />
+          </template>
+        </Column>
+      </DataTable>
     </div>
-    <template v-else>
-      <div v-if="sociosParaMostrar.length === 0" class="card text-center py-5 text-gray-400">
-        <i class="pi pi-users text-4xl text-gray-600 mb-3 block"></i>
-        <p class="mb-3">No se encontraron socios</p>
-        <Button label="Nuevo Socio" icon="pi pi-plus" size="small" @click="openNew" />
+
+    <!-- Dialog Carga Masiva -->
+    <Dialog v-model:visible="cargaMasivaDialog" header="Carga Masiva de Socios" :modal="true" :style="{ width: '900px' }">
+      <div class="flex flex-column gap-4">
+
+        <!-- Paso 1: subir archivo -->
+        <div v-if="cargaMasivaStep === 1">
+          <p class="text-gray-400 text-sm mb-3">
+            Subí una planilla Excel (.xlsx / .xls / .csv) con las siguientes columnas (el orden no importa, pero los nombres deben coincidir):
+          </p>
+          <div class="surface-ground border-round p-3 mb-3 text-sm font-mono text-gray-300" style="line-height:1.8">
+            <strong>Obligatorias:</strong> Nombre · Apellido · Email · Telefono<br>
+            <strong>Opcionales:</strong> Dni · Direccion · FechaNacimiento (dd/mm/aaaa)
+          </div>
+          <div
+            class="flex flex-column align-items-center justify-content-center border-round p-6 cursor-pointer"
+            style="border: 2px dashed var(--primary-color); background: rgba(99,102,241,0.05); min-height:140px"
+            @click="$refs.fileInputMasivo.click()"
+            @dragover.prevent
+            @drop.prevent="onDropExcel"
+          >
+            <i class="pi pi-file-excel text-5xl text-green-400 mb-3"></i>
+            <span class="text-gray-300">Hacé clic o arrastrá tu archivo aquí</span>
+            <span class="text-gray-500 text-sm mt-1">.xlsx · .xls · .csv</span>
+          </div>
+          <input ref="fileInputMasivo" type="file" accept=".xlsx,.xls,.csv" class="hidden" @change="onFileExcel" />
+        </div>
+
+        <!-- Paso 2: preview y validación -->
+        <div v-if="cargaMasivaStep === 2">
+          <div class="flex align-items-center justify-content-between mb-3">
+            <span class="text-gray-300 text-sm">
+              <span class="text-green-400 font-bold">{{ cargaMasivaFilas.filter(r=>!r._error).length }}</span> válidos ·
+              <span v-if="cargaMasivaFilas.some(r=>r._error)" class="text-red-400 font-bold">{{ cargaMasivaFilas.filter(r=>r._error).length }} con error</span>
+            </span>
+            <Button label="Descargar plantilla" icon="pi pi-download" text size="small" @click="descargarPlantilla" />
+          </div>
+          <DataTable :value="cargaMasivaFilas" :rows="10" :paginator="cargaMasivaFilas.length > 10" class="p-datatable-sm" scrollable scrollHeight="380px">
+            <Column header="#" style="width:40px">
+              <template #body="s">
+                <i v-if="s.data._error" class="pi pi-exclamation-circle text-red-400" v-tooltip.top="s.data._error" />
+                <i v-else class="pi pi-check-circle text-green-400" />
+              </template>
+            </Column>
+            <Column header="Nombre">
+              <template #body="slotProps">{{ slotProps.data.nombre }} {{ slotProps.data.apellido }}</template>
+            </Column>
+            <Column field="apellido" header="Apellido" />
+            <Column field="email" header="Email" />
+            <Column field="telefono" header="Teléfono" />
+            <Column field="dni" header="DNI" />
+            <Column header="">
+              <template #body="s">
+                <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="cargaMasivaFilas.splice(s.index,1)" />
+              </template>
+            </Column>
+          </DataTable>
+          <Message v-if="cargaMasivaFilas.some(r=>r._error)" severity="warn" :closable="false" class="mt-2">
+            Las filas con error se omitirán. Podés eliminarlas o corregir el archivo y volver a subirlo.
+          </Message>
+        </div>
+
+        <!-- Paso 3: progreso -->
+        <div v-if="cargaMasivaStep === 3" class="flex flex-column align-items-center gap-3 py-4">
+          <i v-if="cargaMasivaProgreso < cargaMasivaTotal" class="pi pi-spin pi-spinner text-4xl text-primary"></i>
+          <i v-else class="pi pi-check-circle text-4xl text-green-400"></i>
+          <span class="text-lg font-medium">{{ cargaMasivaProgreso }} / {{ cargaMasivaTotal }}</span>
+          <div class="w-full border-round" style="height:8px;background:var(--surface-ground)">
+            <div class="border-round" style="height:8px;background:var(--primary-color);transition:width .3s" :style="{width: cargaMasivaTotal ? (cargaMasivaProgreso/cargaMasivaTotal*100)+'%' : '0%'}"></div>
+          </div>
+          <div v-if="cargaMasivaErrores.length > 0" class="w-full mt-2">
+            <p class="text-red-400 text-sm font-medium mb-1">Errores durante la importación:</p>
+            <ul class="text-red-300 text-xs" style="max-height:120px;overflow:auto">
+              <li v-for="e in cargaMasivaErrores" :key="e">{{ e }}</li>
+            </ul>
+          </div>
+          <p v-if="cargaMasivaProgreso === cargaMasivaTotal" class="text-green-400">
+            Importación completada. {{ cargaMasivaOk }} socios creados correctamente.
+          </p>
+        </div>
       </div>
-      <div v-else class="mobile-card-list">
-        <MobileRecordCard
-          v-for="item in paginatedSocios"
-          :key="item.id"
-          :title="`${item.nombre} ${item.apellido}`"
-          :subtitle="`#${item.numeroSocio} · ${item.email}`"
-          @click="viewSocio(item)"
-        >
-          <template #leading>
-            <Avatar :label="(item.nombre?.charAt(0) + (item.apellido?.charAt(0) || '')).toUpperCase()" shape="circle" class="avatar-red" />
-          </template>
-          <template #tags>
-            <Tag :severity="item.activo ? 'success' : 'danger'" :value="item.activo ? 'Activo' : 'Inactivo'" />
-            <Tag v-if="item.pagaPorMutual" value="Mutual" severity="warning" v-tooltip.top="'Cobra por mutual — cuota no se genera automáticamente'" />
-          </template>
-          <template #body>
-            <div class="record-card__row">
-              <span class="record-card__label">Teléfono</span>
-              <span class="record-card__value">{{ item.telefono || '—' }}</span>
-            </div>
-            <div class="record-card__row">
-              <span class="record-card__label">Cuota</span>
-              <span class="record-card__value text-green-400">${{ item.cuotaSocio?.toLocaleString() }}</span>
-            </div>
-            <div class="record-card__row">
-              <span class="record-card__label">Plan</span>
-              <span class="record-card__value">{{ item.planNombre || 'Sin plan' }}</span>
-            </div>
-            <div class="record-card__row">
-              <span class="record-card__label">Tipo</span>
-              <span class="record-card__value">
-                <Tag v-if="item.tipoSocio === 'Adherente'" value="Adherente" severity="info"
-                  v-tooltip.top="item.titularNombreCompleto ? `Adherente de: ${item.titularNombreCompleto}` : 'Adherente'" />
-                <Tag v-else :value="item.cantidadAdherentes > 0 ? `Titular (${item.cantidadAdherentes})` : 'Titular'" severity="success"
-                  v-tooltip.top="item.cantidadAdherentes > 0 ? `Titular con ${item.cantidadAdherentes} adherente(s)` : 'Titular'" />
-              </span>
-            </div>
-            <div v-if="item.disciplinasActivas?.length" class="flex flex-wrap gap-1 mt-1">
-              <Tag v-for="d in item.disciplinasActivas" :key="d" :value="d" severity="secondary" style="font-size: 0.7rem" />
-            </div>
-            <div v-else class="text-xs text-gray-600">Sin disciplinas</div>
-          </template>
-          <template #actions>
-            <Button v-if="!item.activo" icon="pi pi-check-circle" text rounded size="small" severity="success" @click="aprobarSocio(item)" v-tooltip.top="'Activar socio'" />
-            <Button icon="pi pi-eye" text rounded size="small" @click="viewSocio(item)" v-tooltip.top="'Ver detalle'" />
-            <Button icon="pi pi-pencil" text rounded size="small" severity="info" @click="editSocio(item)" v-tooltip.top="'Editar'" />
-            <Button v-if="item.activo" icon="pi pi-ban" text rounded size="small" severity="danger" @click="confirmDesactivar(item)" v-tooltip.top="'Desactivar'" />
-            <Button icon="pi pi-key" text rounded size="small" severity="warning" @click="openResetPassword(item)" v-tooltip.top="'Resetear Contraseña'" />
-            <Button icon="pi pi-whatsapp" text rounded size="small" severity="success" @click="openWaDialog(item)" v-tooltip.top="'Enviar WhatsApp'" />
-          </template>
-        </MobileRecordCard>
-      </div>
-      <MobilePaginator v-model:page="sociosPage" :rows="10" :total="sociosParaMostrar.length" />
-    </template>
+
+      <template #footer>
+        <Button label="Cancelar" icon="pi pi-times" text @click="cargaMasivaDialog = false" />
+        <Button v-if="cargaMasivaStep === 1" label="Volver a subir" icon="pi pi-upload" outlined disabled />
+        <Button
+          v-if="cargaMasivaStep === 2"
+          :label="`Importar ${cargaMasivaFilas.filter(r=>!r._error).length} socios`"
+          icon="pi pi-check"
+          severity="success"
+          :disabled="!cargaMasivaFilas.some(r=>!r._error)"
+          @click="ejecutarCargaMasiva"
+        />
+        <Button v-if="cargaMasivaStep === 3 && cargaMasivaProgreso === cargaMasivaTotal" label="Cerrar" icon="pi pi-times" @click="cargaMasivaDialog = false" />
+      </template>
+    </Dialog>
 
     <!-- Create/Edit Dialog -->
     <Dialog 
@@ -457,11 +620,10 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { sociosService, disciplinasService, authService } from '@/services'
 import { planesService } from '@/services/planesService'
-import { useMobilePagination } from '@/composables/useMobilePagination'
-import PageHeader from '@/components/mobile/PageHeader.vue'
-import MobileRecordCard from '@/components/mobile/MobileRecordCard.vue'
-import MobilePaginator from '@/components/mobile/MobilePaginator.vue'
 import { FilterMatchMode } from 'primevue/api'
+import * as XLSX from 'xlsx'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -469,7 +631,6 @@ import InputNumber from 'primevue/inputnumber'
 import InputSwitch from 'primevue/inputswitch'
 import Password from 'primevue/password'
 import Tag from 'primevue/tag'
-import Avatar from 'primevue/avatar'
 import Dropdown from 'primevue/dropdown'
 import RadioButton from 'primevue/radiobutton'
 import Checkbox from 'primevue/checkbox'
@@ -477,7 +638,6 @@ import Calendar from 'primevue/calendar'
 import MultiSelect from 'primevue/multiselect'
 import Message from 'primevue/message'
 import Textarea from 'primevue/textarea'
-import ProgressSpinner from 'primevue/progressspinner'
 import ImageUpload from '@/components/shared/ImageUpload.vue'
 import {
   toLocalCalendarDate,
@@ -564,6 +724,7 @@ watch([telefonoAreaAdmin, telefonoNumeroAdmin], () => {
   if (formatted) socio.value.telefono = formatted
 })
 const filtroEstado = ref('todos')
+const vistaGrid = ref(false)
 
 // Reset password
 const resetPasswordDialog = ref(false)
@@ -664,6 +825,14 @@ const sociosFiltrados = computed(() => {
   return socios.value
 })
 
+// Helpers vista card
+const SOCIO_COLORES = ['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981','#3b82f6','#ef4444','#14b8a6','#f97316','#06b6d4']
+function getSocioColor(nombre = '') {
+  return SOCIO_COLORES[(nombre.charCodeAt(0) || 0) % SOCIO_COLORES.length]
+}
+function getSocioInitials(nombre = '', apellido = '') {
+  return ((nombre[0] || '') + (apellido[0] || '')).toUpperCase()
+}
 const sociosParaMostrar = computed(() => {
   const search = (filters.value['global']?.value || '').toLowerCase()
   const base = sociosFiltrados.value
@@ -675,12 +844,6 @@ const sociosParaMostrar = computed(() => {
     String(s.numeroSocio).includes(search)
   )
 })
-
-const { page: sociosPage, paginated: paginatedSocios } = useMobilePagination(
-  sociosParaMostrar,
-  10,
-  [() => filters.value.global?.value, filtroEstado]
-)
 
 // Computed: Plan seleccionado
 const selectedPlan = computed(() => {
@@ -699,7 +862,7 @@ const sociosTitularesDisponibles = computed(() => {
     .map(s => ({
       ...s,
       nombreCompleto: `${s.nombre} ${s.apellido}`,
-      planNombre: s.planMembresia?.nombre || 'Sin plan'
+      planNombre: s.planNombre || 'Sin plan'
     }))
 })
 
@@ -710,7 +873,7 @@ const sociosTitulares = computed(() => {
     .map(s => ({
       ...s,
       nombreCompleto: `${s.nombre} ${s.apellido}`,
-      planNombre: s.planMembresia?.nombre || 'Sin plan'
+      planNombre: s.planNombre || 'Sin plan'
     }))
 })
 
@@ -765,6 +928,161 @@ function onPlanChange() {
       socio.value.titularId = null
     }
   }
+}
+
+// ── Carga masiva ──────────────────────────────────────────────────────────────
+const cargaMasivaDialog = ref(false)
+const cargaMasivaStep = ref(1)
+const cargaMasivaFilas = ref([])
+const cargaMasivaProgreso = ref(0)
+const cargaMasivaTotal = ref(0)
+const cargaMasivaOk = ref(0)
+const cargaMasivaErrores = ref([])
+
+const COLUMN_MAP = {
+  nombre: ['nombre', 'name', 'first name'],
+  apellido: ['apellido', 'lastname', 'last name', 'surname'],
+  email: ['email', 'correo', 'mail'],
+  telefono: ['telefono', 'teléfono', 'phone', 'tel', 'celular'],
+  dni: ['dni', 'documento', 'cedula', 'cédula', 'nro documento'],
+  direccion: ['direccion', 'dirección', 'address'],
+  fechaNacimiento: ['fechanacimiento', 'fecha nacimiento', 'fecha de nacimiento', 'birth', 'dob', 'nacimiento']
+}
+
+function normKey(k) { return k?.toString().toLowerCase().trim().replace(/\s+/g, ' ') }
+
+function parsearExcel(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true })
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        const raw = XLSX.utils.sheet_to_json(ws, { defval: '' })
+        if (!raw.length) { reject('El archivo está vacío.'); return }
+
+        // Mapear columnas
+        const keys = Object.keys(raw[0])
+        const colMap = {}
+        for (const [field, aliases] of Object.entries(COLUMN_MAP)) {
+          const match = keys.find(k => aliases.includes(normKey(k)))
+          if (match) colMap[field] = match
+        }
+
+        const filas = raw.map((row, i) => {
+          const f = {
+            nombre:          (row[colMap.nombre] ?? '').toString().trim(),
+            apellido:        (row[colMap.apellido] ?? '').toString().trim(),
+            email:           (row[colMap.email] ?? '').toString().trim(),
+            telefono:        (row[colMap.telefono] ?? '').toString().trim(),
+            dni:             (row[colMap.dni] ?? '').toString().trim(),
+            direccion:       (row[colMap.direccion] ?? '').toString().trim(),
+            fechaNacimiento: colMap.fechaNacimiento ? formatFechaNacimiento(row[colMap.fechaNacimiento]) : '',
+            _fila: i + 2
+          }
+          if (!f.nombre) f._error = 'Falta Nombre'
+          else if (!f.apellido) f._error = 'Falta Apellido'
+          else if (!f.email) f._error = 'Falta Email'
+          else if (!f.telefono) f._error = 'Falta Teléfono'
+          else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) f._error = 'Email inválido'
+          return f
+        })
+        resolve(filas)
+      } catch (err) { reject('No se pudo leer el archivo: ' + err.message) }
+    }
+    reader.onerror = () => reject('Error al leer el archivo')
+    reader.readAsArrayBuffer(file)
+  })
+}
+
+function formatFechaNacimiento(val) {
+  if (!val) return ''
+  if (val instanceof Date) {
+    return val.toISOString().split('T')[0]
+  }
+  const s = val.toString().trim()
+  // dd/mm/aaaa → aaaa-mm-dd
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`
+  return s
+}
+
+async function onFileExcel(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  await procesarArchivoExcel(file)
+  e.target.value = ''
+}
+
+async function onDropExcel(e) {
+  const file = e.dataTransfer.files[0]
+  if (!file) return
+  await procesarArchivoExcel(file)
+}
+
+async function procesarArchivoExcel(file) {
+  try {
+    cargaMasivaFilas.value = await parsearExcel(file)
+    cargaMasivaStep.value = 2
+  } catch (err) {
+    toast.add({ severity: 'error', summary: 'Error', detail: err, life: 5000 })
+  }
+}
+
+function abrirCargaMasiva() {
+  cargaMasivaStep.value = 1
+  cargaMasivaFilas.value = []
+  cargaMasivaProgreso.value = 0
+  cargaMasivaTotal.value = 0
+  cargaMasivaOk.value = 0
+  cargaMasivaErrores.value = []
+  cargaMasivaDialog.value = true
+}
+
+async function ejecutarCargaMasiva() {
+  const validas = cargaMasivaFilas.value.filter(r => !r._error)
+  cargaMasivaTotal.value = validas.length
+  cargaMasivaProgreso.value = 0
+  cargaMasivaOk.value = 0
+  cargaMasivaErrores.value = []
+  cargaMasivaStep.value = 3
+
+  for (const fila of validas) {
+    try {
+      await sociosService.create({
+        nombre: fila.nombre,
+        apellido: fila.apellido,
+        email: fila.email,
+        password: Math.random().toString(36).slice(-8) + 'A1!',
+        telefono: fila.telefono,
+        dni: fila.dni || '',
+        direccion: fila.direccion || '',
+        fechaNacimiento: fila.fechaNacimiento || null,
+        cuotaSocio: 0,
+        tipoSocio: 'Titular',
+        recibeNotificacionesWhatsApp: true,
+        pagaPorMutual: false
+      })
+      cargaMasivaOk.value++
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Error desconocido'
+      cargaMasivaErrores.value.push(`Fila ${fila._fila} (${fila.nombre} ${fila.apellido}): ${msg}`)
+    }
+    cargaMasivaProgreso.value++
+  }
+
+  await loadSocios()
+}
+
+function descargarPlantilla() {
+  const data = [
+    { Nombre: 'Juan', Apellido: 'Pérez', Email: 'juan@ejemplo.com', Telefono: '1123456789', Dni: '30123456', Direccion: 'Av. Siempre Viva 123', FechaNacimiento: '15/03/1985' },
+    { Nombre: 'María', Apellido: 'García', Email: 'maria@ejemplo.com', Telefono: '1187654321', Dni: '28765432', Direccion: '', FechaNacimiento: '' }
+  ]
+  const ws = XLSX.utils.json_to_sheet(data)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Socios')
+  XLSX.writeFile(wb, 'plantilla-carga-socios.xlsx')
 }
 
 function openNew() {
@@ -995,8 +1313,51 @@ onMounted(() => {
 .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--text-color); }
 .stat-label { font-size: 0.85rem; color: var(--text-color-secondary); }
 
-.avatar-red {
-  background-color: #dc2626 !important;
-  color: white !important;
+.socio-card {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.socio-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+.socio-card--inactivo {
+  opacity: 0.75;
+}
+.socio-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0.75rem;
+}
+.socio-card__body {
+  padding: 0 1rem 0.75rem;
+  flex: 1;
+}
+.socio-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--surface-border);
+  background: rgba(255,255,255,0.02);
+}
+.socio-avatar-lg {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
 }
 </style>

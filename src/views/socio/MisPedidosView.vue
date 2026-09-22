@@ -1,10 +1,9 @@
 <template>
   <div>
-    <PageHeader title="Mis Pedidos">
-      <template #actions>
-        <Button label="Ir a la Tienda" icon="pi pi-shopping-cart" size="small" @click="$router.push('/socio/tienda')" />
-      </template>
-    </PageHeader>
+    <div class="flex align-items-center justify-content-between mb-4">
+      <h1 class="text-3xl font-bold page-title m-0">Mis Pedidos</h1>
+      <Button label="Ir a la Tienda" icon="pi pi-shopping-cart" @click="$router.push('/socio/tienda')" />
+    </div>
 
     <!-- Loading -->
     <div v-if="loading" class="flex justify-content-center p-5">
@@ -125,7 +124,6 @@
 import { ref, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { pedidosService } from '@/services'
-import PageHeader from '@/components/mobile/PageHeader.vue'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -243,7 +241,7 @@ onMounted(() => {
 .pedido-icon {
   width: 48px;
   height: 48px;
-  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--udl-red-dark) 100%);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -321,9 +319,9 @@ onMounted(() => {
 }
 
 .timeline-step.active .timeline-dot {
-  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--udl-red-dark) 100%);
   color: white;
-  box-shadow: 0 0 20px rgba(220, 38, 38, 0.4);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--primary-color) 40%, transparent);
 }
 
 .timeline-step.completed .timeline-dot {
@@ -356,9 +354,9 @@ onMounted(() => {
   justify-content: center;
   gap: 0.75rem;
   padding: 1.5rem;
-  background: rgba(220, 38, 38, 0.1);
+  background: var(--udl-red-hover);
   color: #ef4444;
-  border-top: 1px solid rgba(220, 38, 38, 0.2);
+  border-top: 1px solid color-mix(in srgb, var(--primary-color) 20%, transparent);
 }
 
 @media (max-width: 768px) {

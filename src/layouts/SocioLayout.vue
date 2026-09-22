@@ -17,11 +17,12 @@
           @click="desktopSidebarVisible = !desktopSidebarVisible"
           class="hidden lg:flex btn-menu"
         />
-        <img :src="clubLogo" :alt="clubLogoAlt" class="topbar-logo hidden lg:block" />
+        <img :src="clubLogo" :alt="clubLogoAlt" class="topbar-logo hidden lg:block" @error="onClubLogoError" />
         <span class="text-xl font-semibold topbar-title">{{ portalTitle }}</span>
       </div>
         <div class="flex align-items-center gap-3">
         <span class="topbar-username hidden md:block">{{ authStore.user?.nombre }}</span>
+        <Avatar :image="authStore.user?.foto || undefined" :label="authStore.user?.foto ? undefined : avatarLabel" shape="circle" class="avatar-red" />
         <Button 
           :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'" 
           text 
@@ -44,7 +45,7 @@
     <Sidebar v-model:visible="mobileSidebarVisible" class="sidebar-dark w-18rem">
       <template #header>
         <div class="flex align-items-center gap-2">
-          <img :src="clubLogo" :alt="clubLogoAlt" class="sidebar-logo" />
+          <img :src="clubLogo" :alt="clubLogoAlt" class="sidebar-logo" @error="onClubLogoError" />
           <span class="font-bold text-xl sidebar-title">{{ sidebarTitle }}</span>
         </div>
       </template>
@@ -76,7 +77,7 @@
       </div>
 
       <!-- Content -->
-      <div class="flex-1 overflow-auto content-area">
+      <div class="flex-1 p-4 overflow-auto content-area">
         <router-view />
       </div>
     </div>
@@ -90,33 +91,27 @@ import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
 import { useClubBranding, hydrateClubBranding } from '@/composables/useClubBranding'
 import { useTenantStore } from '@/stores/tenant'
-import { getClubPreset } from '@/config/clubs'
-import { resolveAssetUrl } from '@/utils/assetUrl'
-import { setSidebarCloseHandler } from '@/platform/navigation'
 import Sidebar from 'primevue/sidebar'
 import Menu from 'primevue/menu'
 import Button from 'primevue/button'
-import { Capacitor } from '@capacitor/core'
+import Avatar from 'primevue/avatar'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const tenantStore = useTenantStore()
-const { branding, setClubId } = useClubBranding()
+const { branding, logoUrl, shortName, logoAlt, onClubLogoError } = useClubBranding()
 const { isDark, toggleTheme } = useTheme()
 
-const clubLogo = computed(() => resolveAssetUrl(branding.value.logo))
-const clubLogoAlt = computed(() => branding.value.logoAlt || branding.value.shortName || 'Club')
-const sidebarTitle = computed(() => branding.value.shortName || branding.value.name || 'Club')
+const clubLogo = logoUrl
+const clubLogoAlt = logoAlt
+const sidebarTitle = shortName
 const portalTitle = computed(() => {
-  const preset = getClubPreset(tenantStore.clubId)
-  const suffix = preset?.portalTitle || 'Mi Portal'
   const label = branding.value.shortName || branding.value.name || 'Club'
-  return `${label} - ${suffix}`
+  return `${label} - Mi Portal`
 })
 
 async function syncBranding() {
-  setClubId(tenantStore.clubId)
   await hydrateClubBranding()
 }
 
@@ -128,36 +123,27 @@ function handleResize() {
   desktopSidebarVisible.value = window.innerWidth >= 1280
 }
 
-onMounted(() => {
-  syncBranding()
-  setSidebarCloseHandler(() => {
-    if (mobileSidebarVisible.value) {
-      mobileSidebarVisible.value = false
-      return true
-    }
-    return false
-  })
-  if (Capacitor.isNativePlatform()) {
-    desktopSidebarVisible.value = false
-  } else {
-    handleResize()
-    window.addEventListener('resize', handleResize)
-  }
+onMounted(async () => {
+  await syncBranding()
+  handleResize()
+  window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
-  setSidebarCloseHandler(null)
-  if (!Capacitor.isNativePlatform()) {
-    window.removeEventListener('resize', handleResize)
-  }
+  window.removeEventListener('resize', handleResize)
 })
 
-watch(() => tenantStore.clubId, syncBranding)
+watch(() => tenantStore.clubId, () => {
+  syncBranding()
+})
 
-// Cerrar drawer mobile y colapsar sidebar al navegar
+// Auto-colapsar al navegar
 watch(() => route.path, () => {
-  mobileSidebarVisible.value = false
   desktopSidebarVisible.value = false
+})
+
+const avatarLabel = computed(() => {
+  return authStore.user?.nombre?.charAt(0).toUpperCase() || 'S'
 })
 
 const menuItems = ref([
@@ -280,12 +266,12 @@ function handleLogout() {
 }
 
 .nav-item:hover {
-  background: rgba(220, 38, 38, 0.1);
-  color: #dc2626;
+  background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+  color: var(--primary-color);
 }
 
 .nav-icon {
-  color: #dc2626;
+  color: var(--primary-color);
   font-size: 1rem;
   flex-shrink: 0;
   width: 1rem;
@@ -326,7 +312,7 @@ function handleLogout() {
 .logo-mini {
   width: 36px;
   height: 36px;
-  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--udl-red-dark) 100%);
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -334,13 +320,22 @@ function handleLogout() {
   color: white;
 }
 
+.avatar-red {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--udl-red-dark) 100%) !important;
+  color: white !important;
+}
+
+.avatar-red:has(img) {
+  background: transparent !important;
+}
+
 .btn-menu {
   color: var(--text-color-secondary) !important;
 }
 
 .btn-menu:hover {
-  background: rgba(220, 38, 38, 0.1) !important;
-  color: #dc2626 !important;
+  background: color-mix(in srgb, var(--primary-color) 10%, transparent) !important;
+  color: var(--primary-color) !important;
 }
 
 .btn-logout:hover {

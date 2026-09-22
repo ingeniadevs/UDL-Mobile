@@ -3,9 +3,9 @@
     <div class="login-card p-6 w-full lg:w-4">
       <div class="text-center mb-5">
         <div class="logo-container mb-4">
-          <img src="/images/logo-udl.png" alt="UDL" class="logo-image" />
+          <img :src="clubLogo" :alt="clubLogoAlt" class="logo-image" @error="onClubLogoError" />
         </div>
-        <div class="text-white text-3xl font-bold mb-2">UDL Admin</div>
+        <div class="text-white text-3xl font-bold mb-2">{{ shortName }} Admin</div>
         <span class="text-gray-400 font-medium">Panel de Administración</span>
       </div>      <form @submit.prevent="handleLogin">
         <div class="mb-4">
@@ -53,9 +53,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useClubBranding, hydrateClubBranding } from '@/composables/useClubBranding'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
@@ -63,6 +64,13 @@ import Message from 'primevue/message'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { logoUrl, shortName, logoAlt, onClubLogoError } = useClubBranding()
+const clubLogo = logoUrl
+const clubLogoAlt = logoAlt
+
+onMounted(() => {
+  hydrateClubBranding()
+})
 
 const identificador = ref('')
 const password = ref('')

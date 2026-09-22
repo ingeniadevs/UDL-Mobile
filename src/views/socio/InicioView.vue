@@ -2,7 +2,7 @@
   <div class="inicio-container">
     <div class="inicio-content">
       <div class="logo-wrapper">
-        <img :src="clubLogo" :alt="clubLogoAlt" class="club-logo" />
+        <img :src="clubLogo" :alt="clubLogoAlt" class="club-logo" @error="onClubLogoError" />
       </div>
       <h1 class="club-nombre">{{ clubName }}</h1>
       <p class="bienvenida">
@@ -50,16 +50,15 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useClubBranding } from '@/composables/useClubBranding'
-import { resolveAssetUrl } from '@/utils/assetUrl'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Checkbox from 'primevue/checkbox'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const { branding, clubName } = useClubBranding()
-const clubLogo = computed(() => resolveAssetUrl(branding.value.logo))
-const clubLogoAlt = computed(() => branding.value.logoAlt || branding.value.shortName || 'Club')
+const { clubName, logoUrl, logoAlt, onClubLogoError } = useClubBranding()
+const clubLogo = logoUrl
+const clubLogoAlt = logoAlt
 
 const ALL_TILES = [
   { id: 'dashboard',   label: 'Dashboard',        icono: 'pi-chart-bar',     ruta: '/socio/dashboard' },
@@ -107,13 +106,12 @@ const saveConfig = () => {
 
 <style scoped>
 .inicio-container {
-  min-height: 0;
-  height: auto;
+  height: calc(100vh - 64px);
   display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  padding: 0;
-  overflow: visible;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 2rem;
+  overflow-y: auto;
 }
 
 .inicio-content {
@@ -122,44 +120,43 @@ const saveConfig = () => {
   align-items: center;
   text-align: center;
   width: 100%;
-  max-width: none;
+  max-width: 680px;
 }
 
 .logo-wrapper {
-  width: 88px;
-  height: 88px;
-  margin-bottom: 0.25rem;
-  filter: drop-shadow(0 4px 12px rgba(220, 38, 38, 0.3));
+  width: 210px;
+  height: 210px;
+  margin-bottom: 0.6rem;
+  filter: drop-shadow(0 6px 20px color-mix(in srgb, var(--primary-color) 35%, transparent));
 }
 
 .club-logo { width: 100%; height: 100%; object-fit: contain; }
 
 .club-nombre {
-  font-size: 1.15rem;
+  font-size: 1.75rem;
   font-weight: 700;
   color: var(--text-color);
-  margin: 0 0 0.15rem;
-  line-height: 1.25;
+  margin: 0 0 0.2rem;
 }
 
 .bienvenida {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: var(--text-color-secondary);
-  margin: 0 0 0.65rem;
+  margin: 0 0 1.25rem;
 }
 
-.nombre-socio { color: #dc2626; font-weight: 600; }
+.nombre-socio { color: var(--primary-color); font-weight: 600; }
 
 .accesos-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
 }
 
 .accesos-titulo {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -169,7 +166,7 @@ const saveConfig = () => {
 .accesos-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.4rem;
+  gap: 0.5rem;
   width: 100%;
 }
 
@@ -177,36 +174,35 @@ const saveConfig = () => {
   background: var(--surface-card);
   border: 1px solid var(--surface-border);
   border-radius: 10px;
-  padding: 0.65rem 0.3rem;
+  padding: 0.9rem 0.4rem;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.4rem;
   transition: all 0.18s ease;
-  min-height: 4.25rem;
 }
 
 .acceso-card:hover {
-  border-color: #dc2626;
-  background: rgba(220, 38, 38, 0.06);
-  transform: translateY(-1px);
+  border-color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 6%, transparent);
+  transform: translateY(-2px);
 }
 
-.acceso-icon { font-size: 1.05rem; color: #dc2626; }
+.acceso-icon { font-size: 1.2rem; color: var(--primary-color); }
 
 .acceso-label {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 500;
   color: var(--text-color);
-  line-height: 1.15;
+  line-height: 1.2;
 }
 
 .acceso-vacio {
   grid-column: 1 / -1;
   color: var(--text-color-secondary);
-  font-size: 0.85rem;
-  padding: 0.75rem;
+  font-size: 0.9rem;
+  padding: 1rem;
 }
 
 .config-hint { color: var(--text-color-secondary); font-size: 0.875rem; margin: 0 0 1rem; }
@@ -214,14 +210,10 @@ const saveConfig = () => {
 .config-item { display: flex; align-items: center; gap: 0.75rem; }
 .config-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.95rem; color: var(--text-color); }
 
-@media (max-width: 420px) {
+@media (max-width: 600px) {
   .accesos-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (min-width: 701px) {
-  .logo-wrapper { width: 120px; height: 120px; }
-  .club-nombre { font-size: 1.45rem; }
-  .acceso-label { font-size: 0.75rem; }
+  .logo-wrapper { width: 150px; height: 150px; }
+  .club-nombre { font-size: 1.35rem; }
 }
 </style>
 
