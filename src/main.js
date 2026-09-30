@@ -20,6 +20,20 @@ import 'primeflex/primeflex.css'
 import './assets/main.css'
 import './assets/mobile.css'
 
+async function withTimeout(promise, ms, label) {
+  let timer
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timeout ${ms}ms`)), ms)
+      })
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 async function bootstrap() {
   const app = createApp(App)
   const pinia = createPinia()
@@ -31,19 +45,41 @@ async function bootstrap() {
   app.use(ConfirmationService)
   app.directive('tooltip', Tooltip)
 
-  await hydrateTheme()
+  try {
+    await hydrateTheme()
+  } catch (err) {
+    console.warn('hydrateTheme falló', err)
+  }
 
   const tenantStore = useTenantStore()
-  await tenantStore.hydrate()
+  try {
+    await tenantStore.hydrate()
+  } catch (err) {
+    console.warn('tenant hydrate falló', err)
+  }
 
   const authStore = useAuthStore()
-  await authStore.hydrate()
+  try {
+    await authStore.hydrate()
+  } catch (err) {
+    console.warn('auth hydrate falló', err)
+  }
 
   const { setClubId } = useClubBranding()
   setClubId(tenantStore.clubId)
-  await hydrateClubBranding()
+  try {
+    // No bloquear el mount si el API local/Railway no responde
+    await withTimeout(hydrateClubBranding(), 4000, 'hydrateClubBranding')
+  } catch (err) {
+    console.warn('hydrateClubBranding omitido', err?.message || err)
+  }
 
-  await initPlatform()
+  try {
+    await withTimeout(initPlatform(), 5000, 'initPlatform')
+  } catch (err) {
+    console.warn('initPlatform omitido', err?.message || err)
+  }
+
   initNavigationGuards(router)
   await router.isReady()
   app.mount('#app')
@@ -51,4 +87,11 @@ async function bootstrap() {
 
 bootstrap().catch((err) => {
   console.error('Error al iniciar UDL Mobile', err)
+  const el = document.getElementById('app')
+  if (el && !el.childElementCount) {
+    el.innerHTML =
+      '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui;background:#0f0f0f;color:#fff;text-align:center">' +
+      '<div><p style="font-size:1.1rem;margin:0 0 8px">No se pudo iniciar la app</p>' +
+      '<p style="opacity:.7;margin:0;font-size:.9rem">Revisá Logcat / consola WebView</p></div></div>'
+  }
 })

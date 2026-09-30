@@ -66,7 +66,12 @@ export async function hydrateClubBranding() {
   }
 
   try {
-    const res = await fetch(`${apiUrl}/clubs/branding?tenant=${clubId.value}`)
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 3500)
+    const res = await fetch(`${apiUrl}/clubs/branding?tenant=${clubId.value}`, {
+      signal: controller.signal
+    })
+    clearTimeout(timer)
     if (res.ok) {
       const data = await res.json()
       const logo = (data.logoUrl || data.logo || preset?.logo || '').trim()
@@ -78,7 +83,7 @@ export async function hydrateClubBranding() {
       applyCssVariables(remoteBranding.value)
     }
   } catch {
-    /* backend aún no expone branding */
+    /* backend caído, timeout o branding aún no expuesto */
   }
 
   loaded.value = true

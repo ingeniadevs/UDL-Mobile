@@ -32,18 +32,26 @@ export async function initPlatform() {
   const isDark = document.documentElement.classList.contains('theme-dark')
   await syncStatusBar(isDark)
 
-  await SplashScreen.hide()
-
-  const status = await Network.getStatus()
-  if (!status.connected && networkToastHandler) {
-    networkToastHandler('Sin conexión a internet')
+  try {
+    await SplashScreen.hide()
+  } catch {
+    /* splash ya oculto / duration 0 */
   }
 
-  Network.addListener('networkStatusChange', (s) => {
-    if (!s.connected && networkToastHandler) {
-      networkToastHandler('Conexión perdida')
+  try {
+    const status = await Network.getStatus()
+    if (!status.connected && networkToastHandler) {
+      networkToastHandler('Sin conexión a internet')
     }
-  })
+
+    Network.addListener('networkStatusChange', (s) => {
+      if (!s.connected && networkToastHandler) {
+        networkToastHandler('Conexión perdida')
+      }
+    })
+  } catch (err) {
+    console.warn('[Platform] Network no disponible', err?.message || err)
+  }
 
   try {
     await Keyboard.setAccessoryBarVisible({ isVisible: true })
@@ -51,7 +59,11 @@ export async function initPlatform() {
     /* solo iOS */
   }
 
-  await initPushNotifications()
+  try {
+    await initPushNotifications()
+  } catch (err) {
+    console.warn('[Platform] Push omitido', err?.message || err)
+  }
 }
 
 export { Capacitor }
