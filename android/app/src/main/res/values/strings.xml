@@ -3,5 +3,5 @@
     <string name="app_name">Ingenia Club</string>
     <string name="title_activity_main">Ingenia Club</string>
     <string name="package_name">ar.ingenialabs.udl</string>
-    <string name="custom_url_scheme">ar.ingenialabs.udl</string>
+    <string name="custom_url_scheme">udlclub</string>
 </resources>

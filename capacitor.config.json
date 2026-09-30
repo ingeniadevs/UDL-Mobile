@@ -1,16 +1,17 @@
 {
-  "appId": "ar.ingenialabs.club",
+  "appId": "ar.ingenialabs.udl",
   "appName": "Ingenia Club",
   "webDir": "dist",
   "server": {
-    "androidScheme": "https"
+    "androidScheme": "https",
+    "cleartext": true
   },
   "plugins": {
     "CapacitorHttp": {
       "enabled": true
     },
     "SplashScreen": {
-      "launchShowDuration": 2000,
+      "launchShowDuration": 0,
       "launchAutoHide": true,
       "backgroundColor": "#000000",
       "androidSplashResourceName": "splash",
@@ -33,7 +34,7 @@
     }
   },
   "android": {
-    "allowMixedContent": false
+    "allowMixedContent": true
   },
   "ios": {
     "contentInset": "automatic"
