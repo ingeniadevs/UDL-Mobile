@@ -11,6 +11,7 @@ import {
 } from '@/platform/storage'
 import { isBiometricEnabled, authenticateWithBiometric } from '@/platform/biometric'
 import { isValidRole } from '@/utils/authRoles'
+import { getClubIdFromToken, clubIdsMatch } from '@/utils/jwt'
 
 function parseUser(raw) {
   if (!raw) return null
@@ -32,6 +33,13 @@ function isTokenExpired(token) {
   } catch {
     return true
   }
+}
+
+function tokenAlreadyBoundToClub(token, club) {
+  if (!club) return false
+  const tokenClub = getClubIdFromToken(token)
+  if (!tokenClub) return false
+  return clubIdsMatch(tokenClub, club.id, club.slug)
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -135,6 +143,41 @@ export const useAuthStore = defineStore('auth', () => {
     return data
   }
 
+  /**
+   * Asegura tenantStore + JWT club_id alineados antes del portal.
+   * Reemite token vía POST /auth/select-club si hace falta.
+   */
+  async function bindClubSession(club) {
+    if (!club?.id && !club?.slug) {
+      const err = new Error('No hay club para vincular la sesión')
+      err.code = 'CLUB_REQUIRED'
+      throw err
+    }
+
+    const { useTenantStore } = await import('@/stores/tenant')
+    const tenantStore = useTenantStore()
+    const selected = await tenantStore.selectClub(club)
+    const clubKey = selected.id || selected.slug
+
+    if (tokenAlreadyBoundToClub(token.value, selected)) {
+      return { club: selected, rebound: false }
+    }
+
+    try {
+      const data = await authService.selectClub(clubKey)
+      await applyClubSession(data)
+      return { club: selected, rebound: true, data }
+    } catch (error) {
+      const message =
+        error.response?.data?.message ||
+        'No se pudo vincular tu usuario a este club. Verificá que tengas membresía activa.'
+      const err = new Error(message)
+      err.code = 'CLUB_BIND_FAILED'
+      err.cause = error
+      throw err
+    }
+  }
+
   async function logout() {
     clearSession()
     await clearAuthStorage()
@@ -192,6 +235,7 @@ export const useAuthStore = defineStore('auth', () => {
     loginAdmin,
     loginSocio,
     applyClubSession,
+    bindClubSession,
     updateFoto,
     logout,
     clearSession,

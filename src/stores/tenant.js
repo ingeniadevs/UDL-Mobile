@@ -46,16 +46,22 @@ export const useTenantStore = defineStore('tenant', () => {
   }
 
   async function applyFromLogin(data) {
-    let clubs = normalizeClubsFromLogin(data)
-    if (!clubs.length) {
-      clubs = await fetchCatalogFallback()
-    }
+    const clubs = normalizeClubsFromLogin(data)
     memberships.value = clubs
 
     if (isWhiteLabel.value) {
       const forced = getWhiteLabelClubId()
-      const match = clubs.find((c) => c.id === forced || c.slug === forced) || clubs[0]
-      if (match) await selectClub(match)
+      const match = clubs.find((c) => c.id === forced || c.slug === forced)
+      if (!match) {
+        club.value = normalizeClub(getClubPreset(forced) || { id: forced, slug: forced })
+        await persist()
+        const err = new Error(
+          `Tu cuenta no tiene acceso a este club (${forced}). Usá una cuenta con membresía activa.`
+        )
+        err.code = 'WHITELABEL_NO_MEMBERSHIP'
+        throw err
+      }
+      await selectClub(match)
       return memberships.value
     }
 

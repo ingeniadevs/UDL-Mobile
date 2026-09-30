@@ -618,17 +618,30 @@ async function handleLogin() {
   try {
     const response = await authStore.login(identificador.value.trim(), password.value)
     const clubs = await tenantStore.applyFromLogin(response)
-    await syncBranding()
 
     if (clubs.length > 1 && !tenantStore.isWhiteLabel) {
       pendingClubs.value = clubs
       loginStep.value = 'club'
+      await syncBranding()
       return
     }
 
+    if (!tenantStore.club) {
+      errorMessage.value = 'No hay clubes asociados a tu cuenta. Contactá al administrador.'
+      await authStore.logout()
+      return
+    }
+
+    await authStore.bindClubSession(tenantStore.club)
+    await syncBranding()
     await goHome()
   } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'Credenciales inválidas'
+    if (error.code === 'WHITELABEL_NO_MEMBERSHIP' || error.code === 'CLUB_BIND_FAILED') {
+      errorMessage.value = error.message
+      try { await authStore.logout() } catch { /* ignore */ }
+    } else {
+      errorMessage.value = error.response?.data?.message || error.message || 'Credenciales inválidas'
+    }
   } finally {
     loading.value = false
   }
@@ -638,13 +651,7 @@ async function handleSelectClub(item) {
   selectingClub.value = true
   errorMessage.value = ''
   try {
-    await tenantStore.selectClub(item)
-    try {
-      const data = await authService.selectClub(item.id)
-      await authStore.applyClubSession(data)
-    } catch {
-      /* backend aún sin select-club: el tenant local alcanza */
-    }
+    await authStore.bindClubSession(item)
     await syncBranding()
     if (pendingRegistro.value) {
       pendingRegistro.value = false
@@ -655,7 +662,7 @@ async function handleSelectClub(item) {
     }
     await goHome()
   } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'No se pudo conectar el club'
+    errorMessage.value = error.response?.data?.message || error.message || 'No se pudo conectar el club'
   } finally {
     selectingClub.value = false
   }
@@ -746,8 +753,12 @@ onMounted(async () => {
       pendingClubs.value = clubs
       loginStep.value = 'club'
     } else if (clubs.length === 1) {
-      await tenantStore.selectClub(clubs[0])
-      await syncBranding()
+      try {
+        await authStore.bindClubSession(clubs[0])
+        await syncBranding()
+      } catch {
+        /* se queda en login hasta elegir / reintentar */
+      }
     }
   }
 })
