@@ -77,12 +77,7 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = null
       try {
         const { useTenantStore } = await import('@/stores/tenant')
-        const tenantStore = useTenantStore()
-        if (!tenantStore.isWhiteLabel) {
-          await tenantStore.clear()
-          const { useClubBranding } = await import('@/composables/useClubBranding')
-          useClubBranding().setClubId(null)
-        }
+        useTenantStore().endSession()
       } catch {
         /* pinia */
       }
@@ -183,9 +178,7 @@ export const useAuthStore = defineStore('auth', () => {
     await clearAuthStorage()
     try {
       const { useTenantStore } = await import('@/stores/tenant')
-      await useTenantStore().clear()
-      const { useClubBranding } = await import('@/composables/useClubBranding')
-      useClubBranding().setClubId(null)
+      useTenantStore().endSession()
     } catch {
       /* pinia */
     }

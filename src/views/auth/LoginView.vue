@@ -619,7 +619,7 @@ async function handleLogin() {
     const response = await authStore.login(identificador.value.trim(), password.value)
     const clubs = await tenantStore.applyFromLogin(response)
 
-    if (clubs.length > 1 && !tenantStore.isWhiteLabel) {
+    if (clubs.length > 1 && !tenantStore.isWhiteLabel && !tenantStore.club) {
       pendingClubs.value = clubs
       loginStep.value = 'club'
       await syncBranding()

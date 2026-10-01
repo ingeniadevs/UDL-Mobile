@@ -48,6 +48,7 @@ export const useTenantStore = defineStore('tenant', () => {
   async function applyFromLogin(data) {
     const clubs = normalizeClubsFromLogin(data)
     memberships.value = clubs
+    const remembered = club.value
 
     if (isWhiteLabel.value) {
       const forced = getWhiteLabelClubId()
@@ -65,8 +66,14 @@ export const useTenantStore = defineStore('tenant', () => {
       return memberships.value
     }
 
+    const rememberedMatch = remembered
+      ? clubs.find((c) => c.id === remembered.id || c.slug === remembered.slug)
+      : null
+
     if (clubs.length === 1) {
       await selectClub(clubs[0])
+    } else if (rememberedMatch) {
+      await selectClub(rememberedMatch)
     } else {
       club.value = null
       await persist()
@@ -92,6 +99,12 @@ export const useTenantStore = defineStore('tenant', () => {
     return []
   }
 
+  /** Fin de sesión (logout / token vencido): el club queda recordado para el próximo login. */
+  function endSession() {
+    memberships.value = []
+  }
+
+  /** Olvida el club recordado ("Cambiar club"). */
   async function clear() {
     if (isWhiteLabel.value) return
     club.value = null
@@ -111,6 +124,7 @@ export const useTenantStore = defineStore('tenant', () => {
     selectClub,
     applyFromLogin,
     fetchCatalogFallback,
+    endSession,
     clear
   }
 })
